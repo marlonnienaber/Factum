@@ -1,0 +1,23 @@
+name: factum
+
+services:
+  postgres:
+    image: postgres:18
+    container_name: factum_database
+    environment:
+      POSTGRES_DB: factum_database
+      POSTGRES_USER: username
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U username -d factum_database" ]
+      interval: 0.2s
+      timeout: 0.2s
+      retries: 30
+
+volumes:
+  postgres_data:
+    name: factum_database_data
