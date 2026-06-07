@@ -15,3 +15,8 @@ var JsonParsingErrorResponse = ErrorResponse{
 	ErrorCode: "json_parsing_error",
 	Message:   "Request body does not represent valid JSON.",
 }
+
+var UnexpectedErrorResponse = ErrorResponse{
+	ErrorCode: "unexpected_error",
+	Message:   "An unexpected error occurred.",
+}
