@@ -22,6 +22,7 @@ func NewApplication(cfg configuration.Configuration, db *sqlx.DB) *gin.Engine {
 	app.Use(shared.NewSessionMiddleware(cfg, db))
 
 	app.POST("/sign-up", handlers.NewSignUpHandler(authenticationService))
+	app.POST("/sign-in", handlers.NewSignInHandler(authenticationService))
 
 	return app
 }

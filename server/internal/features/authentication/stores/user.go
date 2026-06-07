@@ -1,6 +1,7 @@
 package stores
 
 import (
+	"database/sql"
 	"errors"
 
 	"github.com/jmoiron/sqlx"
@@ -10,7 +11,8 @@ import (
 )
 
 var (
-	ErrEmailAlreadyInUse = errors.New("the given email is already in use.")
+	ErrEmailAlreadyInUse   = errors.New("the given email is already in use.")
+	ErrNoUserForGivenEmail = errors.New("no user exists with the given email.")
 )
 
 type UserStore struct {
@@ -42,4 +44,20 @@ func (store *UserStore) InsertUser(user *domain.User) error {
 		return wrapUnexpectedError(err)
 	}
 	return nil
+}
+
+func (store *UserStore) GetUserByEmail(email string) (*domain.User, error) {
+	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("getting user by email failed")
+
+	var user domain.User
+
+	err := store.db.Get(&user, "SELECT * FROM users WHERE email = $1", email)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNoUserForGivenEmail
+		}
+		return nil, wrapUnexpectedError(err)
+	}
+
+	return &user, nil
 }

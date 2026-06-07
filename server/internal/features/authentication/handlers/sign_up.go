@@ -21,7 +21,7 @@ func NewSignUpHandler(authenticationService *services.AuthenticationService) gin
 
 		unexpectedErrorLogMessage := "handling sign-up failed"
 
-		var request transport.SignUpRequest
+		var request transport.AuthenticationRequest
 		if err := c.ShouldBindJSON(&request); err != nil {
 			var validationErrors validator.ValidationErrors
 			if errors.As(err, &validationErrors) {
