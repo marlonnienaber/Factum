@@ -45,8 +45,8 @@ func (service *AuthenticationService) SignUp(request transport.AuthenticationReq
 		return nil, wrapUnexpectedError(err)
 	}
 
-	session.Set("userId", user.Id)
-	if err := session.Save(); err != nil {
+	err = service.createSession(user.Id, session)
+	if err != nil {
 		return nil, wrapUnexpectedError(err)
 	}
 
@@ -80,13 +80,39 @@ func (service *AuthenticationService) SignIn(request transport.AuthenticationReq
 		return nil, ErrInvalidCredentials
 	}
 
-	session.Set("userId", user.Id)
-	if err := session.Save(); err != nil {
+	err = service.createSession(user.Id, session)
+	if err != nil {
 		return nil, wrapUnexpectedError(err)
 	}
 
 	authenticationResponse := user.ToAuthenticationResponse()
 	return &authenticationResponse, nil
+}
+
+func (service *AuthenticationService) DeleteSession(session sessions.Session) error {
+	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("session deletion failed")
+
+	session.Clear()
+	session.Options(sessions.Options{
+		Path:   "/",
+		MaxAge: -1,
+	})
+	if err := session.Save(); err != nil {
+		return wrapUnexpectedError(err)
+	}
+
+	return nil
+}
+
+func (service *AuthenticationService) createSession(userId int64, session sessions.Session) error {
+	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("session creation failed")
+
+	session.Set("userId", userId)
+	if err := session.Save(); err != nil {
+		return wrapUnexpectedError(err)
+	}
+
+	return nil
 }
 
 func (service *AuthenticationService) isEmailNotWhitelisted(email string) bool {

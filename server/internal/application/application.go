@@ -23,6 +23,7 @@ func NewApplication(cfg configuration.Configuration, db *sqlx.DB) *gin.Engine {
 
 	app.POST("/sign-up", handlers.NewSignUpHandler(authenticationService))
 	app.POST("/sign-in", handlers.NewSignInHandler(authenticationService))
+	app.POST("/sign-out", handlers.NewSignOutHandler(authenticationService))
 
 	return app
 }
