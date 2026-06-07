@@ -1,5 +1,5 @@
 package transport
 
 type AuthenticationResponse struct {
-	Email string `json:"email"`
+	UserId int64 `json:"userId"`
 }

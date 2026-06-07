@@ -10,6 +10,6 @@ type User struct {
 
 func (user *User) ToAuthenticationResponse() transport.AuthenticationResponse {
 	return transport.AuthenticationResponse{
-		Email: user.Email,
+		UserId: user.Id,
 	}
 }

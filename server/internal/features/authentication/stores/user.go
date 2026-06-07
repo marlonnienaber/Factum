@@ -61,3 +61,16 @@ func (store *UserStore) GetUserByEmail(email string) (*domain.User, error) {
 
 	return &user, nil
 }
+
+func (store *UserStore) DoesUserExistForId(userId int64) (bool, error) {
+	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("checking user existence by id failed")
+
+	var exists bool
+
+	err := store.db.Get(&exists, "SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)", userId)
+	if err != nil {
+		return false, wrapUnexpectedError(err)
+	}
+
+	return exists, nil
+}
