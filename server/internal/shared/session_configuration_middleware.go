@@ -12,7 +12,7 @@ import (
 	"github.com/marlonnienaber/Factum/server/internal/configuration"
 )
 
-func NewSessionMiddleware(cfg configuration.Configuration, db *sqlx.DB) gin.HandlerFunc {
+func NewSessionConfigurationMiddleware(cfg configuration.Configuration, db *sqlx.DB) gin.HandlerFunc {
 	store, err := postgres.NewStore(db.DB, []byte(cfg.SessionSecretKey))
 	if err != nil {
 		slog.Error("Failed to initialize session middleware.", "error", err)

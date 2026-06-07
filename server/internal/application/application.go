@@ -16,14 +16,14 @@ func NewApplication(cfg configuration.Configuration, db *sqlx.DB) *gin.Engine {
 
 	app := gin.Default()
 
+	app.Use(shared.NewSessionConfigurationMiddleware(cfg, db))
+
 	userStore := stores.NewUserStore(db)
 	authenticationService := services.NewAuthenticationService(userStore, cfg)
 
-	app.Use(shared.NewSessionMiddleware(cfg, db))
-
 	app.POST("/sign-up", handlers.NewSignUpHandler(authenticationService))
 	app.POST("/sign-in", handlers.NewSignInHandler(authenticationService))
-	app.POST("/sign-out", handlers.NewSignOutHandler(authenticationService))
+	app.POST("/sign-out", shared.RequireAuth(handlers.NewSignOutHandler(authenticationService)))
 
 	return app
 }
