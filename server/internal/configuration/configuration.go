@@ -14,7 +14,7 @@ type Configuration struct {
 }
 
 func LoadConfiguration() Configuration {
-	port := getStringEnvironmentVariable("PORT", ":3001")
+	port := getStringEnvironmentVariable("SERVER_PORT", "3001")
 	databaseUrl := getStringEnvironmentVariable("DATABASE_URL", "postgres://username:password@localhost:5435/factum_database?sslmode=disable")
 	signUpEmailWhitelist := parseSignUpEmailWhitelist(getStringEnvironmentVariable("SIGN_UP_EMAIL_WHITELIST", ""))
 	sessionCookieSecure := getBooleanEnvironmentVariable("SESSION_COOKIE_SECURE", false)

@@ -23,7 +23,7 @@ func NewSessionConfigurationMiddleware(cfg configuration.Configuration, db *sqlx
 		Path:     "/",
 		Secure:   cfg.SessionCookieSecure,
 		HttpOnly: true,
-		SameSite: http.SameSiteStrictMode,
+		SameSite: http.SameSiteLaxMode,
 	})
 
 	return sessions.Sessions("factumSession", store)

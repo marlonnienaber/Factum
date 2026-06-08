@@ -14,17 +14,17 @@ import (
 func NewApplication(cfg configuration.Configuration, db *sqlx.DB) *gin.Engine {
 	validation.RegisterJsonPropertyNames()
 
-	app := gin.Default()
-
-	app.Use(shared.NewSessionConfigurationMiddleware(cfg, db))
-
 	userStore := stores.NewUserStore(db)
 	authenticationService := services.NewAuthenticationService(userStore, cfg)
 
-	app.POST("/sign-up", handlers.NewSignUpHandler(authenticationService))
-	app.POST("/sign-in", handlers.NewSignInHandler(authenticationService))
-	app.POST("/sign-out", shared.RequireAuth(handlers.NewSignOutHandler(authenticationService)))
-	app.GET("/current-authentication", shared.RequireAuth(handlers.NewGetCurrentAuthenticationHandler(userStore)))
+	app := gin.Default()
+	app.Use(shared.NewSessionConfigurationMiddleware(cfg, db))
+	api := app.Group("/api")
+
+	api.POST("/sign-up", handlers.NewSignUpHandler(authenticationService))
+	api.POST("/sign-in", handlers.NewSignInHandler(authenticationService))
+	api.POST("/sign-out", shared.RequireAuth(handlers.NewSignOutHandler(authenticationService)))
+	api.GET("/current-authentication", shared.RequireAuth(handlers.NewGetCurrentAuthenticationHandler(userStore)))
 
 	return app
 }
