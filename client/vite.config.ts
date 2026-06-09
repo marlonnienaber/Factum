@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitest/config';
 import { loadEnv } from 'vite';
 import { sveltekit } from '@sveltejs/kit/vite';
+import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig(({ mode }) => {
 	const env = loadEnv(mode, process.cwd(), '');
@@ -8,7 +9,7 @@ export default defineConfig(({ mode }) => {
 	const serverPort = env.SERVER_PORT ?? '3001';
 
 	return {
-		plugins: [sveltekit()],
+		plugins: [sveltekit(), tailwindcss()],
 		server: {
 			port: clientPort,
 			strictPort: true,
