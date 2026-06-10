@@ -26,12 +26,9 @@
 </script>
 
 {#if authentication}
-	<div class="protected-layout">
+	<div class="frame">
 		<nav class="navbar">
 			<span class="brand">Factum</span>
-
-			<div aria-hidden="true"></div>
-
 			<div class="account-actions">
 				<span class="user-label">User #{authentication.userId}</span>
 				<button class="sign-out-button" type="button" disabled={loading} onclick={handleSignOut}>
@@ -40,69 +37,63 @@
 			</div>
 		</nav>
 
-		<main class="protected-content">
+		<main>
 			{@render children()}
 		</main>
 	</div>
 {/if}
 
-<style>
-	.protected-layout {
-		display: flex;
-		min-height: 100svh;
-		flex-direction: column;
-	}
-
-	.navbar {
-		display: grid;
-		grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-		align-items: center;
-		gap: 1rem;
-		height: 3.5rem;
+<style lang="scss">
+	.frame {
 		width: 100%;
-		padding: 0 1rem;
-		border-bottom: 1px solid #e5e5e5;
-	}
-
-	.brand {
-		font-size: 1.125rem;
-		font-weight: 600;
-	}
-
-	.account-actions {
+		height: 100svh;
 		display: flex;
-		align-items: center;
-		justify-content: flex-end;
-		justify-self: end;
-		gap: 0.75rem;
-	}
+		flex-direction: column;
 
-	.user-label {
-		color: #737373;
-		font-size: 0.875rem;
-	}
+		.navbar {
+			width: 100%;
+			box-sizing: border-box;
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			gap: 1rem;
+			padding: 0.865rem 1rem;
+			border-bottom: 1px solid var(--border);
 
-	.sign-out-button {
-		padding: 0.375rem 0.75rem;
-		border: 1px solid #d4d4d4;
-		border-radius: 0.375rem;
-		background: white;
-		color: #171717;
-		font: inherit;
-		cursor: pointer;
-	}
+			.brand {
+				font-size: 1.75rem;
+				font-weight: 600;
+				color: var(--text);
+				line-height: 1.2;
+			}
 
-	.sign-out-button:hover {
-		background: #f5f5f5;
-	}
+			.account-actions {
+				display: flex;
+				align-items: center;
+				justify-content: flex-end;
+				justify-self: end;
+				gap: 0.75rem;
 
-	.sign-out-button:disabled {
-		cursor: default;
-		opacity: 0.6;
-	}
+				.user-label {
+					font-size: 0.865rem;
+					color: var(--text);
+				}
 
-	.protected-content {
-		display: flex;
-		flex: 1;
+				.sign-out-button {
+					padding: 0.375rem 0.5rem;
+					border: none;
+					border-radius: 0.375rem;
+					font-size: 0.865rem;
+					background: var(--button);
+					background-color: var(--button);
+					cursor: pointer;
+					color: var(--text-inverse);
+
+					&:hover {
+						background: var(--button-hover);
+					}
+				}
+			}
+		}
 	}
 </style>

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="90.677696mm"
+   height="150.67766mm"
+   viewBox="0 0 90.677696 150.67766"
+   version="1.1"
+   id="svg1"
+   inkscape:export-filename="factumLogo.png"
+   inkscape:export-xdpi="150"
+   inkscape:export-ydpi="150"
+   inkscape:version="1.4.3 (0d15f75, 2025-12-25)"
+   sodipodi:docname="factumLogoWhite.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="mm"
+     inkscape:zoom="0.64632587"
+     inkscape:cx="-27.076125"
+     inkscape:cy="441.72764"
+     inkscape:window-width="1512"
+     inkscape:window-height="846"
+     inkscape:window-x="0"
+     inkscape:window-y="33"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="layer1" />
+  <defs
+     id="defs1" />
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(0.4790705,0.1984375)">
+    <path
+       id="path1"
+       style="fill:#ffffff;stroke:#ffffff;stroke-width:0.396875"
+       d="M 30.000236,0 0,30.000236 H 59.999955 V 59.999955 L 90.000191,30.000236 V 0 Z M 59.999955,59.999955 H 30.000236 V 90.000191 H 59.999955 V 119.99991 L 90.000191,90.000191 V 59.999955 Z m 0,59.999955 H 30.000236 v 30.00024 z"
+       inkscape:export-filename="factumLogogWhite.png"
+       inkscape:export-xdpi="10.788593"
+       inkscape:export-ydpi="10.788593" />
+  </g>
+</svg>
