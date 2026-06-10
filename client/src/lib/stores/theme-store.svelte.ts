@@ -23,10 +23,16 @@ function initialize() {
 	});
 }
 
+function toggleTheme(): void {
+	if (typeof document === 'undefined') return;
+	document.documentElement.dataset.theme = theme === Theme.Dark ? Theme.Light : Theme.Dark;
+}
+
 initialize();
 
 export const themeStore = {
 	get isDarkTheme() {
 		return theme === Theme.Dark;
-	}
+	},
+	toggleTheme
 };

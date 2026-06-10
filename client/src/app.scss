@@ -8,6 +8,7 @@
 		--text-inverse: #000000;
 		--button: #ffffff;
 		--button-hover: #d1d1d1;
+		--button-ghost: #292929;
 		--border: #2d2c2c;
 		--surface: #252525;
 		--surface-subtle: #0c0c0c;
@@ -17,13 +18,14 @@
 	&[data-theme='light'] {
 		--background: #ffffff;
 		--text: #000000;
-		--text-subtle: #949191;
+		--text-subtle: #5f5f5f;
 		--text-inverse: #ffffff;
 		--button: #000000;
-		--button-hover: #131313;
-		--border: #2d2c2c;
+		--button-hover: #474747;
+		--button-ghost: #dfdfdf;
+		--border: #e1e1e1;
 		--surface: #252525;
-		--surface-subtle: #252525;
+		--surface-subtle: #fcfcfc;
 		--danger: #f1716a;
 	}
 }

@@ -2,6 +2,16 @@
 	<title>Workbench</title>
 </svelte:head>
 
-<div class="flex flex-1 items-center justify-center">
-	<span class="text-lg font-medium">/workbench</span>
+<div class="frame">
+	<span>/workbench</span>
 </div>
+
+<style>
+	.frame {
+		flex: 1;
+		width: 100%;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+	}
+</style>

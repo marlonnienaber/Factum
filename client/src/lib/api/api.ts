@@ -1,3 +1,5 @@
+import { browser } from '$app/environment';
+import { toast } from 'svelte-sonner';
 import { z, type ZodType } from 'zod';
 import { ErrorResponseSchema } from '../types/responses/error-response';
 
@@ -64,8 +66,8 @@ function configureRequestOptions<B>(method: 'GET' | 'POST', requestBody?: B): Re
 async function fetchOrLog(url: string, requestOptions: RequestInit): Promise<Response | undefined> {
 	try {
 		return await fetch(url, requestOptions);
-	} catch (error) {
-		console.error('Request failed before receiving a response.', { url, error });
+	} catch {
+		showErrorToast('Request failed before receiving a response.');
 		return undefined;
 	}
 }
@@ -85,8 +87,8 @@ async function parseResponseOrLog<R>(response: Response, responseSchema: ZodType
 		}
 		const json = await response.json();
 		return parseWithSchemaOrLog(responseSchema, json);
-	} catch (error) {
-		console.error('Failed to parse response body.', { status: response.status, error });
+	} catch {
+		showErrorToast('Failed to parse response body.');
 		return undefined;
 	}
 }
@@ -95,7 +97,7 @@ function parseWithSchemaOrLog<R>(responseSchema: ZodType<R>, value: unknown): R 
 	const parsedResponse = responseSchema.safeParse(value);
 	if (parsedResponse.success) return parsedResponse.data;
 
-	console.error('Response validation failed.', parsedResponse.error);
+	showErrorToast('Response validation failed.');
 	return undefined;
 }
 
@@ -103,19 +105,18 @@ async function logErrorResponse(response: Response) {
 	try {
 		const parsedErrorResponse = ErrorResponseSchema.safeParse(await response.json());
 		if (!parsedErrorResponse.success) {
-			console.error('Received a malformed error response.', {
-				status: response.status,
-				error: parsedErrorResponse.error
-			});
+			showErrorToast('Received a malformed error response.');
 			return;
 		}
-		console.error('Request failed.', {
-			status: response.status,
-			errorResponse: parsedErrorResponse.data
-		});
-	} catch (error) {
-		console.error('Failed to parse error response body.', { status: response.status, error });
+		showErrorToast(parsedErrorResponse.data.message);
+	} catch {
+		showErrorToast('Failed to parse error response body.');
 	}
+}
+
+function showErrorToast(message: string): void {
+	if (!browser) return;
+	toast.error(message);
 }
 
 function isPrimitiveResponseSchema(schema: ZodType): boolean {
