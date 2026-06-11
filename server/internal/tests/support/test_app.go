@@ -6,10 +6,6 @@ import (
 	"github.com/marlonnienaber/Factum/server/internal/configuration"
 )
 
-func TestApp() *gin.Engine {
-	cfg := configuration.Configuration{
-		Port: ":3001",
-	}
-
+func TestApp(cfg configuration.Configuration) *gin.Engine {
 	return application.NewApplication(cfg, DB)
 }
