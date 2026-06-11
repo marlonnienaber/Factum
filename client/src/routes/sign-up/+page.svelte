@@ -26,8 +26,6 @@
 	});
 
 	async function handleSignUp() {
-		if (loading) return;
-
 		const inputParseResult = signUpInputSchema.safeParse({ email, password, repeatedPassword });
 		if (!inputParseResult.success) {
 			applyValidationErrors(inputParseResult.error.issues);
@@ -84,6 +82,7 @@
 				placeholder="Provide Email"
 				autocomplete="email"
 				disabled={loading}
+				data-testid="email-input"
 			/>
 			<AuthenticationInput
 				bind:value={password}
@@ -93,6 +92,7 @@
 				placeholder="Provide Password"
 				autocomplete="new-password"
 				disabled={loading}
+				data-testid="password-input"
 			/>
 			<AuthenticationInput
 				bind:value={repeatedPassword}
@@ -102,11 +102,12 @@
 				placeholder="Repeat Password"
 				autocomplete="new-password"
 				disabled={loading}
+				data-testid="repeated-password-input"
 			/>
 		</div>
 
 		<div class="footer">
-			<button class="next-button" disabled={loading} onclick={handleSignUp}>
+			<button class="next-button" data-testid="next-button" disabled={loading} onclick={handleSignUp}>
 				{loading ? 'Signing up...' : 'Next'}
 			</button>
 

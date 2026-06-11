@@ -11,6 +11,7 @@
 		type?: 'email' | 'password' | 'text';
 		autocomplete?: HTMLInputAttributes['autocomplete'];
 		disabled?: boolean;
+		'data-testid'?: string;
 	};
 
 	let {
@@ -20,7 +21,8 @@
 		placeholder,
 		type = 'text',
 		autocomplete,
-		disabled = false
+		disabled = false,
+		'data-testid': dataTestId
 	}: Props = $props();
 
 	const invalid = $derived(error !== undefined);
@@ -34,12 +36,14 @@
 	<span class="field-icon">
 		<Icon size={18} />
 	</span>
-	<input bind:value {type} {placeholder} {autocomplete} {disabled} aria-invalid={invalid} oninput={clearError} />
+	<input bind:value {type} {placeholder} {autocomplete} {disabled} data-testid={dataTestId} oninput={clearError} />
 	{#if invalid}
 		<span class="error-icon">
 			<Popover side="right" align="center" openOnHover>
 				{#snippet trigger()}
-					<Info size={18} aria-hidden={true} />
+					<span data-testid={dataTestId === undefined ? undefined : `${dataTestId}-error-trigger`}>
+						<Info size={18} aria-hidden={true} />
+					</span>
 				{/snippet}
 				<span class="error-popover-content">{error}</span>
 			</Popover>
