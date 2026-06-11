@@ -40,6 +40,11 @@ var defaultTestConfiguration = configuration.Configuration{
 	SessionSecretKey:    "test-session-secret-key",
 }
 
+const (
+	TestUserEmail    = "ada@example.com"
+	TestUserPassword = "passwordPassword"
+)
+
 func MakeSignUpRequest(t *testing.T, app *gin.Engine, body transport.AuthenticationRequest) *httptest.ResponseRecorder {
 	t.Helper()
 
@@ -49,11 +54,21 @@ func MakeSignUpRequest(t *testing.T, app *gin.Engine, body transport.Authenticat
 	return MakeJsonRequest(t, app, http.MethodPost, "/api/sign-up", payload)
 }
 
-func MakeJsonRequest(t *testing.T, app *gin.Engine, method string, path string, payload []byte) *httptest.ResponseRecorder {
+func MakeJsonRequest(
+	t *testing.T,
+	app *gin.Engine,
+	method string,
+	path string,
+	payload []byte,
+	cookies ...*http.Cookie,
+) *httptest.ResponseRecorder {
 	t.Helper()
 
 	req := httptest.NewRequest(method, path, bytes.NewReader(payload))
 	req.Header.Set("Content-Type", "application/json")
+	for _, cookie := range cookies {
+		req.AddCookie(cookie)
+	}
 
 	resp := httptest.NewRecorder()
 	app.ServeHTTP(resp, req)

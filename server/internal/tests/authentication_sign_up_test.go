@@ -12,17 +12,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const (
-	testSignUpEmail    = "ada@example.com"
-	testSignUpPassword = "passwordPassword"
-)
-
 func TestAuthenticationSignUpSuccess(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, testSignUpEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
 
 	resp := support.MakeSignUpRequest(t, app, transport.AuthenticationRequest{
-		Email:    strings.ToUpper(testSignUpEmail),
-		Password: testSignUpPassword,
+		Email:    strings.ToUpper(support.TestUserEmail),
+		Password: support.TestUserPassword,
 	})
 
 	require.Equal(t, http.StatusCreated, resp.Code)
@@ -34,25 +29,25 @@ func TestAuthenticationSignUpSuccess(t *testing.T) {
 
 	var persistedEmail string
 	require.NoError(t, support.DB.Get(&persistedEmail, "SELECT email FROM users WHERE id = $1", respBody.UserId))
-	assert.Equal(t, testSignUpEmail, persistedEmail, "expected email to be normalized before persistence")
+	assert.Equal(t, support.TestUserEmail, persistedEmail, "expected email to be normalized before persistence")
 }
 
 func TestAuthenticationSignUpInvalidEmail(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, testSignUpEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
 
 	resp := support.MakeSignUpRequest(t, app, transport.AuthenticationRequest{
 		Email:    "adaexample.com",
-		Password: testSignUpPassword,
+		Password: support.TestUserPassword,
 	})
 
 	support.AssertValidationErrorResponse(t, resp, "email", "email must be a valid email address.")
 }
 
 func TestAuthenticationSignUpPasswordTooShort(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, testSignUpEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
 
 	resp := support.MakeSignUpRequest(t, app, transport.AuthenticationRequest{
-		Email:    testSignUpEmail,
+		Email:    support.TestUserEmail,
 		Password: strings.Repeat("a", 9),
 	})
 
@@ -60,10 +55,10 @@ func TestAuthenticationSignUpPasswordTooShort(t *testing.T) {
 }
 
 func TestAuthenticationSignUpPasswordTooLong(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, testSignUpEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
 
 	resp := support.MakeSignUpRequest(t, app, transport.AuthenticationRequest{
-		Email:    testSignUpEmail,
+		Email:    support.TestUserEmail,
 		Password: strings.Repeat("a", 129),
 	})
 
@@ -71,7 +66,7 @@ func TestAuthenticationSignUpPasswordTooLong(t *testing.T) {
 }
 
 func TestAuthenticationSignUpInvalidJson(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, testSignUpEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
 
 	resp := support.MakeJsonRequest(t, app, http.MethodPost, "/api/sign-up", []byte(`{"email":`))
 
@@ -89,7 +84,7 @@ func TestAuthenticationSignUpEmailNotAllowed(t *testing.T) {
 
 	resp := support.MakeSignUpRequest(t, app, transport.AuthenticationRequest{
 		Email:    "blocked@example.com",
-		Password: testSignUpPassword,
+		Password: support.TestUserPassword,
 	})
 
 	support.AssertErrorResponse(
@@ -102,17 +97,17 @@ func TestAuthenticationSignUpEmailNotAllowed(t *testing.T) {
 }
 
 func TestAuthenticationSignUpEmailAlreadyInUse(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, testSignUpEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
 
 	firstResp := support.MakeSignUpRequest(t, app, transport.AuthenticationRequest{
-		Email:    testSignUpEmail,
-		Password: testSignUpPassword,
+		Email:    support.TestUserEmail,
+		Password: support.TestUserPassword,
 	})
 	require.Equal(t, http.StatusCreated, firstResp.Code)
 
 	secondResp := support.MakeSignUpRequest(t, app, transport.AuthenticationRequest{
-		Email:    testSignUpEmail,
-		Password: testSignUpPassword,
+		Email:    support.TestUserEmail,
+		Password: support.TestUserPassword,
 	})
 
 	support.AssertErrorResponse(
