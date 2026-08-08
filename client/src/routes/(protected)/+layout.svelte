@@ -82,14 +82,14 @@
 			.brand {
 				display: flex;
 				align-items: center;
-				gap: 0.365rem;
+				gap: 0.5rem;
 
 				.logo {
-					height: 2.5rem;
+					height: 2.25rem;
 				}
 
 				.name {
-					font-size: 1.75rem;
+					font-size: 1.5rem;
 					font-weight: 600;
 					color: var(--text);
 					line-height: 1;
