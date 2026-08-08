@@ -33,6 +33,7 @@ func NewApplication(cfg configuration.Configuration, db *sqlx.DB) *gin.Engine {
 	api.GET("/current-authentication", shared.RequireAuth(authHandlers.NewGetCurrentAuthenticationHandler(userStore)))
 
 	api.POST("/tasks", shared.RequireAuth(tasksHandlers.NewCreateTaskHandler(taskService)))
+	api.PUT("/tasks", shared.RequireAuth(tasksHandlers.NewUpdateTaskHandler(taskService)))
 	api.PATCH("/tasks/change-date", shared.RequireAuth(tasksHandlers.NewChangeTaskDateHandler(taskService)))
 	api.GET("/tasks/undated", shared.RequireAuth(tasksHandlers.NewGetUndatedTasksHandler(taskStore)))
 	api.GET("/tasks/dated-untrashed", shared.RequireAuth(tasksHandlers.NewGetDatedUntrashedTasksHandler(taskStore)))

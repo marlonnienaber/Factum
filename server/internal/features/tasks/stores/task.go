@@ -87,6 +87,53 @@ func (store *TaskStore) UpdateTaskDateAndRank(transaction *sqlx.Tx, task *domain
 	return nil
 }
 
+func (store *TaskStore) UpdateTask(transaction *sqlx.Tx, task *domain.Task) error {
+	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("updating task failed")
+
+	result, err := transaction.Exec(`
+		UPDATE tasks
+		SET category_id = $1,
+		    title = $2,
+		    description = $3,
+		    date = $4,
+		    rank = $5,
+		    done = $6
+		WHERE id = $7
+		  AND user_id = $8
+	`,
+		task.CategoryId,
+		task.Title,
+		task.Description,
+		task.Date,
+		task.Rank,
+		task.Done,
+		task.Id,
+		task.UserId,
+	)
+	if err != nil {
+		var postgresError *pq.Error
+		if errors.As(err, &postgresError) {
+			switch postgresError.Constraint {
+			case "tasks_category_id_foreign_key":
+				return ErrCategoryNotFound
+			case "tasks_untrashed_user_id_done_date_rank_unique":
+				return ErrTaskRankAlreadyExists
+			}
+		}
+		return wrapUnexpectedError(err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return wrapUnexpectedError(err)
+	}
+	if rowsAffected == 0 {
+		return ErrTaskNotFound
+	}
+
+	return nil
+}
+
 func (store *TaskStore) GetHighestUndatedUntrashedOpenTaskRank(transaction *sqlx.Tx, userId int64) (*string, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("retrieving highest undated untrashed undone task rank failed")
 
@@ -122,6 +169,30 @@ func (store *TaskStore) GetHighestDatedUntrashedOpenTaskRank(transaction *sqlx.T
 		  AND date = $2
 		  AND trashed_date IS NULL
 		  AND done = FALSE
+		ORDER BY rank DESC
+		LIMIT 1
+	`, userId, date)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, wrapUnexpectedError(err)
+	}
+
+	return &rank, nil
+}
+
+func (store *TaskStore) GetHighestDatedUntrashedDoneTaskRank(transaction *sqlx.Tx, userId int64, date *shared.Date) (*string, error) {
+	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("retrieving highest dated untrashed done task rank failed")
+
+	var rank string
+	err := transaction.Get(&rank, `
+		SELECT rank
+		FROM tasks
+		WHERE user_id = $1
+		  AND date = $2
+		  AND trashed_date IS NULL
+		  AND done = TRUE
 		ORDER BY rank DESC
 		LIMIT 1
 	`, userId, date)
