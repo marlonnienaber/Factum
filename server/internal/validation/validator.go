@@ -1,0 +1,61 @@
+package validation
+
+import (
+	"reflect"
+	"strings"
+
+	"github.com/gin-gonic/gin/binding"
+	"github.com/go-playground/validator/v10"
+	"github.com/marlonnienaber/Factum/server/internal/shared"
+)
+
+type ValidationErrorDetails struct {
+	Violations []ValidationViolation `json:"violations"`
+}
+
+type ValidationViolation struct {
+	Field       string `json:"field"`
+	Description string `json:"message"`
+}
+
+func RegisterJsonPropertyNames() {
+	if validatorEngine, ok := binding.Validator.Engine().(*validator.Validate); ok {
+		validatorEngine.RegisterTagNameFunc(func(field reflect.StructField) string {
+			name := strings.SplitN(field.Tag.Get("json"), ",", 2)[0]
+			return name
+		})
+	}
+}
+
+func NewValidationErrorResponse(validationErrors validator.ValidationErrors) shared.DetailedErrorResponse[ValidationErrorDetails] {
+	violations := make([]ValidationViolation, 0, len(validationErrors))
+
+	for _, fieldError := range validationErrors {
+		violations = append(violations, ValidationViolation{
+			Field:       fieldError.Field(),
+			Description: validationErrorMessage(fieldError),
+		})
+	}
+
+	return shared.DetailedErrorResponse[ValidationErrorDetails]{
+		ErrorCode: "validation_error",
+		Message:   "Request body did not match the expected form.",
+		Details: ValidationErrorDetails{
+			Violations: violations,
+		},
+	}
+}
+
+func validationErrorMessage(fieldError validator.FieldError) string {
+	field := fieldError.Field()
+	switch fieldError.Tag() {
+	case "email":
+		return field + " must be a valid email address."
+	case "min":
+		return field + " must be at least " + fieldError.Param() + " characters long."
+	case "max":
+		return field + " must be at most " + fieldError.Param() + " characters long."
+	default:
+		return field + " is invalid."
+	}
+}

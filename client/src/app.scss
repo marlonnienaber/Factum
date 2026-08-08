@@ -1,0 +1,37 @@
+:root {
+	font-family: 'Poppins', sans-serif;
+
+	&[data-theme='dark'] {
+		--background: #000000;
+		--text: #ffffff;
+		--text-subtle: #949191;
+		--text-inverse: #000000;
+		--button: #ffffff;
+		--button-hover: #d1d1d1;
+		--button-ghost: #292929;
+		--border: #2d2c2c;
+		--surface: #252525;
+		--surface-subtle: #0c0c0c;
+		--danger: #f1716a;
+	}
+
+	&[data-theme='light'] {
+		--background: #ffffff;
+		--text: #000000;
+		--text-subtle: #5f5f5f;
+		--text-inverse: #ffffff;
+		--button: #000000;
+		--button-hover: #474747;
+		--button-ghost: #dfdfdf;
+		--border: #e1e1e1;
+		--surface: #252525;
+		--surface-subtle: #fcfcfc;
+		--danger: #f1716a;
+	}
+}
+
+body {
+	margin: 0;
+	font-family: inherit;
+	background-color: var(--background);
+}
