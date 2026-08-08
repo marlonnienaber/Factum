@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
 	"github.com/marlonnienaber/Factum/server/internal/shared"
+	"roci.dev/fracdex"
 )
 
 type ValidationErrorDetails struct {
@@ -25,6 +26,19 @@ func RegisterJsonPropertyNames() {
 			return name
 		})
 	}
+}
+
+func RegisterRankValidation() {
+	if validatorEngine, ok := binding.Validator.Engine().(*validator.Validate); ok {
+		if err := validatorEngine.RegisterValidation("rank", isValidRank); err != nil {
+			panic("registering rank validation failed: " + err.Error())
+		}
+	}
+}
+
+func isValidRank(fieldLevel validator.FieldLevel) bool {
+	_, err := fracdex.Float64Approx(fieldLevel.Field().String())
+	return err == nil
 }
 
 func NewValidationErrorResponse(validationErrors validator.ValidationErrors) shared.DetailedErrorResponse[ValidationErrorDetails] {
@@ -64,6 +78,8 @@ func validationErrorMessage(fieldError validator.FieldError) string {
 		}
 	case "gt":
 		return field + " must be greater than " + fieldError.Param() + "."
+	case "rank":
+		return field + " must be a valid fractional rank."
 	default:
 		return field + " is invalid."
 	}

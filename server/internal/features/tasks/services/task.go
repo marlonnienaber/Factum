@@ -5,10 +5,13 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/marlonnienaber/Factum/server/internal/features/tasks/stores"
+	"github.com/marlonnienaber/Factum/server/internal/features/tasks/types/domain"
 	"github.com/marlonnienaber/Factum/server/internal/features/tasks/types/transport"
 	"github.com/marlonnienaber/Factum/server/internal/shared"
 	"roci.dev/fracdex"
 )
+
+var ErrTaskDateChangeNotAllowed = errors.New("task cannot transition between its current and requested date states")
 
 type TaskService struct {
 	db        *sqlx.DB
@@ -31,7 +34,7 @@ func (service *TaskService) CreateTask(userId int64, request transport.CreateTas
 		if request.Date == nil {
 			highestRank, err = service.taskStore.GetHighestUndatedUntrashedOpenTaskRank(transaction, userId)
 		} else {
-			highestRank, err = service.taskStore.GetHighestDatedUntrashedOpenTaskRank(transaction, userId, *request.Date)
+			highestRank, err = service.taskStore.GetHighestDatedUntrashedOpenTaskRank(transaction, userId, request.Date)
 		}
 		if err != nil {
 			return nil, err
@@ -56,4 +59,54 @@ func (service *TaskService) CreateTask(userId int64, request transport.CreateTas
 	}
 
 	return task, nil
+}
+
+func (service *TaskService) ChangeTaskDate(userId int64, request transport.ChangeTaskDateRequest) (*transport.TaskResponse, error) {
+	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("changing task date failed")
+
+	taskResponse, err := shared.ExecuteAsSerializableTransaction(service.db, func(transaction *sqlx.Tx) (*transport.TaskResponse, error) {
+		task, err := service.taskStore.GetTaskByIdForUser(transaction, request.Id, userId)
+		if err != nil {
+			return nil, err
+		}
+
+		isMovingFromUndatedToDated := task.Date == nil && request.Date != nil
+		isMovingFromDatedToUndated := task.Date != nil && request.Date == nil
+		if task.Done || task.TrashedDate != nil || (!isMovingFromUndatedToDated && !isMovingFromDatedToUndated) {
+			return nil, ErrTaskDateChangeNotAllowed
+		}
+
+		task.Date = request.Date
+		task.Rank = &request.Rank
+		if err := service.taskStore.UpdateTaskDateAndRank(transaction, task); err != nil {
+			return nil, err
+		}
+
+		return newTaskResponse(task), nil
+	})
+	if err != nil {
+		switch {
+		case errors.Is(err, stores.ErrTaskNotFound),
+			errors.Is(err, stores.ErrTaskRankAlreadyExists),
+			errors.Is(err, ErrTaskDateChangeNotAllowed):
+			return nil, err
+		default:
+			return nil, wrapUnexpectedError(err)
+		}
+	}
+
+	return taskResponse, nil
+}
+
+func newTaskResponse(task *domain.Task) *transport.TaskResponse {
+	return &transport.TaskResponse{
+		Id:          task.Id,
+		CategoryId:  task.CategoryId,
+		Title:       task.Title,
+		Description: task.Description,
+		Date:        task.Date,
+		Rank:        task.Rank,
+		Done:        task.Done,
+		TrashedDate: task.TrashedDate,
+	}
 }

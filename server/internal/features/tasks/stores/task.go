@@ -7,13 +7,18 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
+	"github.com/marlonnienaber/Factum/server/internal/features/tasks/types/domain"
 	"github.com/marlonnienaber/Factum/server/internal/features/tasks/types/transport"
 	"github.com/marlonnienaber/Factum/server/internal/shared"
 )
 
 const tasksBatchSize = 50
 
-var ErrCategoryNotFound = errors.New("no category exists for the given id")
+var (
+	ErrCategoryNotFound      = errors.New("no category exists for the given id")
+	ErrTaskNotFound          = errors.New("no task exists for the given id and user id")
+	ErrTaskRankAlreadyExists = errors.New("task rank already exists in the target task list")
+)
 
 type TaskStore struct {
 	db *sqlx.DB
@@ -23,6 +28,63 @@ func NewTaskStore(db *sqlx.DB) *TaskStore {
 	return &TaskStore{
 		db: db,
 	}
+}
+
+func (store *TaskStore) GetTaskByIdForUser(transaction *sqlx.Tx, id int64, userId int64) (*domain.Task, error) {
+	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("retrieving task by id and user id failed")
+
+	var task domain.Task
+	err := transaction.Get(&task, `
+		SELECT id,
+		       user_id,
+		       category_id,
+		       title,
+		       description,
+		       date,
+		       rank,
+		       done,
+		       trashed_date
+		FROM tasks
+		WHERE id = $1
+		  AND user_id = $2
+	`, id, userId)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrTaskNotFound
+	}
+	if err != nil {
+		return nil, wrapUnexpectedError(err)
+	}
+
+	return &task, nil
+}
+
+func (store *TaskStore) UpdateTaskDateAndRank(transaction *sqlx.Tx, task *domain.Task) error {
+	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("updating task date and rank failed")
+
+	result, err := transaction.Exec(`
+		UPDATE tasks
+		SET date = $1,
+		    rank = $2
+		WHERE id = $3
+		  AND user_id = $4
+	`, task.Date, task.Rank, task.Id, task.UserId)
+	if err != nil {
+		var postgresError *pq.Error
+		if errors.As(err, &postgresError) && postgresError.Constraint == "tasks_untrashed_user_id_done_date_rank_unique" {
+			return ErrTaskRankAlreadyExists
+		}
+		return wrapUnexpectedError(err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return wrapUnexpectedError(err)
+	}
+	if rowsAffected == 0 {
+		return ErrTaskNotFound
+	}
+
+	return nil
 }
 
 func (store *TaskStore) GetHighestUndatedUntrashedOpenTaskRank(transaction *sqlx.Tx, userId int64) (*string, error) {
@@ -49,7 +111,7 @@ func (store *TaskStore) GetHighestUndatedUntrashedOpenTaskRank(transaction *sqlx
 	return &rank, nil
 }
 
-func (store *TaskStore) GetHighestDatedUntrashedOpenTaskRank(transaction *sqlx.Tx, userId int64, date string) (*string, error) {
+func (store *TaskStore) GetHighestDatedUntrashedOpenTaskRank(transaction *sqlx.Tx, userId int64, date *shared.Date) (*string, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("retrieving highest dated untrashed open task rank failed")
 
 	var rank string
@@ -89,7 +151,7 @@ func (store *TaskStore) InsertTask(
 		          category_id,
 		          title,
 		          description,
-		          TO_CHAR(date, 'YYYY-MM-DD') AS date,
+		          date,
 		          rank,
 		          done
 	`,
@@ -147,7 +209,7 @@ func (store *TaskStore) GetDatedUntrashedDoneTasks(userId int64, date *time.Time
 		       category_id,
 		       title,
 		       description,
-		       TO_CHAR(date, 'YYYY-MM-DD') AS date,
+		       date,
 		       rank,
 		       done
 		FROM tasks
@@ -185,7 +247,7 @@ func (store *TaskStore) GetDatedUntrashedOpenTasks(userId int64, date *time.Time
 		       category_id,
 		       title,
 		       description,
-		       TO_CHAR(date, 'YYYY-MM-DD') AS date,
+		       date,
 		       rank,
 		       done
 		FROM tasks
@@ -223,7 +285,7 @@ func (store *TaskStore) GetTrashedTasks(userId int64, trashedTimestamp *time.Tim
 		       category_id,
 		       title,
 		       description,
-		       TO_CHAR(date, 'YYYY-MM-DD') AS date,
+		       date,
 		       rank,
 		       done,
 		       trashed_date
