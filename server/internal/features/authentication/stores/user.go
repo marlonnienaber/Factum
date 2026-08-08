@@ -47,7 +47,7 @@ func (store *UserStore) InsertUser(user *domain.User) error {
 }
 
 func (store *UserStore) GetUserByEmail(email string) (*domain.User, error) {
-	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("getting user by email failed")
+	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("retrieving user by email failed")
 
 	var user domain.User
 
