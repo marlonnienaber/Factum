@@ -10,10 +10,21 @@ CREATE TABLE tasks (
     title VARCHAR(100) NOT NULL,
     description VARCHAR(2000),
     date DATE,
-    rank TEXT NOT NULL,
+    rank TEXT COLLATE "C",
     done BOOLEAN NOT NULL DEFAULT FALSE,
     trashed_date TIMESTAMPTZ,
 
     CONSTRAINT tasks_user_id_foreign_key FOREIGN KEY (user_id) REFERENCES users (id),
-    CONSTRAINT tasks_category_id_foreign_key FOREIGN KEY (category_id) REFERENCES categories (id)
+    CONSTRAINT tasks_category_id_foreign_key FOREIGN KEY (category_id) REFERENCES categories (id),
+    CONSTRAINT tasks_rank_presence_check CHECK (
+        (trashed_date IS NULL AND rank IS NOT NULL)
+        OR (trashed_date IS NOT NULL AND rank IS NULL)
+    ),
+    CONSTRAINT tasks_done_requires_date_check CHECK (
+        done = FALSE OR date IS NOT NULL
+    )
 );
+
+CREATE UNIQUE INDEX tasks_untrashed_user_id_done_date_rank_unique
+    ON tasks (user_id, date, done, rank) NULLS NOT DISTINCT
+    WHERE trashed_date IS NULL;

@@ -55,6 +55,15 @@ func validationErrorMessage(fieldError validator.FieldError) string {
 		return field + " must be at least " + fieldError.Param() + " characters long."
 	case "max":
 		return field + " must be at most " + fieldError.Param() + " characters long."
+	case "datetime":
+		switch fieldError.Param() {
+		case "2006-01-02":
+			return field + " must be a valid calendar date in YYYY-MM-DD format."
+		default:
+			return field + " does not follow the expected datetime format."
+		}
+	case "gt":
+		return field + " must be greater than " + fieldError.Param() + "."
 	default:
 		return field + " is invalid."
 	}

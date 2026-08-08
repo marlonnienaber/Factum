@@ -8,7 +8,7 @@ type TaskResponse struct {
 	Title       string     `db:"title" json:"title"`
 	Description *string    `db:"description" json:"description,omitempty"`
 	Date        *string    `db:"date" json:"date,omitempty"`
-	Rank        string     `db:"rank" json:"rank"`
+	Rank        *string    `db:"rank" json:"rank,omitempty"`
 	Done        bool       `db:"done" json:"done"`
 	TrashedDate *time.Time `db:"trashed_date" json:"trashedDate,omitempty"`
 }

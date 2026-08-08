@@ -1,14 +1,19 @@
 package stores
 
 import (
+	"database/sql"
+	"errors"
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 	"github.com/marlonnienaber/Factum/server/internal/features/tasks/types/transport"
 	"github.com/marlonnienaber/Factum/server/internal/shared"
 )
 
 const tasksBatchSize = 50
+
+var ErrCategoryNotFound = errors.New("no category exists for the given id")
 
 type TaskStore struct {
 	db *sqlx.DB
@@ -18,6 +23,92 @@ func NewTaskStore(db *sqlx.DB) *TaskStore {
 	return &TaskStore{
 		db: db,
 	}
+}
+
+func (store *TaskStore) GetHighestUndatedUntrashedOpenTaskRank(transaction *sqlx.Tx, userId int64) (*string, error) {
+	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("retrieving highest undated untrashed undone task rank failed")
+
+	var rank string
+	err := transaction.Get(&rank, `
+		SELECT rank
+		FROM tasks
+		WHERE user_id = $1
+		  AND date IS NULL
+		  AND trashed_date IS NULL
+		  AND done = FALSE
+		ORDER BY rank DESC
+		LIMIT 1
+	`, userId)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, wrapUnexpectedError(err)
+	}
+
+	return &rank, nil
+}
+
+func (store *TaskStore) GetHighestDatedUntrashedOpenTaskRank(transaction *sqlx.Tx, userId int64, date string) (*string, error) {
+	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("retrieving highest dated untrashed open task rank failed")
+
+	var rank string
+	err := transaction.Get(&rank, `
+		SELECT rank
+		FROM tasks
+		WHERE user_id = $1
+		  AND date = $2
+		  AND trashed_date IS NULL
+		  AND done = FALSE
+		ORDER BY rank DESC
+		LIMIT 1
+	`, userId, date)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, wrapUnexpectedError(err)
+	}
+
+	return &rank, nil
+}
+
+func (store *TaskStore) InsertTask(
+	transaction *sqlx.Tx,
+	userId int64,
+	request transport.CreateTaskRequest,
+	rank string,
+) (*transport.TaskResponse, error) {
+	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("inserting task failed")
+
+	var task transport.TaskResponse
+	err := transaction.Get(&task, `
+		INSERT INTO tasks (user_id, category_id, title, description, date, rank)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING id,
+		          category_id,
+		          title,
+		          description,
+		          TO_CHAR(date, 'YYYY-MM-DD') AS date,
+		          rank,
+		          done
+	`,
+		userId,
+		request.CategoryId,
+		request.Title,
+		request.Description,
+		request.Date,
+		rank,
+	)
+	if err != nil {
+		var postgresError *pq.Error
+		if errors.As(err, &postgresError) && postgresError.Constraint == "tasks_category_id_foreign_key" {
+			return nil, ErrCategoryNotFound
+		}
+		return nil, wrapUnexpectedError(err)
+	}
+
+	return &task, nil
 }
 
 func (store *TaskStore) GetUndatedUntrashedUndoneTasks(userId int64, rank *string) ([]transport.TaskResponse, error) {
