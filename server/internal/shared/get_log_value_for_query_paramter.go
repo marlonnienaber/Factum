@@ -5,6 +5,13 @@ import (
 	"time"
 )
 
+func GetLogValueForRequiredStringQueryParameter(parsedString string, err error) string {
+	if err != nil {
+		return "INVALID"
+	}
+	return parsedString
+}
+
 func GetLogValueForRequiredBoolQueryParameter(parsedBool bool, err error) string {
 	if err != nil {
 		return "INVALID"

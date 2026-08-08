@@ -15,7 +15,7 @@ CREATE TABLE tasks (
     trashed_date TIMESTAMPTZ,
 
     CONSTRAINT tasks_user_id_foreign_key FOREIGN KEY (user_id) REFERENCES users (id),
-    CONSTRAINT tasks_category_id_foreign_key FOREIGN KEY (category_id) REFERENCES categories (id),
+    CONSTRAINT tasks_category_id_foreign_key FOREIGN KEY (category_id) REFERENCES categories (id) ON DELETE RESTRICT,
     CONSTRAINT tasks_rank_presence_check CHECK (
         (trashed_date IS NULL AND rank IS NOT NULL)
         OR (trashed_date IS NOT NULL AND rank IS NULL)

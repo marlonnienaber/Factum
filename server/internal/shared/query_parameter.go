@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strconv"
 	"time"
+	"unicode/utf8"
 )
 
 var (
@@ -18,6 +19,19 @@ func GetOptionalStringQueryParameter(c *AuthenticatedContext, key string) *strin
 	}
 
 	return &value
+}
+
+func GetRequiredStringQueryParameter(c *AuthenticatedContext, key string, minimumLength int, maximumLength int) (string, error) {
+	value, exists := c.GetQuery(key)
+	if !exists {
+		return "", MissingQueryParameterErr
+	}
+	valueLength := utf8.RuneCountInString(value)
+	if valueLength < minimumLength || valueLength > maximumLength {
+		return "", InvalidQueryParameterErr
+	}
+
+	return value, nil
 }
 
 func GetOptionalInt64QueryParameter(c *AuthenticatedContext, key string) (*int64, error) {

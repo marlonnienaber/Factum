@@ -7,6 +7,8 @@ import (
 	authHandlers "github.com/marlonnienaber/Factum/server/internal/features/authentication/handlers"
 	authServices "github.com/marlonnienaber/Factum/server/internal/features/authentication/services"
 	"github.com/marlonnienaber/Factum/server/internal/features/authentication/stores"
+	categoriesHandlers "github.com/marlonnienaber/Factum/server/internal/features/categories/handlers"
+	categoriesStores "github.com/marlonnienaber/Factum/server/internal/features/categories/stores"
 	tasksHandlers "github.com/marlonnienaber/Factum/server/internal/features/tasks/handlers"
 	tasksServices "github.com/marlonnienaber/Factum/server/internal/features/tasks/services"
 	tasksStores "github.com/marlonnienaber/Factum/server/internal/features/tasks/stores"
@@ -20,6 +22,7 @@ func NewApplication(cfg configuration.Configuration, db *sqlx.DB) *gin.Engine {
 
 	userStore := stores.NewUserStore(db)
 	authenticationService := authServices.NewAuthenticationService(userStore, cfg)
+	categoryStore := categoriesStores.NewCategoryStore(db)
 	taskStore := tasksStores.NewTaskStore(db)
 	taskService := tasksServices.NewTaskService(db, taskStore)
 
@@ -31,6 +34,9 @@ func NewApplication(cfg configuration.Configuration, db *sqlx.DB) *gin.Engine {
 	api.POST("/sign-in", authHandlers.NewSignInHandler(authenticationService))
 	api.POST("/sign-out", shared.RequireAuth(authHandlers.NewSignOutHandler(authenticationService)))
 	api.GET("/current-authentication", shared.RequireAuth(authHandlers.NewGetCurrentAuthenticationHandler(userStore)))
+
+	api.POST("/categories", shared.RequireAuth(categoriesHandlers.NewCreateCategoryHandler(categoryStore)))
+	api.DELETE("/categories/:id", shared.RequireAuth(categoriesHandlers.NewDeleteCategoryHandler(categoryStore)))
 
 	api.POST("/tasks", shared.RequireAuth(tasksHandlers.NewCreateTaskHandler(taskService)))
 	api.PUT("/tasks", shared.RequireAuth(tasksHandlers.NewUpdateTaskHandler(taskService)))

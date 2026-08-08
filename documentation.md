@@ -87,10 +87,10 @@ This guarantees that every task owner exists. No `ON DELETE` action is specified
 #### `tasks_category_id_foreign_key`
 
 ```sql
-FOREIGN KEY (category_id) REFERENCES categories (id)
+FOREIGN KEY (category_id) REFERENCES categories (id) ON DELETE RESTRICT
 ```
 
-This guarantees that a task cannot reference a nonexistent category. The create-task endpoint translates a violation of this named constraint into the `category_not_found` response. As with users, the default deletion behavior prevents categories that are still referenced by tasks from being removed implicitly.
+This guarantees that a task cannot reference a nonexistent category. The create-task endpoint translates a violation of this named constraint into the `category_not_found` response. `ON DELETE RESTRICT` makes the intended category-deletion behavior explicit: a category cannot be deleted while any task still references it. The delete-category endpoint translates that constraint violation into a conflict response rather than deleting the tasks implicitly.
 
 ### Check constraints
 
