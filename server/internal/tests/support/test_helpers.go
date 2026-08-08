@@ -5,11 +5,13 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 
 	"github.com/gin-gonic/gin"
 	"github.com/marlonnienaber/Factum/server/internal/configuration"
-	"github.com/marlonnienaber/Factum/server/internal/features/authentication/types/transport"
+	authenticationTransport "github.com/marlonnienaber/Factum/server/internal/features/authentication/types/transport"
+	tasksTransport "github.com/marlonnienaber/Factum/server/internal/features/tasks/types/transport"
 	"github.com/marlonnienaber/Factum/server/internal/shared"
 	"github.com/marlonnienaber/Factum/server/internal/validation"
 	"github.com/stretchr/testify/assert"
@@ -45,13 +47,47 @@ const (
 	TestUserPassword = "passwordPassword"
 )
 
-func MakeSignUpRequest(t *testing.T, app *gin.Engine, body transport.AuthenticationRequest) *httptest.ResponseRecorder {
+func MakeSignUpRequest(t *testing.T, app *gin.Engine, body authenticationTransport.AuthenticationRequest) *httptest.ResponseRecorder {
 	t.Helper()
 
 	payload, err := json.Marshal(body)
 	require.NoError(t, err, "serializing request failed")
 
 	return MakeJsonRequest(t, app, http.MethodPost, "/api/sign-up", payload)
+}
+
+func MakeCreateCategoryRequest(
+	t *testing.T,
+	app *gin.Engine,
+	title string,
+	cookies ...*http.Cookie,
+) *httptest.ResponseRecorder {
+	t.Helper()
+
+	path := "/api/categories?" + url.Values{"title": {title}}.Encode()
+	return MakeJsonRequest(t, app, http.MethodPost, path, nil, cookies...)
+}
+
+func MakeCreateTaskRequest(
+	t *testing.T,
+	app *gin.Engine,
+	title string,
+	description *string,
+	date *shared.Date,
+	categoryId int64,
+	cookies ...*http.Cookie,
+) *httptest.ResponseRecorder {
+	t.Helper()
+
+	payload, err := json.Marshal(tasksTransport.CreateTaskRequest{
+		Title:       title,
+		Description: description,
+		Date:        date,
+		CategoryId:  categoryId,
+	})
+	require.NoError(t, err, "serializing request failed")
+
+	return MakeJsonRequest(t, app, http.MethodPost, "/api/tasks", payload, cookies...)
 }
 
 func MakeJsonRequest(
