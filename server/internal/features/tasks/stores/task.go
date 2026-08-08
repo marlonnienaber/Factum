@@ -85,7 +85,7 @@ func (store *TaskStore) GetDatedUntrashedDoneTasks(userId int64, date *time.Time
 	return tasks, nil
 }
 
-func (store *TaskStore) GetDatedUntrashedUndoneTasks(userId int64, date *time.Time, rank *string) ([]transport.TaskResponse, error) {
+func (store *TaskStore) GetDatedUntrashedOpenTasks(userId int64, date *time.Time, rank *string) ([]transport.TaskResponse, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("retrieving dated untrashed undone tasks failed")
 
 	tasks := make([]transport.TaskResponse, 0)

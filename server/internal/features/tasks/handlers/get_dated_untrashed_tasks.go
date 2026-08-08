@@ -13,13 +13,13 @@ import (
 
 func NewGetDatedUntrashedTasksHandler(taskStore *stores.TaskStore) shared.AuthenticatedHandlerFunc {
 	return func(c *shared.AuthenticatedContext) {
-		open, openErr := shared.GetRequiredBooleanQueryParameter(c, "open")
+		done, doneErr := shared.GetRequiredBooleanQueryParameter(c, "done")
 		date, dateErr := shared.GetOptionalDateQueryParameter(c, "date")
 		rank := shared.GetOptionalStringQueryParameter(c, "rank")
 
 		handlerEntryLog := fmt.Sprintf(
 			"/tasks/dated/untrashed?open=%v&date=%v&rank=%v [GET]",
-			shared.GetLogValueForRequiredBoolQueryParameter(open, openErr),
+			shared.GetLogValueForRequiredBoolQueryParameter(done, doneErr),
 			shared.GetLogValueForOptionalDateQueryParameter(date, dateErr),
 			shared.GetLogValueForOptionalStringQueryParameter(rank),
 		)
@@ -27,11 +27,11 @@ func NewGetDatedUntrashedTasksHandler(taskStore *stores.TaskStore) shared.Authen
 
 		unexpectedErrorLogMessage := "handling get dated untrashed tasks failed"
 
-		if errors.Is(openErr, shared.MissingQueryParameterErr) {
+		if errors.Is(doneErr, shared.MissingQueryParameterErr) {
 			c.JSON(http.StatusBadRequest, shared.MissingQueryParameterErrorResponse)
 			return
 		}
-		if openErr != nil || dateErr != nil {
+		if doneErr != nil || dateErr != nil {
 			c.JSON(http.StatusBadRequest, shared.InvalidQueryParameterErrorResponse)
 			return
 		}
@@ -44,10 +44,10 @@ func NewGetDatedUntrashedTasksHandler(taskStore *stores.TaskStore) shared.Authen
 
 		var taskResponses []transport.TaskResponse
 		var err error
-		if open {
-			taskResponses, err = taskStore.GetDatedUntrashedUndoneTasks(c.UserId, date, rank)
-		} else {
+		if done {
 			taskResponses, err = taskStore.GetDatedUntrashedDoneTasks(c.UserId, date, rank)
+		} else {
+			taskResponses, err = taskStore.GetDatedUntrashedOpenTasks(c.UserId, date, rank)
 		}
 		if err != nil {
 			slog.Error(unexpectedErrorLogMessage, "error", err)
