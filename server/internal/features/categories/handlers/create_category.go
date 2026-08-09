@@ -12,7 +12,7 @@ import (
 
 func NewCreateCategoryHandler(categoryStore *stores.CategoryStore) shared.AuthenticatedHandlerFunc {
 	return func(c *shared.AuthenticatedContext) {
-		title, titleErr := shared.GetRequiredStringQueryParameter(
+		title, titleErr := shared.GetRequiredStringQueryParameterWithLength(
 			c,
 			"title",
 			minimumCategoryTitleLength,

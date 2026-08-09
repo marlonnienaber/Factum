@@ -21,11 +21,29 @@ func GetOptionalStringQueryParameter(c *AuthenticatedContext, key string) *strin
 	return &value
 }
 
-func GetRequiredStringQueryParameter(c *AuthenticatedContext, key string, minimumLength int, maximumLength int) (string, error) {
+func GetRequiredStringQueryParameter(c *AuthenticatedContext, key string) (string, error) {
 	value, exists := c.GetQuery(key)
 	if !exists {
 		return "", MissingQueryParameterErr
 	}
+	if value == "" {
+		return "", InvalidQueryParameterErr
+	}
+
+	return value, nil
+}
+
+func GetRequiredStringQueryParameterWithLength(
+	c *AuthenticatedContext,
+	key string,
+	minimumLength int,
+	maximumLength int,
+) (string, error) {
+	value, err := GetRequiredStringQueryParameter(c, key)
+	if err != nil {
+		return "", err
+	}
+
 	valueLength := utf8.RuneCountInString(value)
 	if valueLength < minimumLength || valueLength > maximumLength {
 		return "", InvalidQueryParameterErr

@@ -15,21 +15,15 @@ import (
 func NewRestoreTaskHandler(taskService *services.TaskService) shared.AuthenticatedHandlerFunc {
 	return func(c *shared.AuthenticatedContext) {
 		id, idErr := shared.GetRequiredInt64PathVariable(c, "id")
-		rank := shared.GetOptionalStringQueryParameter(c, "rank")
-		rankErr := shared.MissingQueryParameterErr
-		if rank != nil {
-			_, rankErr = fracdex.Float64Approx(*rank)
-		}
-
-		rankLogValue := ""
-		if rank != nil {
-			rankLogValue = *rank
+		rank, rankErr := shared.GetRequiredStringQueryParameter(c, "rank")
+		if rankErr == nil {
+			_, rankErr = fracdex.Float64Approx(rank)
 		}
 
 		handlerEntryLog := fmt.Sprintf(
 			"/tasks/%v/restore?rank=%v [PATCH]",
 			shared.GetLogValueForRequiredInt64PathVariable(id, idErr),
-			shared.GetLogValueForRequiredStringQueryParameter(rankLogValue, rankErr),
+			shared.GetLogValueForRequiredStringQueryParameter(rank, rankErr),
 		)
 		slog.Info(handlerEntryLog)
 
@@ -48,7 +42,7 @@ func NewRestoreTaskHandler(taskService *services.TaskService) shared.Authenticat
 			return
 		}
 
-		if err := taskService.RestoreTask(c.UserId, id, *rank); err != nil {
+		if err := taskService.RestoreTask(c.UserId, id, rank); err != nil {
 			switch {
 			case errors.Is(err, stores.ErrTaskNotFound):
 				c.JSON(http.StatusNotFound, taskNotFoundErrorResponse)

@@ -3,10 +3,12 @@ package support
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/marlonnienaber/Factum/server/internal/configuration"
@@ -88,6 +90,23 @@ func MakeCreateTaskRequest(
 	require.NoError(t, err, "serializing request failed")
 
 	return MakeJsonRequest(t, app, http.MethodPost, "/api/tasks", payload, cookies...)
+}
+
+func MakeTrashTaskRequest(
+	t *testing.T,
+	app *gin.Engine,
+	taskId int64,
+	trashedDate time.Time,
+	cookies ...*http.Cookie,
+) *httptest.ResponseRecorder {
+	t.Helper()
+
+	path := fmt.Sprintf(
+		"/api/tasks/%d/trash?%s",
+		taskId,
+		url.Values{"trashedDate": {trashedDate.Format(time.RFC3339Nano)}}.Encode(),
+	)
+	return MakeJsonRequest(t, app, http.MethodPatch, path, nil, cookies...)
 }
 
 func MakeJsonRequest(
