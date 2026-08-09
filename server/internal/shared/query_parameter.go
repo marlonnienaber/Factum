@@ -76,6 +76,20 @@ func GetOptionalTimestampQueryParameter(c *AuthenticatedContext, key string) (*t
 	return &timestamp, nil
 }
 
+func GetRequiredTimestampQueryParameter(c *AuthenticatedContext, key string) (time.Time, error) {
+	value, exists := c.GetQuery(key)
+	if !exists {
+		return time.Time{}, MissingQueryParameterErr
+	}
+
+	timestamp, err := time.Parse(time.RFC3339, value)
+	if err != nil {
+		return time.Time{}, InvalidQueryParameterErr
+	}
+
+	return timestamp, nil
+}
+
 func GetOptionalBooleanQueryParameter(c *AuthenticatedContext, key string) (*bool, error) {
 	value, exists := c.GetQuery(key)
 	if !exists {

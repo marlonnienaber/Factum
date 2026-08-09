@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/marlonnienaber/Factum/server/internal/features/tasks/stores"
@@ -11,7 +12,11 @@ import (
 	"roci.dev/fracdex"
 )
 
-var ErrTaskDateChangeNotAllowed = errors.New("task cannot transition between its current and requested date states")
+var (
+	ErrTaskDateChangeNotAllowed = errors.New("task cannot transition between its current and requested date states")
+	ErrTaskAlreadyTrashed       = errors.New("task is already trashed")
+	ErrTaskAlreadyRestored      = errors.New("task is already restored")
+)
 
 type TaskService struct {
 	db        *sqlx.DB
@@ -163,6 +168,65 @@ func (service *TaskService) ChangeTaskDate(userId int64, request transport.Chang
 	}
 
 	return taskResponse, nil
+}
+
+func (service *TaskService) TrashTask(userId int64, taskId int64, trashedDate time.Time) error {
+	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("trashing task failed")
+
+	err := shared.ExecuteAsSerializableTransactionWithoutResult(service.db, func(transaction *sqlx.Tx) error {
+		task, err := service.taskStore.GetTaskByIdForUser(transaction, taskId, userId)
+		if err != nil {
+			return err
+		}
+		if task.TrashedDate != nil {
+			return ErrTaskAlreadyTrashed
+		}
+
+		task.TrashedDate = &trashedDate
+		task.Rank = nil
+		return service.taskStore.UpdateTaskTrashedState(transaction, task)
+	})
+	if err != nil {
+		switch {
+		case errors.Is(err, stores.ErrTaskNotFound),
+			errors.Is(err, ErrTaskAlreadyTrashed):
+			return err
+		default:
+			return wrapUnexpectedError(err)
+		}
+	}
+
+	return nil
+}
+
+func (service *TaskService) RestoreTask(userId int64, taskId int64, rank string) error {
+	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("restoring task failed")
+
+	err := shared.ExecuteAsSerializableTransactionWithoutResult(service.db, func(transaction *sqlx.Tx) error {
+		task, err := service.taskStore.GetTaskByIdForUser(transaction, taskId, userId)
+		if err != nil {
+			return err
+		}
+		if task.TrashedDate == nil {
+			return ErrTaskAlreadyRestored
+		}
+
+		task.TrashedDate = nil
+		task.Rank = &rank
+		return service.taskStore.UpdateTaskTrashedState(transaction, task)
+	})
+	if err != nil {
+		switch {
+		case errors.Is(err, stores.ErrTaskNotFound),
+			errors.Is(err, stores.ErrTaskRankAlreadyExists),
+			errors.Is(err, ErrTaskAlreadyRestored):
+			return err
+		default:
+			return wrapUnexpectedError(err)
+		}
+	}
+
+	return nil
 }
 
 func newTaskResponse(task *domain.Task) *transport.TaskResponse {
