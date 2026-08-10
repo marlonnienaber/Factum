@@ -116,6 +116,36 @@ func (store *TaskStore) UpdateTaskTrashedState(transaction *sqlx.Tx, task *domai
 	return nil
 }
 
+func (store *TaskStore) UpdateTaskDoneState(transaction *sqlx.Tx, task *domain.Task) error {
+	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("updating task done state failed")
+
+	result, err := transaction.Exec(`
+		UPDATE tasks
+		SET date = $1,
+		    rank = $2,
+		    done = $3
+		WHERE id = $4
+		  AND user_id = $5
+	`, task.Date, task.Rank, task.Done, task.Id, task.UserId)
+	if err != nil {
+		var postgresError *pq.Error
+		if errors.As(err, &postgresError) && postgresError.Constraint == "tasks_untrashed_user_id_done_date_rank_unique" {
+			return ErrTaskRankAlreadyExists
+		}
+		return wrapUnexpectedError(err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return wrapUnexpectedError(err)
+	}
+	if rowsAffected == 0 {
+		return ErrTaskNotFound
+	}
+
+	return nil
+}
+
 func (store *TaskStore) UpdateTask(transaction *sqlx.Tx, task *domain.Task) error {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("updating task failed")
 

@@ -16,6 +16,7 @@ var (
 	ErrTaskDateChangeNotAllowed = errors.New("task cannot transition between its current and requested date states")
 	ErrTaskAlreadyTrashed       = errors.New("task is already trashed")
 	ErrTaskAlreadyRestored      = errors.New("task is already restored")
+	ErrTaskRankRequired         = errors.New("task rank is required for an untrashed task")
 )
 
 type TaskService struct {
@@ -220,6 +221,43 @@ func (service *TaskService) RestoreTask(userId int64, taskId int64, rank string)
 		case errors.Is(err, stores.ErrTaskNotFound),
 			errors.Is(err, stores.ErrTaskRankAlreadyExists),
 			errors.Is(err, ErrTaskAlreadyRestored):
+			return err
+		default:
+			return wrapUnexpectedError(err)
+		}
+	}
+
+	return nil
+}
+
+func (service *TaskService) ToggleTaskDone(userId int64, taskId int64, rank *string) error {
+	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("toggling task done failed")
+
+	err := shared.ExecuteAsSerializableTransactionWithoutResult(service.db, func(transaction *sqlx.Tx) error {
+		task, err := service.taskStore.GetTaskByIdForUser(transaction, taskId, userId)
+		if err != nil {
+			return err
+		}
+		if task.TrashedDate == nil {
+			if rank == nil {
+				return ErrTaskRankRequired
+			}
+			task.Rank = rank
+		}
+
+		task.Done = !task.Done
+		if task.Done && task.Date == nil {
+			currentDate := shared.NewDate(time.Now())
+			task.Date = &currentDate
+		}
+
+		return service.taskStore.UpdateTaskDoneState(transaction, task)
+	})
+	if err != nil {
+		switch {
+		case errors.Is(err, stores.ErrTaskNotFound),
+			errors.Is(err, stores.ErrTaskRankAlreadyExists),
+			errors.Is(err, ErrTaskRankRequired):
 			return err
 		default:
 			return wrapUnexpectedError(err)
