@@ -109,6 +109,22 @@ func MakeTrashTaskRequest(
 	return MakeJsonRequest(t, app, http.MethodPatch, path, nil, cookies...)
 }
 
+func MakeToggleDoneRequest(
+	t *testing.T,
+	app *gin.Engine,
+	taskId int64,
+	rank *string,
+	cookies ...*http.Cookie,
+) *httptest.ResponseRecorder {
+	t.Helper()
+
+	path := fmt.Sprintf("/api/tasks/%d/toggle-done", taskId)
+	if rank != nil {
+		path += "?" + url.Values{"rank": {*rank}}.Encode()
+	}
+	return MakeJsonRequest(t, app, http.MethodPatch, path, nil, cookies...)
+}
+
 func MakeJsonRequest(
 	t *testing.T,
 	app *gin.Engine,

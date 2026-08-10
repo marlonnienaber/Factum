@@ -123,8 +123,7 @@ func (service *TaskService) UpdateTask(userId int64, request transport.UpdateTas
 	if err != nil {
 		switch {
 		case errors.Is(err, stores.ErrTaskNotFound),
-			errors.Is(err, stores.ErrCategoryNotFound),
-			errors.Is(err, stores.ErrTaskRankAlreadyExists):
+			errors.Is(err, stores.ErrCategoryNotFound):
 			return nil, err
 		default:
 			return nil, wrapUnexpectedError(err)

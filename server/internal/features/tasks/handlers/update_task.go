@@ -39,9 +39,6 @@ func NewUpdateTaskHandler(taskService *services.TaskService) shared.Authenticate
 			case errors.Is(err, stores.ErrCategoryNotFound):
 				c.JSON(http.StatusNotFound, categoryNotFoundErrorResponse)
 				return
-			case errors.Is(err, stores.ErrTaskRankAlreadyExists):
-				c.JSON(http.StatusConflict, taskRankAlreadyExistsErrorResponse)
-				return
 			default:
 				slog.Error(unexpectedErrorLogMessage, "error", err)
 				c.JSON(http.StatusInternalServerError, shared.UnexpectedErrorResponse)
