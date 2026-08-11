@@ -56,7 +56,10 @@ func GetLogValueForRequiredTimestampQueryParameter(parsedTimestamp time.Time, er
 	return parsedTimestamp.Format(time.RFC3339Nano)
 }
 
-func GetLogValueForOptionalStringQueryParameter(parsedString *string) string {
+func GetLogValueForOptionalStringQueryParameter(parsedString *string, err error) string {
+	if err != nil {
+		return "INVALID"
+	}
 	if parsedString == nil {
 		return ""
 	}

@@ -15,13 +15,13 @@ func NewGetDatedUntrashedTasksHandler(taskStore *stores.TaskStore) shared.Authen
 	return func(c *shared.AuthenticatedContext) {
 		done, doneErr := shared.GetRequiredBooleanQueryParameter(c, "done")
 		date, dateErr := shared.GetOptionalDateQueryParameter(c, "date")
-		rank := shared.GetOptionalStringQueryParameter(c, "rank")
+		rank, rankErr := shared.GetOptionalRankQueryParameter(c, "rank")
 
 		handlerEntryLog := fmt.Sprintf(
 			"/tasks/dated/untrashed?open=%v&date=%v&rank=%v [GET]",
 			shared.GetLogValueForRequiredBoolQueryParameter(done, doneErr),
 			shared.GetLogValueForOptionalDateQueryParameter(date, dateErr),
-			shared.GetLogValueForOptionalStringQueryParameter(rank),
+			shared.GetLogValueForOptionalStringQueryParameter(rank, rankErr),
 		)
 		slog.Info(handlerEntryLog)
 
@@ -31,7 +31,7 @@ func NewGetDatedUntrashedTasksHandler(taskStore *stores.TaskStore) shared.Authen
 			c.JSON(http.StatusBadRequest, shared.MissingQueryParameterErrorResponse)
 			return
 		}
-		if doneErr != nil || dateErr != nil {
+		if doneErr != nil || dateErr != nil || rankErr != nil {
 			c.JSON(http.StatusBadRequest, shared.InvalidQueryParameterErrorResponse)
 			return
 		}

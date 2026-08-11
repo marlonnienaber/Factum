@@ -9,26 +9,17 @@ import (
 	"github.com/marlonnienaber/Factum/server/internal/features/tasks/services"
 	"github.com/marlonnienaber/Factum/server/internal/features/tasks/stores"
 	"github.com/marlonnienaber/Factum/server/internal/shared"
-	"roci.dev/fracdex"
 )
 
 func NewToggleTaskDoneHandler(taskService *services.TaskService) shared.AuthenticatedHandlerFunc {
 	return func(c *shared.AuthenticatedContext) {
 		id, idErr := shared.GetRequiredInt64PathVariable(c, "id")
-		rank := shared.GetOptionalStringQueryParameter(c, "rank")
-		var rankErr error
-		if rank != nil {
-			_, rankErr = fracdex.Float64Approx(*rank)
-		}
+		rank, rankErr := shared.GetOptionalRankQueryParameter(c, "rank")
 
-		rankLogValue := shared.GetLogValueForOptionalStringQueryParameter(rank)
-		if rankErr != nil {
-			rankLogValue = "INVALID"
-		}
 		handlerEntryLog := fmt.Sprintf(
 			"/tasks/%v/toggle-done?rank=%v [PATCH]",
 			shared.GetLogValueForRequiredInt64PathVariable(id, idErr),
-			rankLogValue,
+			shared.GetLogValueForOptionalStringQueryParameter(rank, rankErr),
 		)
 		slog.Info(handlerEntryLog)
 

@@ -11,15 +11,20 @@ import (
 
 func NewGetUndatedTasksHandler(taskStore *stores.TaskStore) shared.AuthenticatedHandlerFunc {
 	return func(c *shared.AuthenticatedContext) {
-		rank := shared.GetOptionalStringQueryParameter(c, "rank")
+		rank, rankErr := shared.GetOptionalRankQueryParameter(c, "rank")
 
 		handlerEntryLog := fmt.Sprintf(
 			"/tasks/undated?rank=%v [GET]",
-			shared.GetLogValueForOptionalStringQueryParameter(rank),
+			shared.GetLogValueForOptionalStringQueryParameter(rank, rankErr),
 		)
 		slog.Info(handlerEntryLog)
 
 		unexpectedErrorLogMessage := "handling get undated tasks failed"
+
+		if rankErr != nil {
+			c.JSON(http.StatusBadRequest, shared.InvalidQueryParameterErrorResponse)
+			return
+		}
 
 		taskResponses, err := taskStore.GetUndatedUntrashedUndoneTasks(c.UserId, rank)
 		if err != nil {

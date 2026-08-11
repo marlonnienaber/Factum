@@ -5,6 +5,8 @@ import (
 	"strconv"
 	"time"
 	"unicode/utf8"
+
+	"roci.dev/fracdex"
 )
 
 var (
@@ -31,6 +33,30 @@ func GetRequiredStringQueryParameter(c *AuthenticatedContext, key string) (strin
 	}
 
 	return value, nil
+}
+
+func GetOptionalRankQueryParameter(c *AuthenticatedContext, key string) (*string, error) {
+	rank := GetOptionalStringQueryParameter(c, key)
+	if rank == nil {
+		return nil, nil
+	}
+	if _, err := fracdex.Float64Approx(*rank); err != nil {
+		return nil, InvalidQueryParameterErr
+	}
+
+	return rank, nil
+}
+
+func GetRequiredRankQueryParameter(c *AuthenticatedContext, key string) (string, error) {
+	rank, err := GetRequiredStringQueryParameter(c, key)
+	if err != nil {
+		return "", err
+	}
+	if _, err := fracdex.Float64Approx(rank); err != nil {
+		return "", InvalidQueryParameterErr
+	}
+
+	return rank, nil
 }
 
 func GetRequiredStringQueryParameterWithLength(

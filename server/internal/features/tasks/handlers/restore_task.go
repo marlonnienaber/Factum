@@ -9,16 +9,12 @@ import (
 	"github.com/marlonnienaber/Factum/server/internal/features/tasks/services"
 	"github.com/marlonnienaber/Factum/server/internal/features/tasks/stores"
 	"github.com/marlonnienaber/Factum/server/internal/shared"
-	"roci.dev/fracdex"
 )
 
 func NewRestoreTaskHandler(taskService *services.TaskService) shared.AuthenticatedHandlerFunc {
 	return func(c *shared.AuthenticatedContext) {
 		id, idErr := shared.GetRequiredInt64PathVariable(c, "id")
-		rank, rankErr := shared.GetRequiredStringQueryParameter(c, "rank")
-		if rankErr == nil {
-			_, rankErr = fracdex.Float64Approx(rank)
-		}
+		rank, rankErr := shared.GetRequiredRankQueryParameter(c, "rank")
 
 		handlerEntryLog := fmt.Sprintf(
 			"/tasks/%v/restore?rank=%v [PATCH]",
