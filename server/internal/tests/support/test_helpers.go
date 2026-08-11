@@ -238,9 +238,9 @@ func PrepareTrashedTasks(
 	doneDatedTask.Done = true
 
 	return []tasksTransport.TaskResponse{
-		trashTask(openUndatedTask),
-		trashTask(openDatedTask),
 		trashTask(doneDatedTask),
+		trashTask(openDatedTask),
+		trashTask(openUndatedTask),
 	}
 }
 
