@@ -45,9 +45,9 @@ func NewGetDatedUntrashedTasksHandler(taskStore *stores.TaskStore) shared.Authen
 		var taskResponses []transport.TaskResponse
 		var err error
 		if done {
-			taskResponses, err = taskStore.GetDatedUntrashedDoneTasks(c.UserId, date, rank)
+			taskResponses, err = taskStore.GetDatedDoneUntrashedTasks(c.UserId, date, rank)
 		} else {
-			taskResponses, err = taskStore.GetDatedUntrashedOpenTasks(c.UserId, date, rank)
+			taskResponses, err = taskStore.GetDatedOpenUntrashedTasks(c.UserId, date, rank)
 		}
 		if err != nil {
 			slog.Error(unexpectedErrorLogMessage, "error", err)
