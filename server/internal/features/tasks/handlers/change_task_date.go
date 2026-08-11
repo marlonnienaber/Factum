@@ -60,7 +60,7 @@ var taskNotFoundErrorResponse = shared.ErrorResponse{
 
 var taskDateChangeNotAllowedErrorResponse = shared.ErrorResponse{
 	ErrorCode: "task_date_change_not_allowed",
-	Message:   "Only open, untrashed tasks may transition between dated and undated states.",
+	Message:   "This date transition is not allowed.",
 }
 
 var taskRankAlreadyExistsErrorResponse = shared.ErrorResponse{

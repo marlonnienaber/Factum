@@ -142,9 +142,18 @@ func (service *TaskService) ChangeTaskDate(userId int64, request transport.Chang
 			return nil, err
 		}
 
-		isMovingFromUndatedToDated := task.Date == nil && request.Date != nil
-		isMovingFromDatedToUndated := task.Date != nil && request.Date == nil
-		if task.Done || task.TrashedDate != nil || (!isMovingFromUndatedToDated && !isMovingFromDatedToUndated) {
+		isMovingFromDateToDate := task.Date != nil && request.Date != nil && !datesAreEqual(task.Date, request.Date)
+		isAllowedToMoveFromDateToDate := task.TrashedDate == nil && task.Date != nil
+
+		isMovingFromDateToNoDate := task.Date != nil && request.Date == nil
+		isAllowedToMoveFromDateToNoDate := task.TrashedDate == nil && task.Date != nil && !task.Done
+
+		isMovingFromNoDateToDate := task.Date == nil && request.Date != nil
+		isAllowedToMoveFromNoDateToDate := task.TrashedDate == nil && task.Date == nil && !task.Done
+
+		isAllowedToChangeDate := isMovingFromDateToDate && isAllowedToMoveFromDateToDate || isMovingFromDateToNoDate && isAllowedToMoveFromDateToNoDate || isMovingFromNoDateToDate && isAllowedToMoveFromNoDateToDate
+
+		if !isAllowedToChangeDate {
 			return nil, ErrTaskDateChangeNotAllowed
 		}
 
