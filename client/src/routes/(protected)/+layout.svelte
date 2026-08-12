@@ -76,13 +76,12 @@
 			justify-content: space-between;
 			align-items: center;
 			gap: 1rem;
-			padding: 0.865rem 1rem;
-			border-bottom: 1px solid var(--border);
+			padding: 1rem 2rem 0 2rem;
 
 			.brand {
 				display: flex;
 				align-items: center;
-				gap: 0.5rem;
+				gap: 0.375rem;
 
 				.logo {
 					height: 2.25rem;

@@ -307,6 +307,6 @@ describe('sign-up page integration', () => {
 		expect(repeatedPasswordInput).not.toHaveClass('invalid');
 		expect(repeatedPasswordInput.querySelector('.error-icon')).not.toBeInTheDocument();
 		expect(gotoMock).toHaveBeenCalledTimes(1);
-		expect(gotoMock).toHaveBeenCalledWith('/workbench');
+		expect(gotoMock).toHaveBeenCalledWith('/backlog');
 	});
 });
