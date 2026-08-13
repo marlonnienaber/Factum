@@ -16,3 +16,11 @@ type TaskResponse struct {
 	Done        bool         `db:"done" json:"done"`
 	TrashedDate *time.Time   `db:"trashed_date" json:"trashedDate,omitempty"`
 }
+
+type UndatedTaskResponse struct {
+	Id          int64   `db:"id" json:"id"`
+	CategoryId  int64   `db:"category_id" json:"categoryId"`
+	Title       string  `db:"title" json:"title"`
+	Description *string `db:"description" json:"description,omitempty"`
+	Rank        string  `db:"rank" json:"rank"`
+}

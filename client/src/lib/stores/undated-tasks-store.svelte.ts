@@ -24,10 +24,7 @@ async function fetchUndatedTasks(rank?: string): Promise<void> {
 }
 
 function compareTasks(first: UndatedTaskResponse, second: UndatedTaskResponse): number {
-	if (first.rank !== undefined && second.rank === undefined) return -1;
-	if (first.rank === undefined && second.rank !== undefined) return 1;
-
-	if (first.rank !== undefined && second.rank !== undefined && first.rank !== second.rank) {
+	if (first.rank !== second.rank) {
 		return first.rank < second.rank ? -1 : 1;
 	}
 

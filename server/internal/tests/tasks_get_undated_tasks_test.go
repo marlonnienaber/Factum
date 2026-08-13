@@ -76,10 +76,10 @@ func TestTasksGetUndatedTasksNoCursor(t *testing.T) {
 
 	resp := support.MakeJsonRequest(t, app, http.MethodGet, "/api/tasks/undated", nil, cookies...)
 	require.Equal(t, http.StatusOK, resp.Code)
-	var respBody []tasksTransport.TaskResponse
+	var respBody []tasksTransport.UndatedTaskResponse
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
 
-	assert.Equal(t, expectedTasks, respBody, "unexpected tasks")
+	assert.Equal(t, toUndatedTaskResponses(t, expectedTasks), respBody, "unexpected tasks")
 }
 
 func TestTasksGetUndatedTasksCursor(t *testing.T) {
@@ -109,8 +109,26 @@ func TestTasksGetUndatedTasksCursor(t *testing.T) {
 		cookies...,
 	)
 	require.Equal(t, http.StatusOK, resp.Code)
-	var respBody []tasksTransport.TaskResponse
+	var respBody []tasksTransport.UndatedTaskResponse
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
 
-	assert.Equal(t, tasks[1:], respBody, "unexpected tasks")
+	assert.Equal(t, toUndatedTaskResponses(t, tasks[1:]), respBody, "unexpected tasks")
+}
+
+func toUndatedTaskResponses(t *testing.T, tasks []tasksTransport.TaskResponse) []tasksTransport.UndatedTaskResponse {
+	t.Helper()
+
+	responses := make([]tasksTransport.UndatedTaskResponse, 0, len(tasks))
+	for _, task := range tasks {
+		require.NotNil(t, task.Rank, "expected undated task to have a rank")
+		responses = append(responses, tasksTransport.UndatedTaskResponse{
+			Id:          task.Id,
+			CategoryId:  task.CategoryId,
+			Title:       task.Title,
+			Description: task.Description,
+			Rank:        *task.Rank,
+		})
+	}
+
+	return responses
 }

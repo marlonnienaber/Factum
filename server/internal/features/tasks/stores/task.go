@@ -303,17 +303,16 @@ func (store *TaskStore) InsertTask(
 	return &task, nil
 }
 
-func (store *TaskStore) GetUndatedUntrashedUndoneTasks(userId int64, rank *string) ([]transport.TaskResponse, error) {
+func (store *TaskStore) GetUndatedUntrashedUndoneTasks(userId int64, rank *string) ([]transport.UndatedTaskResponse, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("retrieving undated untrashed undone tasks failed")
 
-	tasks := make([]transport.TaskResponse, 0)
+	tasks := make([]transport.UndatedTaskResponse, 0)
 	err := store.db.Select(&tasks, `
 		SELECT id,
 		       category_id,
 		       title,
 		       description,
-		       rank,
-		       done
+		       rank
 		FROM tasks
 		WHERE user_id = $1
 		  AND date IS NULL
