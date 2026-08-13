@@ -3,11 +3,11 @@ import { toast } from 'svelte-sonner';
 import { z, type ZodType } from 'zod';
 import { ErrorResponseSchema } from '../types/responses/error-response';
 
-export async function jsonGet<R>(url: string, responseSchema: ZodType<R>): Promise<R | undefined> {
+export async function jsonGetWithoutBodyWithResponse<R>(url: string, responseSchema: ZodType<R>): Promise<R | undefined> {
 	return await jsonFetchWithoutBodyWithResponse('GET', url, responseSchema);
 }
 
-export async function jsonPostWithResponse<B, R>(
+export async function jsonPostWithBodyWithResponse<B, R>(
 	url: string,
 	requestBody: B,
 	responseSchema: ZodType<R>

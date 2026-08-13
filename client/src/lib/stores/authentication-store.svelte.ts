@@ -1,4 +1,4 @@
-import { jsonGet, jsonPostWithoutBodyWithoutResponse, jsonPostWithResponse } from '$lib/api/api';
+import { jsonGetWithoutBodyWithResponse, jsonPostWithoutBodyWithoutResponse, jsonPostWithBodyWithResponse } from '$lib/api/api';
 import type { AuthenticationRequest } from '$lib/types/requests/authentication-request';
 import { AuthenticationResponseSchema, type AuthenticationResponse } from '../types/responses/authentication-response';
 
@@ -10,7 +10,7 @@ async function signIn(request: AuthenticationRequest) {
 	loading = true;
 
 	try {
-		authentication = await jsonPostWithResponse('/api/sign-in', request, AuthenticationResponseSchema);
+		authentication = await jsonPostWithBodyWithResponse('/api/sign-in', request, AuthenticationResponseSchema);
 	} finally {
 		fetchAttempted = true;
 		loading = false;
@@ -20,7 +20,7 @@ async function signIn(request: AuthenticationRequest) {
 async function signUp(request: AuthenticationRequest) {
 	loading = true;
 	try {
-		authentication = await jsonPostWithResponse('/api/sign-up', request, AuthenticationResponseSchema);
+		authentication = await jsonPostWithBodyWithResponse('/api/sign-up', request, AuthenticationResponseSchema);
 	} finally {
 		fetchAttempted = true;
 		loading = false;
@@ -42,7 +42,7 @@ async function fetchCurrentAuthenticationIfNecessary() {
 	if (authentication !== undefined || loading) return;
 	loading = true;
 	try {
-		authentication = await jsonGet('/api/current-authentication', AuthenticationResponseSchema);
+		authentication = await jsonGetWithoutBodyWithResponse('/api/current-authentication', AuthenticationResponseSchema);
 	} finally {
 		fetchAttempted = true;
 		loading = false;
