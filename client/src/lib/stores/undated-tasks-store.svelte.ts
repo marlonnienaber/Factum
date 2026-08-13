@@ -17,18 +17,12 @@ async function fetchUndatedTasks(rank?: string): Promise<void> {
 
 		const fetchedIds = new Set(fetchedTasks.map((task) => task.id));
 		const deduplicatedTasks = undatedTasks.filter((task) => !fetchedIds.has(task.id));
-		undatedTasks = [...deduplicatedTasks, ...fetchedTasks].sort(compareTasks);
+		undatedTasks = [...deduplicatedTasks, ...fetchedTasks].sort((first, second) =>
+			first.rank < second.rank ? -1 : first.rank > second.rank ? 1 : 0
+		);
 	} finally {
 		loading = false;
 	}
-}
-
-function compareTasks(first: UndatedTaskResponse, second: UndatedTaskResponse): number {
-	if (first.rank !== second.rank) {
-		return first.rank < second.rank ? -1 : 1;
-	}
-
-	return first.id - second.id;
 }
 
 export const undatedTaskStore = {
