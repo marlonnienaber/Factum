@@ -183,7 +183,7 @@ func TestTasksUpdateTaskDescriptionTooLong(t *testing.T) {
 		t,
 		resp,
 		"description",
-		"description must be at most 2000 characters long.",
+		"description must be at most 500 characters long.",
 	)
 }
 

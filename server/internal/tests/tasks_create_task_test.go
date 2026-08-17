@@ -185,7 +185,7 @@ func TestTasksCreateTaskDescriptionTooLong(t *testing.T) {
 		t,
 		resp,
 		"description",
-		"description must be at most 2000 characters long.",
+		"description must be at most 500 characters long.",
 	)
 }
 
@@ -450,5 +450,5 @@ func TestTasksCreateTaskWithoutDescriptionWithoutDate(t *testing.T) {
 
 const (
 	maximumTaskTitleLength       = 100
-	maximumTaskDescriptionLength = 2000
+	maximumTaskDescriptionLength = 500
 )

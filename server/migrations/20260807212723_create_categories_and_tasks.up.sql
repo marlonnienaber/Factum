@@ -8,7 +8,7 @@ CREATE TABLE tasks (
     user_id BIGINT NOT NULL,
     category_id BIGINT NOT NULL,
     title VARCHAR(100) NOT NULL,
-    description VARCHAR(2000),
+    description VARCHAR(500),
     date DATE,
     rank TEXT COLLATE "C",
     done BOOLEAN NOT NULL DEFAULT FALSE,

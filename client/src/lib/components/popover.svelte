@@ -49,6 +49,7 @@
 	}
 
 	.content {
+		z-index: 60;
 		box-sizing: border-box;
 		width: fit-content;
 		padding: 0.75rem;
