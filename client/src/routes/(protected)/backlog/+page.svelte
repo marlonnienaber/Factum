@@ -1,5 +1,9 @@
 <script lang="ts">
-	import CreateTaskButton from '$lib/components/create-task-button.svelte';
+	import { Plus } from '@lucide/svelte';
+	import Button from '$lib/components/button.svelte';
+	import CreateTaskDialog from '$lib/components/create-task-dialog.svelte';
+
+	let createTaskDialogOpen = $state(false);
 </script>
 
 <svelte:head>
@@ -9,13 +13,18 @@
 <div class="frame">
 	<div class="left-column-container">
 		<div class="controls-section">
-			<CreateTaskButton />
+			<Button onclick={() => (createTaskDialogOpen = true)}>
+				Add Task
+				{#snippet trailingIcon()}<Plus size={17} strokeWidth={2.5} />{/snippet}
+			</Button>
 		</div>
 		<div class="no-date-section"></div>
 	</div>
 	<div class="date-section"></div>
 	<div class="today-section"></div>
 </div>
+
+<CreateTaskDialog bind:open={createTaskDialogOpen} />
 
 <style lang="scss">
 	.frame {
@@ -26,14 +35,14 @@
 		align-items: center;
 		box-sizing: border-box;
 		padding: 1.5rem;
-		gap: 1.5rem;
+		gap: 1rem;
 
 		.left-column-container {
 			display: flex;
 			flex-direction: column;
 			height: 100%;
 			flex: 1;
-			gap: 1.5rem;
+			gap: 1rem;
 
 			.controls-section {
 				display: flex;
