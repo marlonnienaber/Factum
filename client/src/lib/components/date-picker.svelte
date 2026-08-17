@@ -8,16 +8,17 @@
 	};
 
 	let { value = $bindable() }: Props = $props();
+	let open = $state(false);
 
 	function isPlaceholder(segmentValue: string): boolean {
 		return segmentValue === 'dd' || segmentValue === 'mm' || segmentValue === 'yyyy';
 	}
 </script>
 
-<DatePicker.Root bind:value locale="en-GB" weekdayFormat="short" fixedWeeks>
+<DatePicker.Root bind:value bind:open locale="en-GB" weekdayFormat="short" fixedWeeks>
 	<DatePicker.Input name="date">
 		{#snippet child({ props: inputProps, segments })}
-			<div {...inputProps} id="task-date" class="date-input">
+			<div {...inputProps} id="task-date" class:active={open} class="date-input">
 				<div class="date-segments">
 					{#each segments as { part, value: segmentValue }, index (part + index)}
 						<DatePicker.Segment {part}>
@@ -116,14 +117,19 @@
 		align-items: center;
 		justify-content: space-between;
 		width: 100%;
-		min-height: 2.75rem;
+		height: 2.75rem;
 		box-sizing: border-box;
 		padding: 0.625rem;
-		border: 2px solid var(--border);
+		border: 1px solid var(--border);
 		border-radius: 0.5rem;
 		background: transparent;
 		color: var(--text);
 		font-size: 0.9rem;
+
+		&.active,
+		&:has(.date-segment:focus) {
+			border-color: var(--border-accented);
+		}
 	}
 
 	.date-segments {

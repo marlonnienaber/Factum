@@ -2,6 +2,7 @@
 	font-family: 'Poppins', sans-serif;
 
 	&[data-theme='dark'] {
+		color-scheme: dark;
 		--background: #000000;
 		--text: #ffffff;
 		--text-subtle: #949191;
@@ -10,6 +11,7 @@
 		--button-hover: #e3e3e3;
 		--button-ghost: #292929;
 		--border: #2d2c2c;
+		--border-accented: #ffffff;
 		--surface: #252525;
 		--surface-subtle: #191919;
 		--danger: #f1716a;
@@ -17,6 +19,7 @@
 	}
 
 	&[data-theme='light'] {
+		color-scheme: light;
 		--background: #ffffff;
 		--text: #000000;
 		--text-subtle: #5f5f5f;
@@ -25,6 +28,7 @@
 		--button-hover: #222222;
 		--button-ghost: #dfdfdf;
 		--border: #e1e1e1;
+		--border-accented: #000000;
 		--surface: #252525;
 		--surface-subtle: #e8e8e8;
 		--danger: #f1716a;

@@ -13,7 +13,7 @@
 	const invalid = $derived(error !== undefined);
 </script>
 
-<div class="textarea-container">
+<div class:invalid class="textarea-container">
 	<textarea {id} bind:value {placeholder} aria-invalid={invalid}></textarea>
 	{#if invalid}
 		<span class="info-icon">
@@ -27,28 +27,29 @@
 
 <style lang="scss">
 	.textarea-container {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
+		position: relative;
+
+		&.invalid textarea {
+			padding-right: calc(0.625rem + 1.125rem + 0.6125rem);
+		}
 	}
 
 	textarea {
-		flex: 1;
-		min-width: 0;
+		display: block;
+		width: 100%;
 		min-height: 4.5rem;
 		box-sizing: border-box;
 		padding: 0.625rem;
-		border: 2px solid var(--border);
+		border: 1px solid var(--border);
 		border-radius: 0.5rem;
 		outline: none;
 		background: transparent;
 		color: var(--text);
 		font: inherit;
-		font-size: 0.9rem;
 		resize: vertical;
 
 		&:focus {
-			border-color: var(--text-subtle);
+			border-color: var(--border-accented);
 		}
 
 		&[aria-invalid='true'] {
@@ -57,8 +58,15 @@
 	}
 
 	.info-icon {
+		position: absolute;
+		top: 50%;
+		right: 0.625rem;
 		display: flex;
+		width: 1.125rem;
+		height: 1.125rem;
+		transform: translateY(-50%);
 		color: var(--danger);
+		line-height: 0;
 	}
 
 	.error-message {

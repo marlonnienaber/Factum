@@ -67,12 +67,12 @@ function getResponseJson(body: unknown, status = 200): Response {
 	});
 }
 
-function getAuthenticationInput(input: HTMLElement): HTMLElement {
-	const authenticationInput = input.closest('.authentication-input');
-	if (!(authenticationInput instanceof HTMLElement)) {
-		throw new Error('Expected input to be wrapped by an authentication input.');
+function getInput(input: HTMLElement): HTMLElement {
+	const inputContainer = input.closest('.input');
+	if (!(inputContainer instanceof HTMLElement)) {
+		throw new Error('Expected input to be wrapped by an input component.');
 	}
-	return authenticationInput;
+	return inputContainer;
 }
 
 async function enterEmail(page: ReturnType<typeof renderPage>, email: string): Promise<void> {
@@ -124,7 +124,7 @@ describe('sign-up page integration', () => {
 		expect(fetchMock).not.toHaveBeenCalled();
 		expect(gotoMock).not.toHaveBeenCalled();
 
-		const emailInput = getAuthenticationInput(page.getByTestId('email-input'));
+		const emailInput = getInput(page.getByTestId('email-input'));
 		const emailErrorIcon = emailInput.querySelector('.error-icon');
 		expect(emailInput).toHaveClass('invalid');
 		expect(emailErrorIcon).toBeInTheDocument();
@@ -146,7 +146,7 @@ describe('sign-up page integration', () => {
 		expect(fetchMock).not.toHaveBeenCalled();
 		expect(gotoMock).not.toHaveBeenCalled();
 
-		const passwordInput = getAuthenticationInput(page.getByTestId('password-input'));
+		const passwordInput = getInput(page.getByTestId('password-input'));
 		const passwordErrorIcon = passwordInput.querySelector('.error-icon');
 		expect(passwordInput).toHaveClass('invalid');
 		expect(passwordErrorIcon).toBeInTheDocument();
@@ -168,7 +168,7 @@ describe('sign-up page integration', () => {
 		expect(fetchMock).not.toHaveBeenCalled();
 		expect(gotoMock).not.toHaveBeenCalled();
 
-		const passwordInput = getAuthenticationInput(page.getByTestId('password-input'));
+		const passwordInput = getInput(page.getByTestId('password-input'));
 		const passwordErrorIcon = passwordInput.querySelector('.error-icon');
 		expect(passwordInput).toHaveClass('invalid');
 		expect(passwordErrorIcon).toBeInTheDocument();
@@ -190,7 +190,7 @@ describe('sign-up page integration', () => {
 		expect(fetchMock).not.toHaveBeenCalled();
 		expect(gotoMock).not.toHaveBeenCalled();
 
-		const repeatedPasswordInput = getAuthenticationInput(page.getByTestId('repeated-password-input'));
+		const repeatedPasswordInput = getInput(page.getByTestId('repeated-password-input'));
 		const repeatedPasswordErrorIcon = repeatedPasswordInput.querySelector('.error-icon');
 		expect(repeatedPasswordInput).toHaveClass('invalid');
 		expect(repeatedPasswordErrorIcon).toBeInTheDocument();
@@ -297,9 +297,9 @@ describe('sign-up page integration', () => {
 		expect((fetchMock.mock.calls[0]?.[1] as RequestInit).headers).toHaveProperty('get');
 		expect(((fetchMock.mock.calls[0]?.[1] as RequestInit).headers as Headers).get('Content-Type')).toBe('application/json');
 
-		const emailInput = getAuthenticationInput(page.getByTestId('email-input'));
-		const passwordInput = getAuthenticationInput(page.getByTestId('password-input'));
-		const repeatedPasswordInput = getAuthenticationInput(page.getByTestId('repeated-password-input'));
+		const emailInput = getInput(page.getByTestId('email-input'));
+		const passwordInput = getInput(page.getByTestId('password-input'));
+		const repeatedPasswordInput = getInput(page.getByTestId('repeated-password-input'));
 		expect(emailInput).not.toHaveClass('invalid');
 		expect(emailInput.querySelector('.error-icon')).not.toBeInTheDocument();
 		expect(passwordInput).not.toHaveClass('invalid');
