@@ -76,7 +76,7 @@
 			justify-content: space-between;
 			align-items: center;
 			gap: 1rem;
-			padding: 1rem 2rem 0 2rem;
+			padding: 1rem 1rem 0 1rem;
 
 			.brand {
 				display: flex;

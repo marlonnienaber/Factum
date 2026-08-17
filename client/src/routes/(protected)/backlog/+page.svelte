@@ -34,7 +34,7 @@
 		justify-content: center;
 		align-items: center;
 		box-sizing: border-box;
-		padding: 1.5rem;
+		padding: 1rem;
 		gap: 1rem;
 
 		.left-column-container {
