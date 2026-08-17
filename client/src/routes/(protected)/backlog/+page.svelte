@@ -1,4 +1,5 @@
-<script>
+<script lang="ts">
+	import CreateTaskButton from '$lib/components/create-task-button.svelte';
 </script>
 
 <svelte:head>
@@ -7,14 +8,16 @@
 
 <div class="frame">
 	<div class="left-column-container">
-		<div class="controls-section"></div>
+		<div class="controls-section">
+			<CreateTaskButton />
+		</div>
 		<div class="no-date-section"></div>
 	</div>
 	<div class="date-section"></div>
 	<div class="today-section"></div>
 </div>
 
-<style>
+<style lang="scss">
 	.frame {
 		flex: 1;
 		width: 100%;
@@ -34,9 +37,10 @@
 
 			.controls-section {
 				display: flex;
-				flex-direction: column;
+				align-items: center;
 				width: 100%;
-				height: 63px;
+				box-sizing: border-box;
+				padding: 0.75rem;
 				border: 1px solid var(--border);
 				border-radius: 0.75rem;
 			}
