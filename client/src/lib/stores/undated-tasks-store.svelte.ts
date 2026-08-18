@@ -1,4 +1,4 @@
-import { jsonGetWithoutBodyWithResponse, jsonPostWithBodyWithResponse } from '$lib/api/api';
+import { type NetworkCall, jsonGetWithoutBodyWithResponse, jsonPostWithBodyWithResponse } from '$lib/api/api';
 import type { CreateUndatedTaskRequest } from '$lib/types/requests/create-undated-task-request';
 import { UndatedTaskResponseSchema, type UndatedTaskResponse } from '$lib/types/responses/undated-task-response';
 import { z } from 'zod';
@@ -9,31 +9,31 @@ let loading = $state(false);
 async function fetchUndatedTasks(rank?: string): Promise<void> {
 	if (loading) return;
 	loading = true;
-	try {
-		const fetchedTasks: UndatedTaskResponse[] = await jsonGetWithoutBodyWithResponse(
-			`/api/tasks/undated${rank ? `?rank=${encodeURIComponent(rank)}` : ''}`,
-			z.array(UndatedTaskResponseSchema)
-		);
+	const networkCall: NetworkCall<UndatedTaskResponse[]> = await jsonGetWithoutBodyWithResponse(
+		`/api/tasks/undated${rank ? `?rank=${encodeURIComponent(rank)}` : ''}`,
+		z.array(UndatedTaskResponseSchema)
+	);
+	if (networkCall.status === 'success') {
+		const fetchedTasks = networkCall.result;
 		const fetchedIds = fetchedTasks.map((task) => task.id);
 		const deduplicatedTasks = undatedTasks.filter((task) => !fetchedIds.includes(task.id));
 		undatedTasks = [...deduplicatedTasks, ...fetchedTasks].sort(compareTasksByRank);
-	} catch (error) {
-		console.error(error);
-	} finally {
-		loading = false;
 	}
+	loading = false;
 }
 async function createTask(request: CreateUndatedTaskRequest): Promise<void> {
 	if (loading) return;
 	loading = true;
-	try {
-		const createdTask: UndatedTaskResponse = await jsonPostWithBodyWithResponse('/api/tasks', request, UndatedTaskResponseSchema);
+	const networkCall: NetworkCall<UndatedTaskResponse> = await jsonPostWithBodyWithResponse(
+		'/api/tasks',
+		request,
+		UndatedTaskResponseSchema
+	);
+	if (networkCall.status === 'success') {
+		const createdTask = networkCall.result;
 		undatedTasks = [...undatedTasks.filter((task) => task.id !== createdTask.id), createdTask].sort(compareTasksByRank);
-	} catch (error) {
-		console.error(error);
-	} finally {
-		loading = false;
 	}
+	loading = false;
 }
 
 function compareTasksByRank(first: UndatedTaskResponse, second: UndatedTaskResponse): number {

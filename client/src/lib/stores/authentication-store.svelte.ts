@@ -1,4 +1,4 @@
-import { jsonGetWithoutBodyWithResponse, jsonPostWithoutBodyWithoutResponse, jsonPostWithBodyWithResponse } from '$lib/api/api';
+import { type NetworkCall, jsonGetWithoutBodyWithResponse, jsonPostWithoutBodyWithoutResponse, jsonPostWithBodyWithResponse } from '$lib/api/api';
 import type { AuthenticationRequest } from '$lib/types/requests/authentication-request';
 import { AuthenticationResponseSchema, type AuthenticationResponse } from '../types/responses/authentication-response';
 
@@ -8,45 +8,34 @@ let fetchAttempted = $state(false);
 
 async function signIn(request: AuthenticationRequest) {
 	loading = true;
-
-	try {
-		authentication = await jsonPostWithBodyWithResponse('/api/sign-in', request, AuthenticationResponseSchema);
-	} finally {
-		fetchAttempted = true;
-		loading = false;
-	}
+	const networkCall: NetworkCall<AuthenticationResponse> = await jsonPostWithBodyWithResponse('/api/sign-in', request, AuthenticationResponseSchema);
+	if (networkCall.status === 'success') authentication = networkCall.result;
+	fetchAttempted = true;
+	loading = false;
 }
 
 async function signUp(request: AuthenticationRequest) {
 	loading = true;
-	try {
-		authentication = await jsonPostWithBodyWithResponse('/api/sign-up', request, AuthenticationResponseSchema);
-	} finally {
-		fetchAttempted = true;
-		loading = false;
-	}
+	const networkCall: NetworkCall<AuthenticationResponse> = await jsonPostWithBodyWithResponse('/api/sign-up', request, AuthenticationResponseSchema);
+	if (networkCall.status === 'success') authentication = networkCall.result;
+	loading = false;
 }
 
 async function signOut() {
 	loading = true;
-	try {
-		await jsonPostWithoutBodyWithoutResponse('/api/sign-out');
-		authentication = undefined;
-	} finally {
-		fetchAttempted = true;
-		loading = false;
-	}
+	const networkCall: NetworkCall<void> = await jsonPostWithoutBodyWithoutResponse('/api/sign-out');
+	if (networkCall.status === 'success') authentication = undefined;
+	fetchAttempted = true;
+	loading = false;
 }
 
 async function fetchCurrentAuthenticationIfNecessary() {
 	if (authentication !== undefined || loading) return;
 	loading = true;
-	try {
-		authentication = await jsonGetWithoutBodyWithResponse('/api/current-authentication', AuthenticationResponseSchema);
-	} finally {
-		fetchAttempted = true;
-		loading = false;
-	}
+	const networkCall: NetworkCall<AuthenticationResponse> = await jsonGetWithoutBodyWithResponse('/api/current-authentication', AuthenticationResponseSchema);
+	if (networkCall.status === 'success') authentication = networkCall.result;
+	fetchAttempted = true;
+	loading = false;
 }
 
 export const authenticationStore = {
