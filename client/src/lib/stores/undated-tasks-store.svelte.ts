@@ -1,5 +1,5 @@
 import { type NetworkCall, jsonGetWithoutBodyWithResponse, jsonPostWithBodyWithResponse } from '$lib/api/api';
-import type { CreateUndatedTaskRequest } from '$lib/types/requests/create-undated-task-request';
+import type { CreateTaskRequest } from '$lib/types/requests/create-task-request.ts';
 import { UndatedTaskResponseSchema, type UndatedTaskResponse } from '$lib/types/responses/undated-task-response';
 import { z } from 'zod';
 
@@ -21,7 +21,7 @@ async function fetchUndatedTasks(rank?: string): Promise<void> {
 	}
 	loading = false;
 }
-async function createTask(request: CreateUndatedTaskRequest): Promise<void> {
+async function createTask(request: CreateTaskRequest): Promise<void> {
 	if (loading) return;
 	loading = true;
 	const networkCall: NetworkCall<UndatedTaskResponse> = await jsonPostWithBodyWithResponse(
