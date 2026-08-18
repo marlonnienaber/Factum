@@ -3,34 +3,68 @@ import { toast } from 'svelte-sonner';
 import { z, type ZodType } from 'zod';
 import { ErrorResponseSchema } from '../types/responses/error-response';
 
-export async function jsonGetWithoutBodyWithResponse<R>(url: string, responseSchema: ZodType<R>): Promise<R> {
+export type NetworkCall<T> = { status: 'success'; result: T } | { status: 'failed' };
+
+export async function jsonGetWithoutBodyWithResponse<R>(url: string, responseSchema: ZodType<R>): Promise<NetworkCall<R>> {
 	return await jsonFetchWithoutBodyWithResponse('GET', url, responseSchema);
 }
 
-export async function jsonPostWithoutBodyWithResponse<R>(url: string, responseSchema: ZodType<R>): Promise<R> {
+export async function jsonPostWithoutBodyWithResponse<R>(url: string, responseSchema: ZodType<R>): Promise<NetworkCall<R>> {
 	return await jsonFetchWithoutBodyWithResponse('POST', url, responseSchema);
 }
 
-export async function jsonPostWithBodyWithResponse<B, R>(url: string, requestBody: B, responseSchema: ZodType<R>): Promise<R> {
+export async function jsonPostWithBodyWithResponse<B, R>(
+	url: string,
+	requestBody: B,
+	responseSchema: ZodType<R>
+): Promise<NetworkCall<R>> {
 	return await jsonFetchWithBodyWithResponse('POST', url, requestBody, responseSchema);
 }
 
-export async function jsonPostWithoutBodyWithoutResponse(url: string): Promise<void> {
-	await jsonFetchWithoutBodyWithoutResponse('POST', url);
+export async function jsonPostWithoutBodyWithoutResponse(url: string): Promise<NetworkCall<void>> {
+	return await jsonFetchWithoutBodyWithoutResponse('POST', url);
 }
 
-export async function jsonDeleteWithoutBodyWithoutResponse(url: string): Promise<void> {
-	await jsonFetchWithoutBodyWithoutResponse('DELETE', url);
+export async function jsonDeleteWithoutBodyWithoutResponse(url: string): Promise<NetworkCall<void>> {
+	return await jsonFetchWithoutBodyWithoutResponse('DELETE', url);
 }
 
 async function jsonFetchWithoutBodyWithResponse<R>(
 	httpMethod: 'GET' | 'POST',
 	url: string,
 	responseSchema: ZodType<R>
-): Promise<R> {
-	const response = await fetchOrThrow(url, configureRequestOptions(httpMethod));
-	await checkIfResponseOkOrThrow(response);
-	return await parseResponseOrThrow(response, responseSchema);
+): Promise<NetworkCall<R>> {
+	let requestOptions: RequestInit;
+	try {
+		requestOptions = configureRequestOptions(httpMethod);
+	} catch (error) {
+		return handleError(error, 'Failed to configure request options.');
+	}
+
+	let response: Response;
+	try {
+		response = await fetch(url, requestOptions);
+	} catch (error) {
+		return handleError(error, 'Request failed before receiving a response.');
+	}
+
+	if (!response.ok) {
+		let errorMessage: string;
+		try {
+			errorMessage = await getErrorResponseMessage(response);
+		} catch (error) {
+			return handleError(error, 'Failed to parse error response message.');
+		}
+		return handleErrorResponse(errorMessage);
+	}
+
+	try {
+		const result = await parseResponse(response, responseSchema)
+		return { status: 'success', result: result };
+	} catch (error) {
+		const message = error instanceof z.ZodError ? 'Response validation failed.' : 'Failed to parse response body.';
+		return handleError(error, message);
+	}
 }
 
 async function jsonFetchWithBodyWithResponse<B, R>(
@@ -38,15 +72,66 @@ async function jsonFetchWithBodyWithResponse<B, R>(
 	url: string,
 	requestBody: B,
 	responseSchema: ZodType<R>
-): Promise<R> {
-	const response = await fetchOrThrow(url, configureRequestOptions(httpMethod, requestBody));
-	await checkIfResponseOkOrThrow(response);
-	return await parseResponseOrThrow(response, responseSchema);
+): Promise<NetworkCall<R>> {
+	let requestOptions: RequestInit;
+	try {
+		requestOptions = configureRequestOptions(httpMethod, requestBody);
+	} catch (error) {
+		return handleError(error, 'Failed to configure request.');
+	}
+
+	let response: Response;
+	try {
+		response = await fetch(url, requestOptions);
+	} catch (error) {
+		return handleError(error, 'Request failed before receiving a response.');
+	}
+
+	if (!response.ok) {
+		let errorMessage: string;
+		try {
+			errorMessage = await getErrorResponseMessage(response);
+		} catch (error) {
+			return handleError(error, 'Failed to parse error response.');
+		}
+		return handleErrorResponse(errorMessage);
+	}
+
+	try {
+		const result = await parseResponse(response, responseSchema)
+		return { status: 'success', result: result };
+	} catch (error) {
+		const message = error instanceof z.ZodError ? 'Response validation failed.' : 'Failed to parse response body.';
+		return handleError(error, message);
+	}
 }
 
-async function jsonFetchWithoutBodyWithoutResponse(httpMethod: 'POST' | 'DELETE', url: string): Promise<void> {
-	const response = await fetchOrThrow(url, configureRequestOptions(httpMethod));
-	await checkIfResponseOkOrThrow(response);
+async function jsonFetchWithoutBodyWithoutResponse(httpMethod: 'POST' | 'DELETE', url: string): Promise<NetworkCall<void>> {
+	let requestOptions: RequestInit;
+	try {
+		requestOptions = configureRequestOptions(httpMethod);
+	} catch (error) {
+		return handleError(error, 'Failed to configure request.');
+	}
+
+	let response: Response;
+	try {
+		response = await fetch(url, requestOptions);
+	} catch (error) {
+		return handleError(error, 'Request failed before receiving a response.');
+	}
+
+	if (!response.ok) {
+		let errorMessage: string;
+		try {
+			errorMessage = await getErrorResponseMessage(response);
+		} catch (error) {
+			return handleError(error, 'Failed to parse error response.');
+		}
+		return handleErrorResponse(errorMessage);
+	}
+
+	return { status: 'success', result: undefined };
 }
 
 function configureRequestOptions<B>(method: 'GET' | 'POST' | 'DELETE', requestBody?: B): RequestInit {
@@ -64,55 +149,29 @@ function configureRequestOptions<B>(method: 'GET' | 'POST' | 'DELETE', requestBo
 	};
 }
 
-async function fetchOrThrow(url: string, requestOptions: RequestInit): Promise<Response> {
-	try {
-		return await fetch(url, requestOptions);
-	} catch (error) {
-		showErrorToast('Request failed before receiving a response.');
-		throw error;
+async function parseResponse<R>(response: Response, responseSchema: ZodType<R>): Promise<R> {
+	if (isPrimitiveResponseSchema(responseSchema)) {
+		const text = await response.text();
+		return responseSchema.parse(coerceResponseToPrimitiveType(responseSchema, text));
 	}
-}
-
-async function checkIfResponseOkOrThrow(response: Response): Promise<void> {
-	if (response.ok) return;
-
-	const errorMessage = await getErrorResponseMessage(response);
-	showErrorToast(errorMessage);
-	throw new Error(errorMessage);
-}
-
-async function parseResponseOrThrow<R>(response: Response, responseSchema: ZodType<R>): Promise<R> {
-	let responseBody: unknown;
-
-	try {
-		if (isPrimitiveResponseSchema(responseSchema)) {
-			const text = await response.text();
-			responseBody = coerceResponseToPrimitiveType(responseSchema, text);
-		} else {
-			responseBody = await response.json();
-		}
-	} catch (error) {
-		showErrorToast('Failed to parse response body.');
-		throw error;
-	}
-
-	const parsedResponse = responseSchema.safeParse(responseBody);
-	if (parsedResponse.success) return parsedResponse.data;
-
-	showErrorToast('Response validation failed.');
-	throw parsedResponse.error;
+	return responseSchema.parse(await response.json());
 }
 
 async function getErrorResponseMessage(response: Response): Promise<string> {
-	try {
-		const parsedErrorResponse = ErrorResponseSchema.safeParse(await response.json());
-		if (!parsedErrorResponse.success) {
-			return 'Received a malformed error response.';
-		}
-		return parsedErrorResponse.data.message;
-	} catch {
-		return 'Failed to parse error response body.';
-	}
+	const errorResponse = ErrorResponseSchema.parse(await response.json());
+	return errorResponse.message;
+}
+
+function handleError(error: unknown, message: string): NetworkCall<never> {
+	console.error(error);
+	showErrorToast(message);
+	return { status: 'failed' };
+}
+
+function handleErrorResponse(message: string): NetworkCall<never> {
+	console.error(message);
+	showErrorToast(message);
+	return { status: 'failed' };
 }
 
 function showErrorToast(message: string): void {
