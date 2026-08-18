@@ -21,8 +21,10 @@ import (
 )
 
 const (
-	TestUserEmail               = "ada@example.com"
-	TestUserPassword            = "passwordPassword"
+	TestUser1Email              = "ada@example.com"
+	TestUser1Password           = "passwordPassword"
+	TestUser2Email              = "grace@example.com"
+	TestUser2Password           = "pAas5&WsHm}z#*]:W&qH"
 	preparedPartitionTasksCount = 3
 )
 

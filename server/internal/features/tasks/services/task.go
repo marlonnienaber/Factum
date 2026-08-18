@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	categoriesStores "github.com/marlonnienaber/Factum/server/internal/features/categories/stores"
 	"github.com/marlonnienaber/Factum/server/internal/features/tasks/stores"
 	"github.com/marlonnienaber/Factum/server/internal/features/tasks/types/domain"
 	"github.com/marlonnienaber/Factum/server/internal/features/tasks/types/transport"
@@ -20,14 +21,20 @@ var (
 )
 
 type TaskService struct {
-	db        *sqlx.DB
-	taskStore *stores.TaskStore
+	db            *sqlx.DB
+	taskStore     *stores.TaskStore
+	categoryStore *categoriesStores.CategoryStore
 }
 
-func NewTaskService(db *sqlx.DB, taskStore *stores.TaskStore) *TaskService {
+func NewTaskService(
+	db *sqlx.DB,
+	taskStore *stores.TaskStore,
+	categoryStore *categoriesStores.CategoryStore,
+) *TaskService {
 	return &TaskService{
-		db:        db,
-		taskStore: taskStore,
+		db:            db,
+		taskStore:     taskStore,
+		categoryStore: categoryStore,
 	}
 }
 
@@ -35,8 +42,15 @@ func (service *TaskService) CreateTask(userId int64, request transport.CreateTas
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("creating task failed")
 
 	task, err := shared.ExecuteAsSerializableTransaction(service.db, func(transaction *sqlx.Tx) (*transport.TaskResponse, error) {
+		categoryExists, err := service.categoryStore.DoesCategoryExistForUser(transaction, request.CategoryId, userId)
+		if err != nil {
+			return nil, err
+		}
+		if !categoryExists {
+			return nil, stores.ErrCategoryNotFound
+		}
+
 		var highestRank *string
-		var err error
 		if request.Date == nil {
 			highestRank, err = service.taskStore.GetHighestUndatedUntrashedOpenTaskRank(transaction, userId)
 		} else {
@@ -74,6 +88,14 @@ func (service *TaskService) UpdateTask(userId int64, request transport.UpdateTas
 		task, err := service.taskStore.GetTaskByIdForUser(transaction, request.Id, userId)
 		if err != nil {
 			return nil, err
+		}
+
+		categoryExists, err := service.categoryStore.DoesCategoryExistForUser(transaction, request.CategoryId, userId)
+		if err != nil {
+			return nil, err
+		}
+		if !categoryExists {
+			return nil, stores.ErrCategoryNotFound
 		}
 
 		updatedDone := task.Done

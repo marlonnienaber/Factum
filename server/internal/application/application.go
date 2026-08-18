@@ -24,7 +24,7 @@ func NewApplication(cfg configuration.Configuration, db *sqlx.DB) *gin.Engine {
 	authenticationService := authServices.NewAuthenticationService(userStore, cfg)
 	categoryStore := categoriesStores.NewCategoryStore(db)
 	taskStore := tasksStores.NewTaskStore(db)
-	taskService := tasksServices.NewTaskService(db, taskStore)
+	taskService := tasksServices.NewTaskService(db, taskStore, categoryStore)
 
 	app := gin.Default()
 	app.Use(shared.NewSessionConfigurationMiddleware(cfg, db))
@@ -35,6 +35,7 @@ func NewApplication(cfg configuration.Configuration, db *sqlx.DB) *gin.Engine {
 	api.POST("/sign-out", shared.RequireAuth(authHandlers.NewSignOutHandler(authenticationService)))
 	api.GET("/current-authentication", shared.RequireAuth(authHandlers.NewGetCurrentAuthenticationHandler(userStore)))
 
+	api.GET("/categories", shared.RequireAuth(categoriesHandlers.NewGetCategoriesHandler(categoryStore)))
 	api.POST("/categories", shared.RequireAuth(categoriesHandlers.NewCreateCategoryHandler(categoryStore)))
 	api.DELETE("/categories/:id", shared.RequireAuth(categoriesHandlers.NewDeleteCategoryHandler(categoryStore)))
 

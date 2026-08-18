@@ -29,10 +29,10 @@ func TestTasksGetUndatedTasksUnauthenticated(t *testing.T) {
 }
 
 func TestTasksGetUndatedTasksInvalidRank(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()
@@ -56,10 +56,10 @@ func TestTasksGetUndatedTasksInvalidRank(t *testing.T) {
 }
 
 func TestTasksGetUndatedTasksNoCursor(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()
@@ -83,10 +83,10 @@ func TestTasksGetUndatedTasksNoCursor(t *testing.T) {
 }
 
 func TestTasksGetUndatedTasksCursor(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()

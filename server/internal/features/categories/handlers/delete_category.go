@@ -27,7 +27,7 @@ func NewDeleteCategoryHandler(categoryStore *stores.CategoryStore) shared.Authen
 			return
 		}
 
-		err := categoryStore.DeleteCategory(id)
+		err := categoryStore.DeleteCategory(id, c.UserId)
 		if err != nil {
 			switch {
 			case errors.Is(err, stores.ErrCategoryNotFound):
@@ -54,7 +54,7 @@ var invalidCategoryIdErrorResponse = shared.ErrorResponse{
 
 var categoryNotFoundErrorResponse = shared.ErrorResponse{
 	ErrorCode: "category_not_found",
-	Message:   "No category exists for the provided id.",
+	Message:   "No category of the logged in user exists with the provided id.",
 }
 
 var categoryStillReferencedErrorResponse = shared.ErrorResponse{

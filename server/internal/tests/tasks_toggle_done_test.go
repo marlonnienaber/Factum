@@ -36,10 +36,10 @@ func TestTasksToggleDoneUnauthenticated(t *testing.T) {
 }
 
 func TestTasksToggleDoneInvalidId(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()
@@ -63,10 +63,10 @@ func TestTasksToggleDoneInvalidId(t *testing.T) {
 }
 
 func TestTasksToggleDoneInvalidRank(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()
@@ -90,10 +90,10 @@ func TestTasksToggleDoneInvalidRank(t *testing.T) {
 }
 
 func TestTasksToggleDoneMissingRank(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()
@@ -125,10 +125,10 @@ func TestTasksToggleDoneMissingRank(t *testing.T) {
 }
 
 func TestTasksToggleDoneTaskNotFound(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()
@@ -152,10 +152,10 @@ func TestTasksToggleDoneTaskNotFound(t *testing.T) {
 }
 
 func TestTasksToggleDoneRankAlreadyExists(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()
@@ -193,10 +193,10 @@ func TestTasksToggleDoneRankAlreadyExists(t *testing.T) {
 }
 
 func TestTasksToggleDoneForDatedOpenUntrashedTask(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()
@@ -228,10 +228,10 @@ func TestTasksToggleDoneForDatedOpenUntrashedTask(t *testing.T) {
 }
 
 func TestTasksToggleDoneForDatedDoneUntrashedTask(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()
@@ -263,10 +263,10 @@ func TestTasksToggleDoneForDatedDoneUntrashedTask(t *testing.T) {
 }
 
 func TestTasksToggleDoneForUndatedOpenUntrashedTask(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()
@@ -298,10 +298,10 @@ func TestTasksToggleDoneForUndatedOpenUntrashedTask(t *testing.T) {
 }
 
 func TestTasksToggleDoneForUndatedOpenTrashedTask(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()
@@ -336,10 +336,10 @@ func TestTasksToggleDoneForUndatedOpenTrashedTask(t *testing.T) {
 }
 
 func TestTasksToggleDoneForDatedDoneTrashedTask(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()
@@ -374,10 +374,10 @@ func TestTasksToggleDoneForDatedDoneTrashedTask(t *testing.T) {
 }
 
 func TestTasksToggleDoneForDatedOpenTrashedTask(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()

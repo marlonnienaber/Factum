@@ -31,10 +31,10 @@ func TestTasksGetTrashedTasksUnauthenticated(t *testing.T) {
 }
 
 func TestTasksGetTrashedTasksInvalidTrashedDate(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()
@@ -58,10 +58,10 @@ func TestTasksGetTrashedTasksInvalidTrashedDate(t *testing.T) {
 }
 
 func TestTasksGetTrashedTasksInvalidId(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()
@@ -85,10 +85,10 @@ func TestTasksGetTrashedTasksInvalidId(t *testing.T) {
 }
 
 func TestTasksGetTrashedTasksIncompleteCursor(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()
@@ -114,10 +114,10 @@ func TestTasksGetTrashedTasksIncompleteCursor(t *testing.T) {
 }
 
 func TestTasksGetTrashedTasksNoCursor(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()
@@ -141,10 +141,10 @@ func TestTasksGetTrashedTasksNoCursor(t *testing.T) {
 }
 
 func TestTasksGetTrashedTasksCursor(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()

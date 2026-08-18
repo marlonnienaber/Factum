@@ -36,11 +36,17 @@ func NewCreateCategoryHandler(categoryStore *stores.CategoryStore) shared.Authen
 			return
 		}
 
-		categoryResponse, err := categoryStore.InsertCategory(title)
+		categoryResponse, err := categoryStore.InsertCategory(c.UserId, title)
 		if err != nil {
-			slog.Error(unexpectedErrorLogMessage, "error", err)
-			c.JSON(http.StatusInternalServerError, shared.UnexpectedErrorResponse)
-			return
+			switch {
+			case errors.Is(err, stores.ErrCategoryTitleAlreadyInUse):
+				c.JSON(http.StatusConflict, categoryTitleAlreadyInUseErrorResponse)
+				return
+			default:
+				slog.Error(unexpectedErrorLogMessage, "error", err)
+				c.JSON(http.StatusInternalServerError, shared.UnexpectedErrorResponse)
+				return
+			}
 		}
 
 		c.JSON(http.StatusCreated, categoryResponse)
@@ -51,3 +57,8 @@ const (
 	minimumCategoryTitleLength = 1
 	maximumCategoryTitleLength = 50
 )
+
+var categoryTitleAlreadyInUseErrorResponse = shared.ErrorResponse{
+	ErrorCode: "category_title_already_in_use",
+	Message:   "Category title is already in use.",
+}

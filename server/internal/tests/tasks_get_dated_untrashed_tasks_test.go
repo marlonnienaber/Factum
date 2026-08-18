@@ -36,10 +36,10 @@ func TestTasksGetDatedUntrashedTasksUnauthenticated(t *testing.T) {
 }
 
 func TestTasksGetDatedUntrashedTasksNoDoneProvided(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()
@@ -56,10 +56,10 @@ func TestTasksGetDatedUntrashedTasksNoDoneProvided(t *testing.T) {
 }
 
 func TestTasksGetDatedUntrashedTasksInvalidDoneProvided(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()
@@ -83,10 +83,10 @@ func TestTasksGetDatedUntrashedTasksInvalidDoneProvided(t *testing.T) {
 }
 
 func TestTasksGetDatedUntrashedTasksInvalidDateProvided(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()
@@ -113,10 +113,10 @@ func TestTasksGetDatedUntrashedTasksInvalidDateProvided(t *testing.T) {
 }
 
 func TestTasksGetDatedUntrashedTasksInvalidRankProvided(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()
@@ -143,10 +143,10 @@ func TestTasksGetDatedUntrashedTasksInvalidRankProvided(t *testing.T) {
 }
 
 func TestTasksGetDatedUntrashedTasksIncompleteCursor(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()
@@ -173,10 +173,10 @@ func TestTasksGetDatedUntrashedTasksIncompleteCursor(t *testing.T) {
 }
 
 func TestTasksGetDatedUntrashedTasksDoneWithoutCursor(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()
@@ -207,10 +207,10 @@ func TestTasksGetDatedUntrashedTasksDoneWithoutCursor(t *testing.T) {
 }
 
 func TestTasksGetDatedUntrashedTasksDoneWithCursor(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()
@@ -245,10 +245,10 @@ func TestTasksGetDatedUntrashedTasksDoneWithCursor(t *testing.T) {
 }
 
 func TestTasksGetDatedUntrashedTasksOpenWithoutCursor(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()
@@ -279,10 +279,10 @@ func TestTasksGetDatedUntrashedTasksOpenWithoutCursor(t *testing.T) {
 }
 
 func TestTasksGetDatedUntrashedTasksOpenWithCursor(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()

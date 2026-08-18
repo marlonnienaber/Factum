@@ -29,10 +29,10 @@ func TestCategoriesCreateCategoryUnauthenticated(t *testing.T) {
 }
 
 func TestCategoriesCreateCategoryNoTitle(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 
@@ -55,10 +55,10 @@ func TestCategoriesCreateCategoryNoTitle(t *testing.T) {
 }
 
 func TestCategoriesCreateCategoryTitleTooSmall(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 
@@ -81,10 +81,10 @@ func TestCategoriesCreateCategoryTitleTooSmall(t *testing.T) {
 }
 
 func TestCategoriesCreateCategoryTitleTooLong(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 
@@ -106,11 +106,86 @@ func TestCategoriesCreateCategoryTitleTooLong(t *testing.T) {
 	)
 }
 
-func TestCategoriesCreateCategory(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+func TestCategoriesCreateCategoryTitleAlreadyInUse(t *testing.T) {
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
+	})
+	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	cookies := signUpResp.Result().Cookies()
+
+	firstResp := support.MakeCreateCategoryRequest(t, app, "Work", cookies...)
+	require.Equal(t, http.StatusCreated, firstResp.Code)
+
+	secondResp := support.MakeJsonRequest(
+		t,
+		app,
+		http.MethodPost,
+		"/api/categories?title=Work",
+		nil,
+		signUpResp.Result().Cookies()...,
+	)
+
+	support.AssertErrorResponse(
+		t,
+		secondResp,
+		http.StatusConflict,
+		"category_title_already_in_use",
+		"Category title is already in use.",
+	)
+}
+
+func TestCategoriesCreateCategoryTitleCanBeReusedByDifferentUser(t *testing.T) {
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(
+		t,
+		support.TestUser1Email,
+		support.TestUser2Email,
+	)
+	firstSignUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
+	})
+	require.Equal(t, http.StatusCreated, firstSignUpResp.Code)
+	secondSignUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
+		Email:    support.TestUser2Email,
+		Password: support.TestUser1Password,
+	})
+	require.Equal(t, http.StatusCreated, secondSignUpResp.Code)
+
+	firstResp := support.MakeJsonRequest(
+		t,
+		app,
+		http.MethodPost,
+		"/api/categories?title="+url.QueryEscape("Work"),
+		nil,
+		firstSignUpResp.Result().Cookies()...,
+	)
+	require.Equal(t, http.StatusCreated, firstResp.Code)
+	secondResp := support.MakeJsonRequest(
+		t,
+		app,
+		http.MethodPost,
+		"/api/categories?title="+url.QueryEscape("Work"),
+		nil,
+		secondSignUpResp.Result().Cookies()...,
+	)
+	require.Equal(t, http.StatusCreated, secondResp.Code)
+
+	var firstCategory categoriesTransport.CategoryResponse
+	require.NoError(t, json.NewDecoder(firstResp.Body).Decode(&firstCategory), "failed to decode first category response")
+	var secondCategory categoriesTransport.CategoryResponse
+	require.NoError(t, json.NewDecoder(secondResp.Body).Decode(&secondCategory), "failed to decode second category response")
+
+	assert.Equal(t, firstCategory.Title, secondCategory.Title, "expected users to share a category title")
+	assert.NotEqual(t, firstCategory.Id, secondCategory.Id, "expected separate categories")
+}
+
+func TestCategoriesCreateCategory(t *testing.T) {
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
+	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 

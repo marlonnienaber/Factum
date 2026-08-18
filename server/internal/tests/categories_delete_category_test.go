@@ -2,6 +2,7 @@ package tests
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -27,10 +28,10 @@ func TestCategoriesDeleteCategoryUnauthenticated(t *testing.T) {
 }
 
 func TestCategoriesDeleteCategoryInvalidId(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 
@@ -53,10 +54,10 @@ func TestCategoriesDeleteCategoryInvalidId(t *testing.T) {
 }
 
 func TestCategoriesDeleteCategoryNotFound(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 
@@ -74,15 +75,15 @@ func TestCategoriesDeleteCategoryNotFound(t *testing.T) {
 		resp,
 		http.StatusNotFound,
 		"category_not_found",
-		"No category exists for the provided id.",
+		"No category of the logged in user exists with the provided id.",
 	)
 }
 
 func TestCategoriesDeleteCategoryStillReferenced(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 
@@ -130,11 +131,51 @@ func TestCategoriesDeleteCategoryStillReferenced(t *testing.T) {
 	)
 }
 
+func TestCategoriesDeleteCategoryOwnedByDifferentUser(t *testing.T) {
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(
+		t,
+		support.TestUser1Email,
+		support.TestUser2Email,
+	)
+	ownerSignUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
+	})
+	require.Equal(t, http.StatusCreated, ownerSignUpResp.Code)
+	otherSignUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
+		Email:    support.TestUser2Email,
+		Password: support.TestUser2Password,
+	})
+	require.Equal(t, http.StatusCreated, otherSignUpResp.Code)
+
+	createResp := support.MakeCreateCategoryRequest(t, app, "Work", ownerSignUpResp.Result().Cookies()...)
+	require.Equal(t, http.StatusCreated, createResp.Code)
+	var category categoriesTransport.CategoryResponse
+	require.NoError(t, json.NewDecoder(createResp.Body).Decode(&category), "failed to decode category response")
+
+	deleteResp := support.MakeJsonRequest(
+		t,
+		app,
+		http.MethodDelete,
+		fmt.Sprintf("/api/categories/%d", category.Id),
+		nil,
+		otherSignUpResp.Result().Cookies()...,
+	)
+
+	support.AssertErrorResponse(
+		t,
+		deleteResp,
+		http.StatusNotFound,
+		"category_not_found",
+		"No category of the logged in user exists with the provided id.",
+	)
+}
+
 func TestCategoriesDeleteCategory(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 

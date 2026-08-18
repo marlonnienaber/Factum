@@ -37,10 +37,10 @@ func TestTasksCreateTaskUnauthenticated(t *testing.T) {
 }
 
 func TestTasksCreateTaskNoTitleProvided(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 
@@ -66,10 +66,10 @@ func TestTasksCreateTaskNoTitleProvided(t *testing.T) {
 }
 
 func TestTasksCreateTaskTitleTooShort(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 
@@ -96,10 +96,10 @@ func TestTasksCreateTaskTitleTooShort(t *testing.T) {
 }
 
 func TestTasksCreateTaskTitleTooLong(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 
@@ -126,10 +126,10 @@ func TestTasksCreateTaskTitleTooLong(t *testing.T) {
 }
 
 func TestTasksCreateTaskDescriptionTooShort(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 
@@ -158,10 +158,10 @@ func TestTasksCreateTaskDescriptionTooShort(t *testing.T) {
 }
 
 func TestTasksCreateTaskDescriptionTooLong(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 
@@ -190,10 +190,10 @@ func TestTasksCreateTaskDescriptionTooLong(t *testing.T) {
 }
 
 func TestTasksCreateTaskInvalidDate(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 
@@ -222,10 +222,10 @@ func TestTasksCreateTaskInvalidDate(t *testing.T) {
 }
 
 func TestTasksCreateTaskNoCategoryId(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 
@@ -251,10 +251,10 @@ func TestTasksCreateTaskNoCategoryId(t *testing.T) {
 }
 
 func TestTasksCreateTaskInvalidCategoryId(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 
@@ -281,10 +281,10 @@ func TestTasksCreateTaskInvalidCategoryId(t *testing.T) {
 }
 
 func TestTasksCreateTaskInvalidJson(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 
@@ -307,10 +307,10 @@ func TestTasksCreateTaskInvalidJson(t *testing.T) {
 }
 
 func TestTasksCreateTaskNonExistingCategoryId(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 
@@ -337,11 +337,52 @@ func TestTasksCreateTaskNonExistingCategoryId(t *testing.T) {
 	)
 }
 
+func TestTasksCreateTaskWithCategoryOwnedByDifferentUser(t *testing.T) {
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(
+		t,
+		support.TestUser1Email,
+		support.TestUser2Email,
+	)
+	ownerSignUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
+	})
+	require.Equal(t, http.StatusCreated, ownerSignUpResp.Code)
+	otherSignUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
+		Email:    support.TestUser2Email,
+		Password: support.TestUser2Password,
+	})
+	require.Equal(t, http.StatusCreated, otherSignUpResp.Code)
+
+	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", ownerSignUpResp.Result().Cookies()...)
+	require.Equal(t, http.StatusCreated, categoryResp.Code)
+	var category categoriesTransport.CategoryResponse
+	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
+
+	resp := support.MakeCreateTaskRequest(
+		t,
+		app,
+		"Task",
+		nil,
+		nil,
+		category.Id,
+		otherSignUpResp.Result().Cookies()...,
+	)
+
+	support.AssertErrorResponse(
+		t,
+		resp,
+		http.StatusNotFound,
+		"category_not_found",
+		"No category exists for the provided categoryId.",
+	)
+}
+
 func TestTasksCreateTaskWithDescriptionWithDate(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 
@@ -396,10 +437,10 @@ func TestTasksCreateTaskWithDescriptionWithDate(t *testing.T) {
 }
 
 func TestTasksCreateTaskWithoutDescriptionWithoutDate(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 
