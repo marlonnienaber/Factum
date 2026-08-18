@@ -3,15 +3,15 @@ import { toast } from 'svelte-sonner';
 import { z, type ZodType } from 'zod';
 import { ErrorResponseSchema } from '../types/responses/error-response';
 
-export async function jsonGetWithoutBodyWithResponse<R>(url: string, responseSchema: ZodType<R>): Promise<R | undefined> {
+export async function jsonGetWithoutBodyWithResponse<R>(url: string, responseSchema: ZodType<R>): Promise<R> {
 	return await jsonFetchWithoutBodyWithResponse('GET', url, responseSchema);
 }
 
-export async function jsonPostWithBodyWithResponse<B, R>(
-	url: string,
-	requestBody: B,
-	responseSchema: ZodType<R>
-): Promise<R | undefined> {
+export async function jsonPostWithoutBodyWithResponse<R>(url: string, responseSchema: ZodType<R>): Promise<R> {
+	return await jsonFetchWithoutBodyWithResponse('POST', url, responseSchema);
+}
+
+export async function jsonPostWithBodyWithResponse<B, R>(url: string, requestBody: B, responseSchema: ZodType<R>): Promise<R> {
 	return await jsonFetchWithBodyWithResponse('POST', url, requestBody, responseSchema);
 }
 
@@ -19,15 +19,18 @@ export async function jsonPostWithoutBodyWithoutResponse(url: string): Promise<v
 	await jsonFetchWithoutBodyWithoutResponse('POST', url);
 }
 
+export async function jsonDeleteWithoutBodyWithoutResponse(url: string): Promise<void> {
+	await jsonFetchWithoutBodyWithoutResponse('DELETE', url);
+}
+
 async function jsonFetchWithoutBodyWithResponse<R>(
-	httpMethod: 'GET',
+	httpMethod: 'GET' | 'POST',
 	url: string,
 	responseSchema: ZodType<R>
-): Promise<R | undefined> {
-	const response = await fetchOrLog(url, configureRequestOptions(httpMethod));
-	if (response === undefined) return undefined;
-	if (!(await isResponseOkOrLog(response))) return undefined;
-	return await parseResponseOrLog(response, responseSchema);
+): Promise<R> {
+	const response = await fetchOrThrow(url, configureRequestOptions(httpMethod));
+	await checkIfResponseOkOrThrow(response);
+	return await parseResponseOrThrow(response, responseSchema);
 }
 
 async function jsonFetchWithBodyWithResponse<B, R>(
@@ -35,20 +38,18 @@ async function jsonFetchWithBodyWithResponse<B, R>(
 	url: string,
 	requestBody: B,
 	responseSchema: ZodType<R>
-): Promise<R | undefined> {
-	const response = await fetchOrLog(url, configureRequestOptions(httpMethod, requestBody));
-	if (response === undefined) return undefined;
-	if (!(await isResponseOkOrLog(response))) return undefined;
-	return await parseResponseOrLog(response, responseSchema);
+): Promise<R> {
+	const response = await fetchOrThrow(url, configureRequestOptions(httpMethod, requestBody));
+	await checkIfResponseOkOrThrow(response);
+	return await parseResponseOrThrow(response, responseSchema);
 }
 
-async function jsonFetchWithoutBodyWithoutResponse(httpMethod: 'POST', url: string): Promise<void> {
-	const response = await fetchOrLog(url, configureRequestOptions(httpMethod));
-	if (response === undefined) return;
-	await isResponseOkOrLog(response);
+async function jsonFetchWithoutBodyWithoutResponse(httpMethod: 'POST' | 'DELETE', url: string): Promise<void> {
+	const response = await fetchOrThrow(url, configureRequestOptions(httpMethod));
+	await checkIfResponseOkOrThrow(response);
 }
 
-function configureRequestOptions<B>(method: 'GET' | 'POST', requestBody?: B): RequestInit {
+function configureRequestOptions<B>(method: 'GET' | 'POST' | 'DELETE', requestBody?: B): RequestInit {
 	const headers = new Headers();
 
 	if (requestBody !== undefined) {
@@ -63,54 +64,54 @@ function configureRequestOptions<B>(method: 'GET' | 'POST', requestBody?: B): Re
 	};
 }
 
-async function fetchOrLog(url: string, requestOptions: RequestInit): Promise<Response | undefined> {
+async function fetchOrThrow(url: string, requestOptions: RequestInit): Promise<Response> {
 	try {
 		return await fetch(url, requestOptions);
-	} catch {
+	} catch (error) {
 		showErrorToast('Request failed before receiving a response.');
-		return undefined;
+		throw error;
 	}
 }
 
-async function isResponseOkOrLog(response: Response): Promise<boolean> {
-	if (response.ok) return true;
+async function checkIfResponseOkOrThrow(response: Response): Promise<void> {
+	if (response.ok) return;
 
-	await logErrorResponse(response);
-	return false;
+	const errorMessage = await getErrorResponseMessage(response);
+	showErrorToast(errorMessage);
+	throw new Error(errorMessage);
 }
 
-async function parseResponseOrLog<R>(response: Response, responseSchema: ZodType<R>): Promise<R | undefined> {
+async function parseResponseOrThrow<R>(response: Response, responseSchema: ZodType<R>): Promise<R> {
+	let responseBody: unknown;
+
 	try {
 		if (isPrimitiveResponseSchema(responseSchema)) {
 			const text = await response.text();
-			return parseWithSchemaOrLog(responseSchema, coerceResponseToPrimitiveType(responseSchema, text));
+			responseBody = coerceResponseToPrimitiveType(responseSchema, text);
+		} else {
+			responseBody = await response.json();
 		}
-		const json = await response.json();
-		return parseWithSchemaOrLog(responseSchema, json);
-	} catch {
+	} catch (error) {
 		showErrorToast('Failed to parse response body.');
-		return undefined;
+		throw error;
 	}
-}
 
-function parseWithSchemaOrLog<R>(responseSchema: ZodType<R>, value: unknown): R | undefined {
-	const parsedResponse = responseSchema.safeParse(value);
+	const parsedResponse = responseSchema.safeParse(responseBody);
 	if (parsedResponse.success) return parsedResponse.data;
 
 	showErrorToast('Response validation failed.');
-	return undefined;
+	throw parsedResponse.error;
 }
 
-async function logErrorResponse(response: Response) {
+async function getErrorResponseMessage(response: Response): Promise<string> {
 	try {
 		const parsedErrorResponse = ErrorResponseSchema.safeParse(await response.json());
 		if (!parsedErrorResponse.success) {
-			showErrorToast('Received a malformed error response.');
-			return;
+			return 'Received a malformed error response.';
 		}
-		showErrorToast(parsedErrorResponse.data.message);
+		return parsedErrorResponse.data.message;
 	} catch {
-		showErrorToast('Failed to parse error response body.');
+		return 'Failed to parse error response body.';
 	}
 }
 
