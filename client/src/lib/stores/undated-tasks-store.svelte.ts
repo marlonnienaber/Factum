@@ -1,5 +1,5 @@
 import { type NetworkCall, jsonGetWithoutBodyWithResponse, jsonPostWithBodyWithResponse } from '$lib/api/api';
-import type { CreateTaskRequest } from '$lib/types/requests/create-task-request.ts';
+import type { CreateTaskRequest } from '$lib/types/requests/create-task-request';
 import { UndatedTaskResponseSchema, type UndatedTaskResponse } from '$lib/types/responses/undated-task-response';
 import { z } from 'zod';
 
