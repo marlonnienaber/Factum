@@ -8,12 +8,13 @@
 		trailingIcon?: Snippet;
 		variant?: Variant;
 		onclick?: MouseEventHandler<HTMLButtonElement>;
+		disabled?: boolean;
 	};
 
-	let { children, trailingIcon, variant = 'default', onclick }: Props = $props();
+	let { children, trailingIcon, variant = 'default', onclick, disabled = false }: Props = $props();
 </script>
 
-<button type="button" class="button" data-variant={variant} {onclick}>
+<button type="button" class="button" data-variant={variant} {onclick} {disabled}>
 	{@render children()}
 	{#if trailingIcon}
 		{@render trailingIcon()}
@@ -32,8 +33,13 @@
 		cursor: pointer;
 		color: var(--text-inverse);
 
-		&:hover {
+		&:hover:not(:disabled) {
 			opacity: 0.8;
+		}
+
+		&:disabled {
+			opacity: 0.5;
+			cursor: default;
 		}
 
 		&[data-variant='default'] {
