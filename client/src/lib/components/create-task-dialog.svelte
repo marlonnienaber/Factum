@@ -6,38 +6,52 @@
 	import Input from '$lib/components/input.svelte';
 	import CategorySelect from '$lib/components/category-select.svelte';
 	import Textarea from '$lib/components/textarea.svelte';
+	import { undatedTaskStore } from '$lib/stores/undated-tasks-store.svelte';
+	import { createTaskInputSchema } from '$lib/types/inputs/create-task-input';
 
 	type Props = {
 		open?: boolean;
 	};
 
 	let { open = $bindable(false) }: Props = $props();
-
-	let categories = $state([
-		{ value: 'work', label: 'Work' },
-		{ value: 'personal', label: 'Personal' },
-		{ value: 'shopping', label: 'Shopping' }
-	]);
-
 	let title = $state('');
 	let description = $state('');
-	let category = $state<string>();
-	const titleError = $derived(title.length > 100 ? 'Maximum character count of 100 violated.' : undefined);
-	const descriptionError = $derived(description.length > 500 ? 'Maximum character count of 500 violated.' : undefined);
+	let categoryId = $state<number>();
+	let titleError = $state<string>();
+	let descriptionError = $state<string>();
 
-	function handleCreateTask(): void {
+	async function handleCreateTask(): Promise<void> {
+		const inputParseResult = createTaskInputSchema.safeParse({
+			title,
+			description,
+			categoryId
+		});
+		if (!inputParseResult.success) {
+			applyValidationErrors(inputParseResult.error.issues);
+			return;
+		}
+
+		clearValidationErrors();
+		await undatedTaskStore.createTask(inputParseResult.data);
+
+		title = '';
+		description = '';
+		categoryId = undefined;
 		open = false;
 	}
 
-	function addCategory(label: string): void {
-		const newCategory = { value: crypto.randomUUID(), label };
-		categories = [...categories, newCategory];
-		category = newCategory.value;
+	function clearValidationErrors(): void {
+		titleError = undefined;
+		descriptionError = undefined;
 	}
 
-	function deleteCategory(value: string): void {
-		if (category === value) category = undefined;
-		categories = categories.filter((category) => category.value !== value);
+	function applyValidationErrors(issues: Array<{ path: PropertyKey[]; message: string }>): void {
+		clearValidationErrors();
+		for (const issue of issues) {
+			const field = issue.path[0];
+			if (field === 'title') titleError = titleError ?? issue.message;
+			if (field === 'description') descriptionError = descriptionError ?? issue.message;
+		}
 	}
 </script>
 
@@ -45,16 +59,16 @@
 	<Dialog.Portal>
 		<Dialog.Overlay>
 			{#snippet child({ props })}
-				<div {...props} class="dialog-overlay"></div>
+				<div {...props} class="overlay"></div>
 			{/snippet}
 		</Dialog.Overlay>
 		<Dialog.Content>
 			{#snippet child({ props })}
-				<div {...props} class="dialog-content">
-					<div class="dialog-heading">
+				<div {...props} class="content">
+					<div class="heading">
 						<Dialog.Title>
 							{#snippet child({ props: titleProps })}
-								<h2 {...titleProps} class="dialog-title">Create Task</h2>
+								<h2 {...titleProps} class="title">Create Task</h2>
 							{/snippet}
 						</Dialog.Title>
 						<Dialog.Close>
@@ -68,24 +82,39 @@
 
 					<div class="task-fields">
 						<label for="task-title">Title *</label>
-						<Input id="task-title" bind:value={title} error={titleError} placeholder="None chosen" />
+						<Input
+							id="task-title"
+							bind:value={title}
+							error={titleError}
+							placeholder="None chosen"
+							oninput={() => (titleError = undefined)}
+						/>
 
 						<label for="task-description">Description</label>
-						<Textarea id="task-description" bind:value={description} error={descriptionError} placeholder="None chosen" />
+						<Textarea
+							id="task-description"
+							bind:value={description}
+							error={descriptionError}
+							placeholder="None chosen"
+							oninput={() => (descriptionError = undefined)}
+						/>
 
 						<label for="task-date">Date</label>
 						<DatePicker />
 
 						<label for="task-category">Category *</label>
-						<CategorySelect items={categories} bind:value={category} onadd={addCategory} ondelete={deleteCategory} />
+						<CategorySelect onchange={(value) => (categoryId = value)} />
+					</div>
 
-						<div class="form-actions">
-							<Button onclick={() => (open = false)}>Cancel</Button>
-							<div class="create-action">
-								<span><sup>*</sup> required</span>
-								<Button variant="success" onclick={handleCreateTask}>Create</Button>
-							</div>
-						</div>
+					<div class="footer">
+						<Button onclick={() => (open = false)}>Cancel</Button>
+						<div class="spacer"></div>
+						<span>* required</span>
+						<Button
+							variant="success"
+							disabled={categoryId === undefined || undatedTaskStore.loading}
+							onclick={() => void handleCreateTask()}>Create</Button
+						>
 					</div>
 				</div>
 			{/snippet}
@@ -94,89 +123,75 @@
 </Dialog.Root>
 
 <style lang="scss">
-	.dialog-overlay {
+	.overlay {
 		position: fixed;
 		inset: 0;
 		z-index: 50;
-		background: rgb(0 0 0 / 55%);
+		background: var(--overlay);
 	}
 
-	.dialog-content {
+	.content {
 		position: fixed;
 		top: 50%;
 		left: 50%;
+		transform: translate(-50%, -50%);
 		z-index: 51;
 		width: min(28rem, calc(100vw - 2rem));
-		box-sizing: border-box;
-		transform: translate(-50%, -50%);
-		padding: 1.75rem;
+		box-shadow: 0 1.25rem 4rem rgb(0 0 0 / 30%);
 		border: 1px solid var(--border);
 		border-radius: 1rem;
 		background: var(--background);
 		color: var(--text);
-		box-shadow: 0 1.25rem 4rem rgb(0 0 0 / 30%);
-	}
-
-	.dialog-heading {
+		box-sizing: border-box;
+		padding: 1.75rem;
 		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		margin-bottom: 1.5rem;
-	}
+		flex-direction: column;
+		gap: 1.5rem;
 
-	.dialog-title {
-		margin: 0;
-		font-size: 2rem;
-		font-weight: 500;
-		line-height: 1.2;
-	}
-
-	.close-button {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		padding: 0.125rem;
-		border: 0;
-		background: transparent;
-		color: var(--text);
-		cursor: pointer;
-	}
-
-	.task-fields {
-		display: grid;
-		grid-template-columns: 6rem minmax(0, 1fr);
-		align-items: center;
-		gap: 1rem;
-
-		label {
-			font-size: 0.925rem;
-			font-weight: 500;
-		}
-
-		.form-actions {
-			grid-column: 1 / -1;
+		.heading {
 			display: flex;
 			align-items: center;
 			justify-content: space-between;
-			margin-top: 0.75rem;
+
+			.title {
+				margin: 0;
+				font-size: 2rem;
+				font-weight: 500;
+			}
+
+			.close-button {
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				padding: 0;
+				border: none;
+				background: transparent;
+				color: var(--text);
+				cursor: pointer;
+			}
 		}
 
-		.create-action {
+		.task-fields {
+			display: grid;
+			grid-template-columns: 6rem minmax(0, 1fr);
+			align-items: start;
+			gap: 1rem;
+		}
+
+		.footer {
 			display: flex;
 			align-items: center;
+			justify-content: space-between;
 			gap: 0.75rem;
+
+			.spacer {
+				flex: 1;
+			}
 
 			span {
 				color: var(--text-subtle);
 				font-size: 0.75rem;
 			}
-		}
-	}
-
-	@media (max-width: 35rem) {
-		.task-fields {
-			grid-template-columns: 1fr;
-			gap: 0.5rem;
 		}
 	}
 </style>
