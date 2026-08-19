@@ -1,104 +1,103 @@
 <script lang="ts">
+	import { categoryStore } from '$lib/stores/category-store.svelte';
 	import { Check, ChevronDown, Plus, Trash2 } from '@lucide/svelte';
-	import { tick } from 'svelte';
 	import { Select as BitsSelect } from 'bits-ui';
 
-	type Item = {
-		value: string;
-		label: string;
-	};
-
 	type Props = {
-		items: Item[];
-		value?: string;
-		onadd?: (label: string) => void;
-		ondelete?: (value: string) => void;
+		onchange: (value: number | undefined) => void;
 	};
 
-	let { items, value = $bindable(), onadd, ondelete }: Props = $props();
-	const addCategoryItemValue = $derived(getAvailableAddCategoryItemValue(items));
+	let { onchange }: Props = $props();
+	const items = $derived(categoryStore.categories.map((category) => ({ value: String(category.id), label: category.title })));
+	let value = $state<string>();
 	let open = $state(false);
-	let addingCategory = $state(false);
-	let addCategoryHighlighted = $state(false);
-	let categoryName = $state('');
-	let categoryInput = $state<HTMLInputElement>();
 
-	function getAvailableAddCategoryItemValue(items: Item[]): string {
+	const addCategoryItemValue = $derived(getAvailableAddCategoryItemValue(items));
+	let addCategoryItemSelected = $state(false);
+
+	let creatingNewCategory = $state(false);
+	let newCategoryName = $state('');
+
+	function getAvailableAddCategoryItemValue(items: Array<{ value: string }>): string {
 		const itemValues = new Set(items.map((item) => item.value));
 		let candidate = 'add-category';
 		let suffix = 1;
-
 		while (itemValues.has(candidate)) {
 			candidate = `add-category-${suffix}`;
 			suffix += 1;
 		}
-
 		return candidate;
 	}
 
-	async function showCategoryInput(): Promise<void> {
-		addingCategory = true;
-		await tick();
-		categoryInput?.focus();
-	}
-
-	function addCategory(): void {
-		if (categoryName === '') return;
-
-		onadd?.(categoryName);
-		open = false;
-	}
-
-	function handleCategoryNameInput(event: Event): void {
+	function handleNewCategoryNameInput(event: Event): void {
 		const input = event.currentTarget as HTMLInputElement;
 		const valueWithoutWhitespace = input.value.replace(/\s/g, '');
 		input.value = valueWithoutWhitespace;
-		categoryName = valueWithoutWhitespace;
+		newCategoryName = valueWithoutWhitespace;
 	}
 
-	function deleteCategory(event: MouseEvent, itemValue: string): void {
+	async function deleteCategory(event: MouseEvent, itemValue: string): Promise<void> {
 		event.stopPropagation();
-		ondelete?.(itemValue);
+		const categoryId = Number(itemValue);
+		await categoryStore.deleteCategory(categoryId);
+		if (categoryStore.categories.some((category) => category.id === categoryId)) return;
+
+		if (value === itemValue) {
+			value = undefined;
+			onchange(value);
+		}
 	}
 
-	function handleCategoryInputKeydown(event: KeyboardEvent): void {
+	function handleCategorySelectKeydown(event: KeyboardEvent, bitsUiHandler: unknown): void {
+		const isAddCategoryEvent = open && addCategoryItemSelected && (event.key === 'Enter' || event.key === ' ');
+		if (isAddCategoryEvent) {
+			event.preventDefault();
+			creatingNewCategory = true;
+		} else if (typeof bitsUiHandler === 'function') {
+			bitsUiHandler(event);
+		}
+	}
+
+	async function handleNewCategoryNameInputKeydown(event: KeyboardEvent): Promise<void> {
 		if (event.key !== 'Enter') return;
-
 		event.preventDefault();
-		addCategory();
+		if (newCategoryName === '') return;
+
+		const oldCategoryIds = new Set(categoryStore.categories.map((category) => category.id));
+		await categoryStore.createCategory(newCategoryName);
+		const createdCategory = categoryStore.categories.find((category) => !oldCategoryIds.has(category.id));
+		if (createdCategory === undefined) return;
+
+		value = String(createdCategory.id);
+		onchange(createdCategory.id);
+		open = false;
 	}
 
-	function handleTriggerKeydown(event: KeyboardEvent): boolean {
-		if (!open || !addCategoryHighlighted || (event.key !== 'Enter' && event.key !== ' ')) return false;
+	function handleMouseUpOnCreateNewCategoryItem(event: PointerEvent): void {
+		event.stopPropagation();
 
-		event.preventDefault();
-		void showCategoryInput();
-		return true;
-	}
-
-	function runEventHandler(handler: unknown, event: Event): void {
-		if (typeof handler === 'function') handler(event);
+		if (!creatingNewCategory) {
+			creatingNewCategory = true;
+		}
 	}
 
 	$effect(() => {
-		if (open) return;
-
-		addingCategory = false;
-		addCategoryHighlighted = false;
-		categoryName = '';
+		if (!open) {
+			creatingNewCategory = false;
+			addCategoryItemSelected = false;
+			newCategoryName = '';
+		}
 	});
 </script>
 
-<BitsSelect.Root type="single" {items} bind:value bind:open>
+<BitsSelect.Root type="single" {items} bind:value bind:open onValueChange={(value) => onchange(Number(value))}>
 	<BitsSelect.Trigger>
 		{#snippet child({ props })}
 			<button
 				{...props}
 				id="task-category"
 				class="select-trigger"
-				onkeydown={(event) => {
-					if (!handleTriggerKeydown(event)) runEventHandler(props.onkeydown, event);
-				}}
+				onkeydown={(event) => handleCategorySelectKeydown(event, props.onkeydown)}
 			>
 				<BitsSelect.Value placeholder="None chosen" />
 				<ChevronDown size={18} />
@@ -106,92 +105,74 @@
 		{/snippet}
 	</BitsSelect.Trigger>
 
-	{#if items.length > 0 || onadd}
-		<BitsSelect.Portal>
-			<BitsSelect.Content sideOffset={6}>
-				{#snippet child({ props: contentProps, wrapperProps })}
-					<div {...wrapperProps}>
-						<div {...contentProps} class:adding-category={addingCategory} class="select-content">
-							<BitsSelect.Viewport>
-								{#snippet child({ props })}
-									<div {...props}>
-										{#each items as item (item.value)}
-											<BitsSelect.Item value={item.value} label={item.label}>
-												{#snippet child({ props, selected })}
-													<div {...props} class="select-item select-row">
-														<span>{item.label}</span>
-														<span class="item-actions">
-															{#if selected}<Check size={18} aria-hidden="true" />{/if}
-															{#if ondelete}
-																<button
-																	type="button"
-																	class="delete-category"
-																	aria-label={`Delete ${item.label}`}
-																	onpointerdown={(event) => event.stopPropagation()}
-																	onpointerup={(event) => event.stopPropagation()}
-																	onclick={(event) => deleteCategory(event, item.value)}
-																>
-																	<Trash2 size={18} aria-hidden="true" />
-																</button>
-															{/if}
-														</span>
-													</div>
-												{/snippet}
-											</BitsSelect.Item>
-										{/each}
-										{#if onadd}
-											<BitsSelect.Item
-												value={addCategoryItemValue}
-												label="Add category"
-												onHighlight={() => (addCategoryHighlighted = true)}
-												onUnhighlight={() => (addCategoryHighlighted = false)}
+	<BitsSelect.Portal>
+		<BitsSelect.Content sideOffset={6}>
+			{#snippet child({ props: contentProps, wrapperProps })}
+				<div {...wrapperProps}>
+					<div {...contentProps} class:creating-new-category={creatingNewCategory} class="select-content">
+						<BitsSelect.Viewport>
+							{#snippet child({ props })}
+								<div {...props}>
+									{#each items as item (item.value)}
+										<BitsSelect.Item value={item.value} label={item.label}>
+											{#snippet child({ props, selected })}
+												<div {...props} class="select-item">
+													<span>{item.label}</span>
+													<span class="item-icons">
+														{#if selected}<Check size={18} aria-hidden="true" />{/if}
+														<button
+															type="button"
+															class="delete-button"
+															aria-label={`Delete ${item.label}`}
+															onpointerdown={(event) => event.stopPropagation()}
+															onpointerup={(event) => event.stopPropagation()}
+															onclick={(event) => void deleteCategory(event, item.value)}
+														>
+															<Trash2 size={18} aria-hidden="true" />
+														</button>
+													</span>
+												</div>
+											{/snippet}
+										</BitsSelect.Item>
+									{/each}
+									<BitsSelect.Item
+										value={addCategoryItemValue}
+										label="Add category"
+										onHighlight={() => (addCategoryItemSelected = true)}
+										onUnhighlight={() => (addCategoryItemSelected = false)}
+									>
+										{#snippet child({ props })}
+											<div
+												{...props}
+												class:editing={creatingNewCategory}
+												class="create-new-category-item select-item"
+												onpointerdown={(event) => event.stopPropagation()}
+												onpointerup={handleMouseUpOnCreateNewCategoryItem}
 											>
-												{#snippet child({ props })}
-													<div
-														{...props}
-														class:editing={addingCategory}
-														class="add-category select-item select-row"
-														onpointerdown={(event) => {
-															if (addingCategory) {
-																event.stopPropagation();
-																return;
-															}
-															runEventHandler(props.onpointerdown, event);
-														}}
-														onpointerup={(event) => {
-															event.stopPropagation();
-															if (addingCategory) return;
-
-															event.preventDefault();
-															void showCategoryInput();
-														}}
-													>
-														{#if addingCategory}
-															<input
-																bind:this={categoryInput}
-																value={categoryName}
-																aria-label="Category name"
-																placeholder="Category name"
-																oninput={handleCategoryNameInput}
-																onkeydown={handleCategoryInputKeydown}
-															/>
-														{:else}
-															<span>Add category</span>
-															<Plus size={18} aria-hidden="true" />
-														{/if}
-													</div>
-												{/snippet}
-											</BitsSelect.Item>
-										{/if}
-									</div>
-								{/snippet}
-							</BitsSelect.Viewport>
-						</div>
+												{#if creatingNewCategory}
+													<input
+														{@attach (element) => element.focus()}
+														value={newCategoryName}
+														aria-label="Category name"
+														placeholder="Category name"
+														oninput={handleNewCategoryNameInput}
+														onkeydown={handleNewCategoryNameInputKeydown}
+													/>
+												{:else}
+													<span>Add category</span>
+													<Plus size={18} aria-hidden="true" />
+												{/if}
+											</div>
+										{/snippet}
+									</BitsSelect.Item>
+								</div>
+							{/snippet}
+						</BitsSelect.Viewport>
 					</div>
-				{/snippet}
-			</BitsSelect.Content>
-		</BitsSelect.Portal>
-	{/if}
+				</div>
+			{/snippet}
+		</BitsSelect.Content>
+	</BitsSelect.Portal>
 </BitsSelect.Root>
 
 <style lang="scss">
@@ -210,7 +191,10 @@
 		color: var(--text);
 		cursor: pointer;
 
-		&:focus-visible,
+		&:focus-visible {
+			border-color: var(--border-accented);
+		}
+
 		&[data-state='open'] {
 			border-color: var(--border-accented);
 		}
@@ -229,71 +213,68 @@
 		border-radius: 0.75rem;
 		background: var(--background);
 		color: var(--text);
-		box-shadow: 0 0.75rem 2rem rgb(0 0 0 / 30%);
-	}
 
-	.select-row {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		width: 100%;
-		box-sizing: border-box;
-		padding: 0.625rem;
-		border: 0;
-		border-radius: 0.5rem;
-		outline: none;
-		background: transparent;
-		color: var(--text);
-		font: inherit;
-	}
-
-	.select-item {
-		cursor: pointer;
-
-		&[data-highlighted] {
-			background: var(--surface-subtle);
-		}
-	}
-
-	.select-content.adding-category .select-item:not(.add-category)[data-highlighted] {
-		background: transparent;
-	}
-
-	.item-actions {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-	}
-
-	.delete-category {
-		display: flex;
-		padding: 0;
-		border: 0;
-		outline: none;
-		background: transparent;
-		color: var(--danger);
-		cursor: pointer;
-
-		&:focus-visible {
-			background: var(--surface-subtle);
-		}
-	}
-
-	.add-category {
-		cursor: pointer;
-
-		&.editing {
-			background: var(--surface-subtle);
-			cursor: text;
-		}
-
-		input {
+		.select-item {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
 			width: 100%;
-			border: 0;
+			box-sizing: border-box;
+			padding: 0.625rem;
+			border: none;
+			border-radius: 0.5rem;
 			outline: none;
 			background: transparent;
 			color: var(--text);
-			font: inherit;
+			cursor: pointer;
+
+			&[data-highlighted] {
+				background: var(--surface);
+			}
+
+			.item-icons {
+				display: flex;
+				align-items: center;
+				gap: 0.5rem;
+
+				.delete-button {
+					display: flex;
+					padding: 0;
+					border: 0;
+					outline: none;
+					background: transparent;
+					color: var(--danger);
+					cursor: pointer;
+
+					&:focus-visible {
+						background: var(--surface-subtle);
+					}
+				}
+			}
+		}
+
+		.create-new-category-item {
+			cursor: pointer;
+
+			&.editing {
+				background: var(--surface-subtle);
+				cursor: text;
+			}
+
+			input {
+				width: 100%;
+				border: 0;
+				outline: none;
+				background: transparent;
+				color: var(--text);
+				font: inherit;
+			}
+		}
+
+		&.creating-new-category {
+			.select-item:not(.create-new-category-item)[data-highlighted] {
+				background: transparent;
+			}
 		}
 	}
 </style>
