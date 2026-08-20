@@ -14,10 +14,10 @@
 <div class="frame">
 	<div class="left-column-container">
 		<div class="controls-section">
-			<button onclick={() => (createTaskDialogOpen = true)}>
+			<Button onclick={() => (createTaskDialogOpen = true)}>
 				Add Task
 				{#snippet trailingIcon()}<Plus size={17} strokeWidth={2.5} />{/snippet}
-			</button>
+			</Button>
 		</div>
 		<div class="no-date-section">
 			{#each undatedTaskStore.undatedTasks as task (task.id)}
