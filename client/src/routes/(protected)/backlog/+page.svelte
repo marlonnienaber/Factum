@@ -2,6 +2,7 @@
 	import { Plus } from '@lucide/svelte';
 	import Button from '$lib/components/button.svelte';
 	import CreateTaskDialog from '$lib/components/create-task-dialog.svelte';
+	import { undatedTaskStore } from '$lib/stores/undated-tasks-store.svelte';
 
 	let createTaskDialogOpen = $state(false);
 </script>
@@ -18,7 +19,11 @@
 				{#snippet trailingIcon()}<Plus size={17} strokeWidth={2.5} />{/snippet}
 			</Button>
 		</div>
-		<div class="no-date-section"></div>
+		<div class="no-date-section">
+			{#each undatedTaskStore.undatedTasks as task (task.id)}
+				<span>{task.title}</span>
+			{/each}
+		</div>
 	</div>
 	<div class="date-section"></div>
 	<div class="today-section"></div>
@@ -59,6 +64,8 @@
 				flex-direction: column;
 				width: 100%;
 				flex: 1;
+				box-sizing: border-box;
+				padding: 0.75rem;
 				border: 1px solid var(--border);
 				border-radius: 0.75rem;
 			}

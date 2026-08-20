@@ -75,6 +75,7 @@
 
 		<div class="inputs">
 			<Input
+				id="email-input"
 				bind:value={email}
 				error={emailError}
 				leadingIcon={Mail}
@@ -83,9 +84,9 @@
 				autocomplete="email"
 				disabled={loading}
 				oninput={() => (emailError = undefined)}
-				data-testid="email-input"
 			/>
 			<Input
+				id="password-input"
 				bind:value={password}
 				error={passwordError}
 				leadingIcon={Lock}
@@ -94,9 +95,9 @@
 				autocomplete="new-password"
 				disabled={loading}
 				oninput={() => (passwordError = undefined)}
-				data-testid="password-input"
 			/>
 			<Input
+				id="repeated-password-input"
 				bind:value={repeatedPassword}
 				error={repeatedPasswordError}
 				leadingIcon={Repeat}
@@ -105,7 +106,6 @@
 				autocomplete="new-password"
 				disabled={loading}
 				oninput={() => (repeatedPasswordError = undefined)}
-				data-testid="repeated-password-input"
 			/>
 		</div>
 
