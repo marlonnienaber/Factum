@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Plus } from '@lucide/svelte';
-	import Button from '$lib/components/button.svelte';
-	import CreateTaskDialog from '$lib/components/create-task-dialog.svelte';
+	import Button from '$lib/components/shared/button.svelte';
+	import CreateTaskDialog from '$lib/components/taskCreation/create-task-dialog.svelte';
 	import { undatedTaskStore } from '$lib/stores/undated-tasks-store.svelte';
 
 	let createTaskDialogOpen = $state(false);
@@ -14,10 +14,10 @@
 <div class="frame">
 	<div class="left-column-container">
 		<div class="controls-section">
-			<Button onclick={() => (createTaskDialogOpen = true)}>
+			<button onclick={() => (createTaskDialogOpen = true)}>
 				Add Task
 				{#snippet trailingIcon()}<Plus size={17} strokeWidth={2.5} />{/snippet}
-			</Button>
+			</button>
 		</div>
 		<div class="no-date-section">
 			{#each undatedTaskStore.undatedTasks as task (task.id)}

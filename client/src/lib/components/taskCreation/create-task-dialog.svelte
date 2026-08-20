@@ -2,13 +2,13 @@
 	import { X } from '@lucide/svelte';
 	import type { CalendarDate } from '@internationalized/date';
 	import { Dialog } from 'bits-ui';
-	import Button from '$lib/components/button.svelte';
-	import DatePicker from '$lib/components/date-picker.svelte';
-	import Input from '$lib/components/input.svelte';
-	import CategorySelect from '$lib/components/category-select.svelte';
-	import Textarea from '$lib/components/textarea.svelte';
-	import { undatedTaskStore } from '$lib/stores/undated-tasks-store.svelte';
-	import { createTaskInputSchema } from '$lib/types/inputs/create-task-input';
+	import Button from '$lib/components/shared/button.svelte';
+	import DatePicker from '$lib/components/shared/date-picker.svelte';
+	import Input from '$lib/components/shared/input.svelte';
+	import CategorySelect from '$lib/components/taskCreation/category-select.svelte';
+	import Textarea from '$lib/components/shared/textarea.svelte';
+	import { undatedTaskStore } from '$lib/stores/undated-tasks-store.svelte.js';
+	import { createTaskInputSchema } from '$lib/types/inputs/create-task-input.ts';
 
 	type Props = {
 		open: boolean;
@@ -84,7 +84,7 @@
 
 					<div class="task-fields">
 						<label for="task-title">Title *</label>
-						<Input
+						<input
 							id="task-title"
 							bind:value={title}
 							error={titleError}
@@ -93,7 +93,7 @@
 						/>
 
 						<label for="task-description">Description</label>
-						<Textarea
+						<textarea
 							id="task-description"
 							bind:value={description}
 							error={descriptionError}
@@ -109,13 +109,13 @@
 					</div>
 
 					<div class="footer">
-						<Button onclick={() => (open = false)}>Cancel</Button>
+						<button onclick={() => (open = false)}>Cancel</button>
 						<div class="spacer"></div>
 						<span>* required</span>
-						<Button
+						<button
 							variant="success"
 							disabled={categoryId === undefined || undatedTaskStore.loading}
-							onclick={() => void handleCreateTask()}>Create</Button
+							onclick={() => void handleCreateTask()}>Create</button
 						>
 					</div>
 				</div>

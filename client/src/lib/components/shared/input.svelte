@@ -1,5 +1,5 @@
 <script lang="ts">
-	import Popover from '$lib/components/popover.svelte';
+	import Popover from '$lib/components/shared/popover.svelte';
 	import { Info, type LucideIcon } from '@lucide/svelte';
 	import type { HTMLInputAttributes } from 'svelte/elements';
 
@@ -37,14 +37,14 @@
 	<input {id} bind:value {type} {placeholder} {autocomplete} {disabled} {oninput} />
 	{#if invalid}
 		<span class="error-icon">
-			<Popover side="right" align="center" openOnHover>
+			<popover side="right" align="center" openOnHover>
 				{#snippet trigger()}
 					<span id={id === undefined ? undefined : `${id}-error-trigger`}>
 						<Info size={18} aria-hidden={true} />
 					</span>
 				{/snippet}
 				<span class="error-message">{error}</span>
-			</Popover>
+			</popover>
 		</span>
 	{/if}
 </div>

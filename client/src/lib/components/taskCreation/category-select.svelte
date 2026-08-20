@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { categoryStore } from '$lib/stores/category-store.svelte';
+	import { categoryStore } from '$lib/stores/category-store.svelte.js';
 	import { Check, ChevronDown, Plus, Trash2 } from '@lucide/svelte';
 	import { Select as BitsSelect } from 'bits-ui';
 

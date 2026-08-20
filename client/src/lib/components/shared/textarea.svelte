@@ -1,5 +1,5 @@
 <script lang="ts">
-	import Popover from '$lib/components/popover.svelte';
+	import Popover from '$lib/components/shared/popover.svelte';
 	import { Info } from '@lucide/svelte';
 
 	type Props = {
@@ -18,10 +18,10 @@
 	<textarea {id} bind:value {placeholder} {oninput} aria-invalid={invalid}></textarea>
 	{#if invalid}
 		<span class="info-icon">
-			<Popover side="right" align="center" openOnHover>
+			<popover side="right" align="center" openOnHover>
 				{#snippet trigger()}<Info size={18} aria-hidden="true" />{/snippet}
 				<span class="error-message">{error}</span>
-			</Popover>
+			</popover>
 		</span>
 	{/if}
 </div>

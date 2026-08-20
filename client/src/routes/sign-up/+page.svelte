@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import Input from '$lib/components/input.svelte';
+	import Input from '$lib/components/shared/input.svelte';
 	import { authenticationStore } from '$lib/stores/authentication-store.svelte';
 	import { themeStore } from '$lib/stores/theme-store.svelte';
 	import { signUpInputSchema } from '$lib/types/inputs/sign-up-input';
@@ -74,7 +74,7 @@
 		</div>
 
 		<div class="inputs">
-			<Input
+			<input
 				id="email-input"
 				bind:value={email}
 				error={emailError}
@@ -85,7 +85,7 @@
 				disabled={loading}
 				oninput={() => (emailError = undefined)}
 			/>
-			<Input
+			<input
 				id="password-input"
 				bind:value={password}
 				error={passwordError}
@@ -96,7 +96,7 @@
 				disabled={loading}
 				oninput={() => (passwordError = undefined)}
 			/>
-			<Input
+			<input
 				id="repeated-password-input"
 				bind:value={repeatedPassword}
 				error={repeatedPasswordError}
