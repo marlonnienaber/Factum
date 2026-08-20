@@ -83,6 +83,7 @@
 			background: transparent;
 			color: var(--text);
 			font: inherit;
+			font-size: 0.865rem;
 		}
 
 		.error-icon {

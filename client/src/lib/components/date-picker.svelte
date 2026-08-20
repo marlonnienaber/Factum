@@ -125,6 +125,7 @@
 		border-radius: 0.5rem;
 		background: transparent;
 		color: var(--text);
+		font-size: 0.865rem;
 
 		&.active,
 		&:has(.date-segment:focus) {

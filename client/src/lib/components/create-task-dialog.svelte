@@ -138,7 +138,7 @@
 		left: 50%;
 		transform: translate(-50%, -50%);
 		z-index: 51;
-		width: min(28rem, calc(100vw - 2rem));
+		width: min(32rem, calc(100vw - 2rem));
 		box-shadow: 0 1.25rem 4rem rgb(0 0 0 / 30%);
 		border: 1px solid var(--border);
 		border-radius: 1rem;

@@ -38,7 +38,7 @@
 
 		textarea {
 			width: 100%;
-			min-height: 4.5rem;
+			min-height: 6rem;
 			box-sizing: border-box;
 			padding: 0.625rem;
 			border: 1px solid var(--border);
@@ -47,6 +47,7 @@
 			background: transparent;
 			color: var(--text);
 			font: inherit;
+			font-size: 0.865rem;
 			resize: vertical;
 
 			&:focus {

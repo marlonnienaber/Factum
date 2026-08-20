@@ -94,12 +94,7 @@
 <BitsSelect.Root type="single" {items} bind:value bind:open onValueChange={(value) => onchange(Number(value))}>
 	<BitsSelect.Trigger>
 		{#snippet child({ props })}
-			<button
-				{...props}
-				{id}
-				class="select-trigger"
-				onkeydown={(event) => handleCategorySelectKeydown(event, props.onkeydown)}
-			>
+			<button {...props} {id} class="select-trigger" onkeydown={(event) => handleCategorySelectKeydown(event, props.onkeydown)}>
 				<BitsSelect.Value placeholder="None chosen" />
 				<ChevronDown size={18} />
 			</button>
@@ -191,6 +186,7 @@
 		background: transparent;
 		color: var(--text);
 		cursor: pointer;
+		font-size: 0.865rem;
 
 		&:focus-visible {
 			border-color: var(--border-accented);
