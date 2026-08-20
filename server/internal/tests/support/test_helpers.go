@@ -13,6 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/marlonnienaber/Factum/server/internal/configuration"
 	authenticationTransport "github.com/marlonnienaber/Factum/server/internal/features/authentication/types/transport"
+	categoriesTransport "github.com/marlonnienaber/Factum/server/internal/features/categories/types/transport"
 	tasksTransport "github.com/marlonnienaber/Factum/server/internal/features/tasks/types/transport"
 	"github.com/marlonnienaber/Factum/server/internal/shared"
 	"github.com/marlonnienaber/Factum/server/internal/validation"
@@ -65,12 +66,18 @@ func MakeCreateCategoryRequest(
 	t *testing.T,
 	app *gin.Engine,
 	title string,
+	color string,
 	cookies ...*http.Cookie,
 ) *httptest.ResponseRecorder {
 	t.Helper()
 
-	path := "/api/categories?" + url.Values{"title": {title}}.Encode()
-	return MakeJsonRequest(t, app, http.MethodPost, path, nil, cookies...)
+	payload, err := json.Marshal(categoriesTransport.CreateCategoryRequest{
+		Title: title,
+		Color: color,
+	})
+	require.NoError(t, err, "serializing request failed")
+
+	return MakeJsonRequest(t, app, http.MethodPost, "/api/categories", payload, cookies...)
 }
 
 func MakeCreateTaskRequest(

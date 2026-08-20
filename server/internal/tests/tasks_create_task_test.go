@@ -354,7 +354,7 @@ func TestTasksCreateTaskWithCategoryOwnedByDifferentUser(t *testing.T) {
 	})
 	require.Equal(t, http.StatusCreated, otherSignUpResp.Code)
 
-	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", ownerSignUpResp.Result().Cookies()...)
+	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", ownerSignUpResp.Result().Cookies()...)
 	require.Equal(t, http.StatusCreated, categoryResp.Code)
 	var category categoriesTransport.CategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
@@ -390,6 +390,7 @@ func TestTasksCreateTaskWithDescriptionWithDate(t *testing.T) {
 		t,
 		app,
 		"Work",
+		"#3b82f6",
 		signUpResp.Result().Cookies()...,
 	)
 	require.Equal(t, http.StatusCreated, createCategoryResp.Code)
@@ -448,6 +449,7 @@ func TestTasksCreateTaskWithoutDescriptionWithoutDate(t *testing.T) {
 		t,
 		app,
 		"Work",
+		"#3b82f6",
 		signUpResp.Result().Cookies()...,
 	)
 	require.Equal(t, http.StatusCreated, createCategoryResp.Code)

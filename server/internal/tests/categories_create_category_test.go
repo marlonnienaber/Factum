@@ -3,7 +3,6 @@ package tests
 import (
 	"encoding/json"
 	"net/http"
-	"net/url"
 	"strings"
 	"testing"
 
@@ -17,7 +16,12 @@ import (
 func TestCategoriesCreateCategoryUnauthenticated(t *testing.T) {
 	app := support.PrepareTestEnvironment(t)
 
-	resp := support.MakeJsonRequest(t, app, http.MethodPost, "/api/categories?title=Work", nil)
+	payload, err := json.Marshal(categoriesTransport.CreateCategoryRequest{
+		Title: "Work",
+		Color: "#3b82f6",
+	})
+	require.NoError(t, err, "serializing request failed")
+	resp := support.MakeJsonRequest(t, app, http.MethodPost, "/api/categories", payload)
 
 	support.AssertErrorResponse(
 		t,
@@ -28,6 +32,31 @@ func TestCategoriesCreateCategoryUnauthenticated(t *testing.T) {
 	)
 }
 
+func TestCategoriesCreateCategoryInvalidColor(t *testing.T) {
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
+	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
+	})
+	require.Equal(t, http.StatusCreated, signUpResp.Code)
+
+	payload, err := json.Marshal(categoriesTransport.CreateCategoryRequest{
+		Title: "Work",
+		Color: "#3B82F6",
+	})
+	require.NoError(t, err, "serializing request failed")
+	resp := support.MakeJsonRequest(
+		t,
+		app,
+		http.MethodPost,
+		"/api/categories",
+		payload,
+		signUpResp.Result().Cookies()...,
+	)
+
+	support.AssertValidationErrorResponse(t, resp, "color", "color is invalid.")
+}
+
 func TestCategoriesCreateCategoryNoTitle(t *testing.T) {
 	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
@@ -36,21 +65,22 @@ func TestCategoriesCreateCategoryNoTitle(t *testing.T) {
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 
+	payload, err := json.Marshal(map[string]string{"color": "#3b82f6"})
+	require.NoError(t, err, "serializing request failed")
 	resp := support.MakeJsonRequest(
 		t,
 		app,
 		http.MethodPost,
 		"/api/categories",
-		nil,
+		payload,
 		signUpResp.Result().Cookies()...,
 	)
 
-	support.AssertErrorResponse(
+	support.AssertValidationErrorResponse(
 		t,
 		resp,
-		http.StatusBadRequest,
-		"missing_query_parameter",
-		"URL is missing a required query parameter.",
+		"title",
+		"title must be at least 1 characters long.",
 	)
 }
 
@@ -62,21 +92,25 @@ func TestCategoriesCreateCategoryTitleTooSmall(t *testing.T) {
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 
+	payload, err := json.Marshal(categoriesTransport.CreateCategoryRequest{
+		Title: "",
+		Color: "#3b82f6",
+	})
+	require.NoError(t, err, "serializing request failed")
 	resp := support.MakeJsonRequest(
 		t,
 		app,
 		http.MethodPost,
-		"/api/categories?title=",
-		nil,
+		"/api/categories",
+		payload,
 		signUpResp.Result().Cookies()...,
 	)
 
-	support.AssertErrorResponse(
+	support.AssertValidationErrorResponse(
 		t,
 		resp,
-		http.StatusBadRequest,
-		"invalid_query_parameter",
-		"URL contains an invalid query parameter",
+		"title",
+		"title must be at least 1 characters long.",
 	)
 }
 
@@ -88,21 +122,25 @@ func TestCategoriesCreateCategoryTitleTooLong(t *testing.T) {
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 
+	payload, err := json.Marshal(categoriesTransport.CreateCategoryRequest{
+		Title: strings.Repeat("a", maximumCategoryTitleLength+1),
+		Color: "#3b82f6",
+	})
+	require.NoError(t, err, "serializing request failed")
 	resp := support.MakeJsonRequest(
 		t,
 		app,
 		http.MethodPost,
-		"/api/categories?title="+strings.Repeat("a", maximumCategoryTitleLength+1),
-		nil,
+		"/api/categories",
+		payload,
 		signUpResp.Result().Cookies()...,
 	)
 
-	support.AssertErrorResponse(
+	support.AssertValidationErrorResponse(
 		t,
 		resp,
-		http.StatusBadRequest,
-		"invalid_query_parameter",
-		"URL contains an invalid query parameter",
+		"title",
+		"title must be at most 50 characters long.",
 	)
 }
 
@@ -115,17 +153,10 @@ func TestCategoriesCreateCategoryTitleAlreadyInUse(t *testing.T) {
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()
 
-	firstResp := support.MakeCreateCategoryRequest(t, app, "Work", cookies...)
+	firstResp := support.MakeCreateCategoryRequest(t, app, "Work", "#111111", cookies...)
 	require.Equal(t, http.StatusCreated, firstResp.Code)
 
-	secondResp := support.MakeJsonRequest(
-		t,
-		app,
-		http.MethodPost,
-		"/api/categories?title=Work",
-		nil,
-		signUpResp.Result().Cookies()...,
-	)
+	secondResp := support.MakeCreateCategoryRequest(t, app, "Work", "#222222", cookies...)
 
 	support.AssertErrorResponse(
 		t,
@@ -133,6 +164,29 @@ func TestCategoriesCreateCategoryTitleAlreadyInUse(t *testing.T) {
 		http.StatusConflict,
 		"category_title_already_in_use",
 		"Category title is already in use.",
+	)
+}
+
+func TestCategoriesCreateCategoryColorAlreadyInUse(t *testing.T) {
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
+	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
+	})
+	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	cookies := signUpResp.Result().Cookies()
+
+	firstResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
+	require.Equal(t, http.StatusCreated, firstResp.Code)
+
+	secondResp := support.MakeCreateCategoryRequest(t, app, "Personal", "#3b82f6", cookies...)
+
+	support.AssertErrorResponse(
+		t,
+		secondResp,
+		http.StatusConflict,
+		"category_color_already_in_use",
+		"Category color is already in use.",
 	)
 }
 
@@ -153,23 +207,9 @@ func TestCategoriesCreateCategoryTitleCanBeReusedByDifferentUser(t *testing.T) {
 	})
 	require.Equal(t, http.StatusCreated, secondSignUpResp.Code)
 
-	firstResp := support.MakeJsonRequest(
-		t,
-		app,
-		http.MethodPost,
-		"/api/categories?title="+url.QueryEscape("Work"),
-		nil,
-		firstSignUpResp.Result().Cookies()...,
-	)
+	firstResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", firstSignUpResp.Result().Cookies()...)
 	require.Equal(t, http.StatusCreated, firstResp.Code)
-	secondResp := support.MakeJsonRequest(
-		t,
-		app,
-		http.MethodPost,
-		"/api/categories?title="+url.QueryEscape("Work"),
-		nil,
-		secondSignUpResp.Result().Cookies()...,
-	)
+	secondResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", secondSignUpResp.Result().Cookies()...)
 	require.Equal(t, http.StatusCreated, secondResp.Code)
 
 	var firstCategory categoriesTransport.CategoryResponse
@@ -190,12 +230,18 @@ func TestCategoriesCreateCategory(t *testing.T) {
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 
 	title := "Work & personal"
+	color := "#12abef"
+	payload, err := json.Marshal(categoriesTransport.CreateCategoryRequest{
+		Title: title,
+		Color: color,
+	})
+	require.NoError(t, err, "serializing request failed")
 	resp := support.MakeJsonRequest(
 		t,
 		app,
 		http.MethodPost,
-		"/api/categories?title="+url.QueryEscape(title),
-		nil,
+		"/api/categories",
+		payload,
 		signUpResp.Result().Cookies()...,
 	)
 	require.Equal(t, http.StatusCreated, resp.Code)
@@ -205,6 +251,7 @@ func TestCategoriesCreateCategory(t *testing.T) {
 
 	assert.Equal(t, int64(1), respBody.Id, "unexpected category id")
 	assert.Equal(t, title, respBody.Title, "unexpected category title")
+	assert.Equal(t, color, respBody.Color, "unexpected category color")
 }
 
 const maximumCategoryTitleLength = 50

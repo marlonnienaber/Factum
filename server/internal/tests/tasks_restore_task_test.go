@@ -152,6 +152,7 @@ func TestTasksRestoreTaskAlreadyRestored(t *testing.T) {
 		t,
 		app,
 		"Work",
+		"#3b82f6",
 		signUpResp.Result().Cookies()...,
 	)
 	require.Equal(t, http.StatusCreated, createCategoryResp.Code)
@@ -216,6 +217,7 @@ func TestTasksRestoreTaskRankAlreadyExists(t *testing.T) {
 		t,
 		app,
 		"Work",
+		"#3b82f6",
 		signUpResp.Result().Cookies()...,
 	)
 	require.Equal(t, http.StatusCreated, createCategoryResp.Code)
@@ -307,6 +309,7 @@ func TestTasksRestoreTask(t *testing.T) {
 		t,
 		app,
 		"Work",
+		"#3b82f6",
 		signUpResp.Result().Cookies()...,
 	)
 	require.Equal(t, http.StatusCreated, createCategoryResp.Code)

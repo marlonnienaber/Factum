@@ -2,8 +2,9 @@ import {
 	type NetworkCall,
 	jsonDeleteWithoutBodyWithoutResponse,
 	jsonGetWithoutBodyWithResponse,
-	jsonPostWithoutBodyWithResponse
+	jsonPostWithBodyWithResponse
 } from '$lib/api/api';
+import type { CreateNewCategoryRequest } from '$lib/types/requests/create-new-category-request';
 import { CategoryResponseSchema, type CategoryResponse } from '$lib/types/responses/category-response';
 import { z } from 'zod';
 
@@ -21,11 +22,12 @@ async function fetchCategories(): Promise<void> {
 	loading = false;
 }
 
-async function createCategory(title: string): Promise<void> {
+async function createCategory(request: CreateNewCategoryRequest): Promise<void> {
 	if (loading) return;
 	loading = true;
-	const networkCall: NetworkCall<CategoryResponse> = await jsonPostWithoutBodyWithResponse(
-		`/api/categories?title=${encodeURIComponent(title)}`,
+	const networkCall: NetworkCall<CategoryResponse> = await jsonPostWithBodyWithResponse(
+		'/api/categories',
+		request,
 		CategoryResponseSchema
 	);
 	if (networkCall.status === 'success') categories = [...categories, networkCall.result];

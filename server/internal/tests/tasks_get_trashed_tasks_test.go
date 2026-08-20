@@ -122,7 +122,7 @@ func TestTasksGetTrashedTasksNoCursor(t *testing.T) {
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()
 
-	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", cookies...)
+	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
 	require.Equal(t, http.StatusCreated, categoryResp.Code)
 	var category categoriesTransport.CategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
@@ -149,7 +149,7 @@ func TestTasksGetTrashedTasksCursor(t *testing.T) {
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()
 
-	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", cookies...)
+	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
 	require.Equal(t, http.StatusCreated, categoryResp.Code)
 	var category categoriesTransport.CategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")

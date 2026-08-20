@@ -13,6 +13,7 @@ var (
 	ErrCategoryNotFound          = errors.New("no category exists for the given id and user id")
 	ErrCategoryStillReferenced   = errors.New("category is still referenced by tasks")
 	ErrCategoryTitleAlreadyInUse = errors.New("the given category title is already in use for the user")
+	ErrCategoryColorAlreadyInUse = errors.New("the given category color is already in use for the user")
 )
 
 type CategoryStore struct {
@@ -31,7 +32,8 @@ func (store *CategoryStore) GetCategories(userId int64) ([]transport.CategoryRes
 	categories := make([]transport.CategoryResponse, 0)
 	err := store.db.Select(&categories, `
 		SELECT id,
-		       title
+		       title,
+		       color
 		FROM categories
 		WHERE user_id = $1
 		ORDER BY id ASC
@@ -66,19 +68,28 @@ func (store *CategoryStore) DoesCategoryExistForUser(
 	return exists, nil
 }
 
-func (store *CategoryStore) InsertCategory(userId int64, title string) (*transport.CategoryResponse, error) {
+func (store *CategoryStore) InsertCategory(
+	userId int64,
+	title string,
+	color string,
+) (*transport.CategoryResponse, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("inserting category failed")
 
 	var category transport.CategoryResponse
 	err := store.db.Get(&category, `
-		INSERT INTO categories (user_id, title)
-		VALUES ($1, $2)
-		RETURNING id, title
-	`, userId, title)
+		INSERT INTO categories (user_id, title, color)
+		VALUES ($1, $2, $3)
+		RETURNING id, title, color
+	`, userId, title, color)
 	if err != nil {
 		var postgresError *pq.Error
-		if errors.As(err, &postgresError) && postgresError.Constraint == "categories_user_id_title_unique" {
-			return nil, ErrCategoryTitleAlreadyInUse
+		if errors.As(err, &postgresError) {
+			switch postgresError.Constraint {
+			case "categories_user_id_title_unique":
+				return nil, ErrCategoryTitleAlreadyInUse
+			case "categories_user_id_color_unique":
+				return nil, ErrCategoryColorAlreadyInUse
+			}
 		}
 		return nil, wrapUnexpectedError(err)
 	}

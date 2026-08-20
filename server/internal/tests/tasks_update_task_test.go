@@ -245,7 +245,7 @@ func TestTasksUpdateTaskTaskNotFound(t *testing.T) {
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()
 
-	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", cookies...)
+	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
 	require.Equal(t, http.StatusCreated, categoryResp.Code)
 	var category categoriesTransport.CategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
@@ -276,7 +276,7 @@ func TestTasksUpdateTaskCategoryNotFound(t *testing.T) {
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()
 
-	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", cookies...)
+	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
 	require.Equal(t, http.StatusCreated, categoryResp.Code)
 	var category categoriesTransport.CategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
@@ -321,7 +321,7 @@ func TestTasksUpdateTaskWithCategoryOwnedByDifferentUser(t *testing.T) {
 	})
 	require.Equal(t, http.StatusCreated, secondSignUpResp.Code)
 
-	firstCategoryResp := support.MakeCreateCategoryRequest(t, app, "Work", firstUserCookies...)
+	firstCategoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", firstUserCookies...)
 	require.Equal(t, http.StatusCreated, firstCategoryResp.Code)
 	var firstCategory categoriesTransport.CategoryResponse
 	require.NoError(t, json.NewDecoder(firstCategoryResp.Body).Decode(&firstCategory), "failed to decode first category response")
@@ -330,6 +330,7 @@ func TestTasksUpdateTaskWithCategoryOwnedByDifferentUser(t *testing.T) {
 		t,
 		app,
 		"Personal",
+		"#3b82f6",
 		secondSignUpResp.Result().Cookies()...,
 	)
 	require.Equal(t, http.StatusCreated, secondCategoryResp.Code)
@@ -367,7 +368,7 @@ func TestTasksUpdateTaskChangeTitle(t *testing.T) {
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()
 
-	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", cookies...)
+	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
 	require.Equal(t, http.StatusCreated, categoryResp.Code)
 	var category categoriesTransport.CategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
@@ -401,7 +402,7 @@ func TestTasksUpdateTaskAddDescription(t *testing.T) {
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()
 
-	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", cookies...)
+	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
 	require.Equal(t, http.StatusCreated, categoryResp.Code)
 	var category categoriesTransport.CategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
@@ -437,7 +438,7 @@ func TestTasksUpdateTaskRemoveDescription(t *testing.T) {
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()
 
-	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", cookies...)
+	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
 	require.Equal(t, http.StatusCreated, categoryResp.Code)
 	var category categoriesTransport.CategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
@@ -472,7 +473,7 @@ func TestTasksUpdateTaskChangeDescription(t *testing.T) {
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()
 
-	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", cookies...)
+	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
 	require.Equal(t, http.StatusCreated, categoryResp.Code)
 	var category categoriesTransport.CategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
@@ -509,7 +510,7 @@ func TestTasksUpdateTaskFromOpenWithoutDateUntrashedToDate(t *testing.T) {
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()
 
-	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", cookies...)
+	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
 	require.Equal(t, http.StatusCreated, categoryResp.Code)
 	var category categoriesTransport.CategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
@@ -545,7 +546,7 @@ func TestTasksUpdateTaskFromOpenWithDateUntrashedToNoDate(t *testing.T) {
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()
 
-	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", cookies...)
+	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
 	require.Equal(t, http.StatusCreated, categoryResp.Code)
 	var category categoriesTransport.CategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
@@ -579,7 +580,7 @@ func TestTasksUpdateTaskFromDoneWithDateUntrashedToNoDate(t *testing.T) {
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()
 
-	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", cookies...)
+	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
 	require.Equal(t, http.StatusCreated, categoryResp.Code)
 	var category categoriesTransport.CategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
@@ -613,7 +614,7 @@ func TestTasksUpdateTaskFromDoneWithDateTrashedToNoDateTrashed(t *testing.T) {
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()
 
-	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", cookies...)
+	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
 	require.Equal(t, http.StatusCreated, categoryResp.Code)
 	var category categoriesTransport.CategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
@@ -654,7 +655,7 @@ func TestTasksUpdateTaskFromOpenWithDateTrashedToNoDateTrashed(t *testing.T) {
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()
 
-	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", cookies...)
+	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
 	require.Equal(t, http.StatusCreated, categoryResp.Code)
 	var category categoriesTransport.CategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
@@ -695,7 +696,7 @@ func TestTasksUpdateTaskFromOpenWithoutDateTrashedToDateTrashed(t *testing.T) {
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()
 
-	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", cookies...)
+	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
 	require.Equal(t, http.StatusCreated, categoryResp.Code)
 	var category categoriesTransport.CategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
@@ -739,7 +740,7 @@ func TestTasksUpdateTaskFromOpenWithDateToOtherDate(t *testing.T) {
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()
 
-	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", cookies...)
+	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
 	require.Equal(t, http.StatusCreated, categoryResp.Code)
 	var category categoriesTransport.CategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
@@ -775,7 +776,7 @@ func TestTasksUpdateTaskFromDoneWithDateToOtherDate(t *testing.T) {
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()
 
-	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", cookies...)
+	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
 	require.Equal(t, http.StatusCreated, categoryResp.Code)
 	var category categoriesTransport.CategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
@@ -811,12 +812,12 @@ func TestTasksUpdateTaskChangeCategory(t *testing.T) {
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()
 
-	oldCategoryResp := support.MakeCreateCategoryRequest(t, app, "Work", cookies...)
+	oldCategoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
 	require.Equal(t, http.StatusCreated, oldCategoryResp.Code)
 	var oldCategory categoriesTransport.CategoryResponse
 	require.NoError(t, json.NewDecoder(oldCategoryResp.Body).Decode(&oldCategory), "failed to decode category response")
 
-	newCategoryResp := support.MakeCreateCategoryRequest(t, app, "Personal", cookies...)
+	newCategoryResp := support.MakeCreateCategoryRequest(t, app, "Personal", "#22c55e", cookies...)
 	require.Equal(t, http.StatusCreated, newCategoryResp.Code)
 	var newCategory categoriesTransport.CategoryResponse
 	require.NoError(t, json.NewDecoder(newCategoryResp.Body).Decode(&newCategory), "failed to decode category response")

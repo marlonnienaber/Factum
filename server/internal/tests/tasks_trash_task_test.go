@@ -152,6 +152,7 @@ func TestTasksTrashTaskAlreadyTrashed(t *testing.T) {
 		t,
 		app,
 		"Work",
+		"#3b82f6",
 		signUpResp.Result().Cookies()...,
 	)
 	require.Equal(t, http.StatusCreated, createCategoryResp.Code)
@@ -225,6 +226,7 @@ func TestTasksTrashTask(t *testing.T) {
 		t,
 		app,
 		"Work",
+		"#3b82f6",
 		signUpResp.Result().Cookies()...,
 	)
 	require.Equal(t, http.StatusCreated, createCategoryResp.Code)

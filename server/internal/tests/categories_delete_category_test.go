@@ -91,6 +91,7 @@ func TestCategoriesDeleteCategoryStillReferenced(t *testing.T) {
 		t,
 		app,
 		"Work",
+		"#3b82f6",
 		signUpResp.Result().Cookies()...,
 	)
 	require.Equal(t, http.StatusCreated, createCategoryResp.Code)
@@ -148,7 +149,7 @@ func TestCategoriesDeleteCategoryOwnedByDifferentUser(t *testing.T) {
 	})
 	require.Equal(t, http.StatusCreated, otherSignUpResp.Code)
 
-	createResp := support.MakeCreateCategoryRequest(t, app, "Work", ownerSignUpResp.Result().Cookies()...)
+	createResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", ownerSignUpResp.Result().Cookies()...)
 	require.Equal(t, http.StatusCreated, createResp.Code)
 	var category categoriesTransport.CategoryResponse
 	require.NoError(t, json.NewDecoder(createResp.Body).Decode(&category), "failed to decode category response")
@@ -183,6 +184,7 @@ func TestCategoriesDeleteCategory(t *testing.T) {
 		t,
 		app,
 		"Work",
+		"#3b82f6",
 		signUpResp.Result().Cookies()...,
 	)
 	require.Equal(t, http.StatusCreated, createCategoryResp.Code)

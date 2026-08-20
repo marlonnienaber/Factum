@@ -61,8 +61,15 @@ func TestCategoriesGetCategories(t *testing.T) {
 	cookies := signUpResp.Result().Cookies()
 
 	expectedCategories := make([]categoriesTransport.CategoryResponse, 0, 3)
-	for _, title := range []string{"Work", "Personal", "Shopping"} {
-		createResp := support.MakeCreateCategoryRequest(t, app, title, cookies...)
+	for _, category := range []struct {
+		title string
+		color string
+	}{
+		{title: "Work", color: "#3b82f6"},
+		{title: "Personal", color: "#22c55e"},
+		{title: "Shopping", color: "#f97316"},
+	} {
+		createResp := support.MakeCreateCategoryRequest(t, app, category.title, category.color, cookies...)
 		require.Equal(t, http.StatusCreated, createResp.Code)
 
 		var category categoriesTransport.CategoryResponse
@@ -79,6 +86,7 @@ func TestCategoriesGetCategories(t *testing.T) {
 		t,
 		app,
 		"Other user's category",
+		"#3b82f6",
 		otherSignUpResp.Result().Cookies()...,
 	)
 	require.Equal(t, http.StatusCreated, otherCreateResp.Code)
