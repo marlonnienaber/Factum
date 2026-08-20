@@ -258,6 +258,7 @@
 		border-radius: 0.75rem;
 		background: var(--background);
 		color: var(--text);
+		font-size: 0.865rem;
 
 		.select-item {
 			display: flex;
@@ -336,16 +337,14 @@
 				display: flex;
 				align-items: center;
 				justify-content: center;
-				height: 1.75rem;
-				padding: 0.5rem 0.75rem;
-				border-radius: 0.875rem;
+				padding: 0.25rem 0.5rem;
+				border-radius: 1rem;
 				box-sizing: border-box;
 				cursor: pointer;
 
 				.color-pill-label {
 					color: var(--text);
-					font-size: 0.7rem;
-					line-height: 0.75rem;
+					font-size: 0.75rem;
 				}
 
 				input[type='color'] {

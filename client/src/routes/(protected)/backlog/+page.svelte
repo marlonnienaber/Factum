@@ -2,9 +2,13 @@
 	import { Plus } from '@lucide/svelte';
 	import Button from '$lib/components/shared/button.svelte';
 	import CreateTaskDialog from '$lib/components/taskCreation/create-task-dialog.svelte';
+	import Checkbox from '$lib/components/shared/checkbox.svelte';
+	import Category from '$lib/components/shared/category.svelte';
+	import { categoryStore } from '$lib/stores/category-store.svelte';
 	import { undatedTaskStore } from '$lib/stores/undated-tasks-store.svelte';
 
 	let createTaskDialogOpen = $state(false);
+	let checked = $state(false);
 </script>
 
 <svelte:head>
@@ -22,6 +26,10 @@
 		<div class="no-date-section">
 			{#each undatedTaskStore.undatedTasks as task (task.id)}
 				<span>{task.title}</span>
+			{/each}
+			<Checkbox bind:checked ariaLabel="testcheckbox" />
+			{#each categoryStore.categories as category (category.id)}
+				<Category {category} />
 			{/each}
 		</div>
 	</div>
