@@ -4,10 +4,11 @@
 	import { DatePicker } from 'bits-ui';
 
 	type Props = {
-		value?: CalendarDate;
+		id?: string;
+		value: CalendarDate | undefined;
 	};
 
-	let { value = $bindable() }: Props = $props();
+	let { id, value = $bindable() }: Props = $props();
 	let open = $state(false);
 
 	function isPlaceholder(segmentValue: string): boolean {
@@ -16,9 +17,9 @@
 </script>
 
 <DatePicker.Root bind:value bind:open locale="en-GB" weekdayFormat="short" fixedWeeks>
-	<DatePicker.Input name="date">
+	<DatePicker.Input {id} name="date">
 		{#snippet child({ props: inputProps, segments })}
-			<div {...inputProps} id="task-date" class:active={open} class="date-input">
+			<div {...inputProps} class:active={open} class="date-input">
 				<div class="date-segments">
 					{#each segments as { part, value: segmentValue }, index (part + index)}
 						<DatePicker.Segment {part}>

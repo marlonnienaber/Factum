@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { X } from '@lucide/svelte';
+	import type { CalendarDate } from '@internationalized/date';
 	import { Dialog } from 'bits-ui';
 	import Button from '$lib/components/button.svelte';
 	import DatePicker from '$lib/components/date-picker.svelte';
@@ -10,12 +11,13 @@
 	import { createTaskInputSchema } from '$lib/types/inputs/create-task-input';
 
 	type Props = {
-		open?: boolean;
+		open: boolean;
 	};
 
-	let { open = $bindable(false) }: Props = $props();
+	let { open = $bindable() }: Props = $props();
 	let title = $state('');
 	let description = $state('');
+	let date = $state<CalendarDate>();
 	let categoryId = $state<number>();
 	let titleError = $state<string>();
 	let descriptionError = $state<string>();
@@ -100,10 +102,10 @@
 						/>
 
 						<label for="task-date">Date</label>
-						<DatePicker />
+						<DatePicker id="task-date" bind:value={date} />
 
 						<label for="task-category">Category *</label>
-						<CategorySelect onchange={(value) => (categoryId = value)} />
+						<CategorySelect id="task-category" onchange={(value) => (categoryId = value)} />
 					</div>
 
 					<div class="footer">

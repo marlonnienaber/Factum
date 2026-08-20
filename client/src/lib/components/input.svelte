@@ -5,7 +5,7 @@
 
 	type Props = {
 		id?: string;
-		value?: string;
+		value: string;
 		error?: string;
 		leadingIcon?: LucideIcon;
 		placeholder?: string;
@@ -13,20 +13,18 @@
 		autocomplete?: HTMLInputAttributes['autocomplete'];
 		disabled?: boolean;
 		oninput?: () => void;
-		'data-testid'?: string;
 	};
 
 	let {
 		id,
-		value = $bindable(''),
+		value = $bindable(),
 		error,
 		leadingIcon: LeadingIcon,
 		placeholder,
 		type = 'text',
 		autocomplete,
 		disabled = false,
-		oninput,
-		'data-testid': dataTestId
+		oninput
 	}: Props = $props();
 
 	const invalid = $derived(error !== undefined);
@@ -36,12 +34,12 @@
 	{#if LeadingIcon}
 		<span class="leading-icon"><LeadingIcon size={18} /></span>
 	{/if}
-	<input {id} bind:value {type} {placeholder} {autocomplete} {disabled} {oninput} data-testid={dataTestId} />
+	<input {id} bind:value {type} {placeholder} {autocomplete} {disabled} {oninput} />
 	{#if invalid}
 		<span class="error-icon">
 			<Popover side="right" align="center" openOnHover>
 				{#snippet trigger()}
-					<span data-testid={dataTestId === undefined ? undefined : `${dataTestId}-error-trigger`}>
+					<span id={id === undefined ? undefined : `${id}-error-trigger`}>
 						<Info size={18} aria-hidden={true} />
 					</span>
 				{/snippet}

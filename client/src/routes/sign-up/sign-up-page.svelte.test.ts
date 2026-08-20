@@ -75,19 +75,27 @@ function getInput(input: HTMLElement): HTMLElement {
 	return inputContainer;
 }
 
+function getById(page: ReturnType<typeof renderPage>, id: string): HTMLElement {
+	const element = page.container.querySelector(`#${id}`);
+	if (!(element instanceof HTMLElement)) {
+		throw new Error(`Expected an element with id "${id}".`);
+	}
+	return element;
+}
+
 async function enterEmail(page: ReturnType<typeof renderPage>, email: string): Promise<void> {
 	const user = userEvent.setup();
-	await user.type(page.getByTestId('email-input'), email);
+	await user.type(getById(page, 'email-input'), email);
 }
 
 async function enterPassword(page: ReturnType<typeof renderPage>, password: string): Promise<void> {
 	const user = userEvent.setup();
-	await user.type(page.getByTestId('password-input'), password);
+	await user.type(getById(page, 'password-input'), password);
 }
 
 async function enterRepeatedPassword(page: ReturnType<typeof renderPage>, repeatedPassword: string): Promise<void> {
 	const user = userEvent.setup();
-	await user.type(page.getByTestId('repeated-password-input'), repeatedPassword);
+	await user.type(getById(page, 'repeated-password-input'), repeatedPassword);
 }
 
 async function submit(page: ReturnType<typeof renderPage>): Promise<void> {
@@ -124,12 +132,12 @@ describe('sign-up page integration', () => {
 		expect(fetchMock).not.toHaveBeenCalled();
 		expect(gotoMock).not.toHaveBeenCalled();
 
-		const emailInput = getInput(page.getByTestId('email-input'));
+		const emailInput = getInput(getById(page, 'email-input'));
 		const emailErrorIcon = emailInput.querySelector('.error-icon');
 		expect(emailInput).toHaveClass('invalid');
 		expect(emailErrorIcon).toBeInTheDocument();
 
-		await userEvent.click(page.getByTestId('email-input-error-trigger'));
+		await userEvent.click(getById(page, 'email-input-error-trigger'));
 		expect(await page.findByText('Invalid email address')).toBeInTheDocument();
 	});
 
@@ -146,12 +154,12 @@ describe('sign-up page integration', () => {
 		expect(fetchMock).not.toHaveBeenCalled();
 		expect(gotoMock).not.toHaveBeenCalled();
 
-		const passwordInput = getInput(page.getByTestId('password-input'));
+		const passwordInput = getInput(getById(page, 'password-input'));
 		const passwordErrorIcon = passwordInput.querySelector('.error-icon');
 		expect(passwordInput).toHaveClass('invalid');
 		expect(passwordErrorIcon).toBeInTheDocument();
 
-		await userEvent.click(page.getByTestId('password-input-error-trigger'));
+		await userEvent.click(getById(page, 'password-input-error-trigger'));
 		expect(await page.findByText('Too small: expected string to have >=10 characters')).toBeInTheDocument();
 	});
 
@@ -168,12 +176,12 @@ describe('sign-up page integration', () => {
 		expect(fetchMock).not.toHaveBeenCalled();
 		expect(gotoMock).not.toHaveBeenCalled();
 
-		const passwordInput = getInput(page.getByTestId('password-input'));
+		const passwordInput = getInput(getById(page, 'password-input'));
 		const passwordErrorIcon = passwordInput.querySelector('.error-icon');
 		expect(passwordInput).toHaveClass('invalid');
 		expect(passwordErrorIcon).toBeInTheDocument();
 
-		await userEvent.click(page.getByTestId('password-input-error-trigger'));
+		await userEvent.click(getById(page, 'password-input-error-trigger'));
 		expect(await page.findByText('Too big: expected string to have <=128 characters')).toBeInTheDocument();
 	});
 
@@ -190,12 +198,12 @@ describe('sign-up page integration', () => {
 		expect(fetchMock).not.toHaveBeenCalled();
 		expect(gotoMock).not.toHaveBeenCalled();
 
-		const repeatedPasswordInput = getInput(page.getByTestId('repeated-password-input'));
+		const repeatedPasswordInput = getInput(getById(page, 'repeated-password-input'));
 		const repeatedPasswordErrorIcon = repeatedPasswordInput.querySelector('.error-icon');
 		expect(repeatedPasswordInput).toHaveClass('invalid');
 		expect(repeatedPasswordErrorIcon).toBeInTheDocument();
 
-		await userEvent.click(page.getByTestId('repeated-password-input-error-trigger'));
+		await userEvent.click(getById(page, 'repeated-password-input-error-trigger'));
 		expect(await page.findByText('Passwords do not match.')).toBeInTheDocument();
 	});
 
@@ -297,9 +305,9 @@ describe('sign-up page integration', () => {
 		expect((fetchMock.mock.calls[0]?.[1] as RequestInit).headers).toHaveProperty('get');
 		expect(((fetchMock.mock.calls[0]?.[1] as RequestInit).headers as Headers).get('Content-Type')).toBe('application/json');
 
-		const emailInput = getInput(page.getByTestId('email-input'));
-		const passwordInput = getInput(page.getByTestId('password-input'));
-		const repeatedPasswordInput = getInput(page.getByTestId('repeated-password-input'));
+		const emailInput = getInput(getById(page, 'email-input'));
+		const passwordInput = getInput(getById(page, 'password-input'));
+		const repeatedPasswordInput = getInput(getById(page, 'repeated-password-input'));
 		expect(emailInput).not.toHaveClass('invalid');
 		expect(emailInput.querySelector('.error-icon')).not.toBeInTheDocument();
 		expect(passwordInput).not.toHaveClass('invalid');

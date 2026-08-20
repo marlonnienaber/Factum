@@ -5,13 +5,13 @@
 	type Props = {
 		children: Snippet;
 		trigger: Snippet;
-		open?: boolean;
 		side?: 'top' | 'right' | 'bottom' | 'left';
 		align?: 'start' | 'center' | 'end';
+		open?: boolean;
 		openOnHover?: boolean;
 	};
 
-	let { children, trigger, open = $bindable(false), side = 'bottom', align = 'center', openOnHover = false }: Props = $props();
+	let { children, trigger, side = 'bottom', align = 'center', open = $bindable(false), openOnHover = false }: Props = $props();
 </script>
 
 <BitsPopover.Root bind:open>

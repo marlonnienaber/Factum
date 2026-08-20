@@ -7,11 +7,11 @@
 		children: Snippet;
 		trailingIcon?: Snippet;
 		variant?: Variant;
-		onclick?: MouseEventHandler<HTMLButtonElement>;
 		disabled?: boolean;
+		onclick: MouseEventHandler<HTMLButtonElement>;
 	};
 
-	let { children, trailingIcon, variant = 'default', onclick, disabled = false }: Props = $props();
+	let { children, trailingIcon, variant = 'default', disabled = false, onclick }: Props = $props();
 </script>
 
 <button type="button" class="button" data-variant={variant} {onclick} {disabled}>

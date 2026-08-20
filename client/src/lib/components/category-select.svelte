@@ -4,10 +4,11 @@
 	import { Select as BitsSelect } from 'bits-ui';
 
 	type Props = {
+		id?: string;
 		onchange: (value: number | undefined) => void;
 	};
 
-	let { onchange }: Props = $props();
+	let { id, onchange }: Props = $props();
 	const items = $derived(categoryStore.categories.map((category) => ({ value: String(category.id), label: category.title })));
 	let value = $state<string>();
 	let open = $state(false);
@@ -95,7 +96,7 @@
 		{#snippet child({ props })}
 			<button
 				{...props}
-				id="task-category"
+				{id}
 				class="select-trigger"
 				onkeydown={(event) => handleCategorySelectKeydown(event, props.onkeydown)}
 			>
