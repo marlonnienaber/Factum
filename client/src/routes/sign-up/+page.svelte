@@ -74,7 +74,7 @@
 		</div>
 
 		<div class="inputs">
-			<input
+			<Input
 				id="email-input"
 				bind:value={email}
 				error={emailError}
@@ -85,7 +85,7 @@
 				disabled={loading}
 				oninput={() => (emailError = undefined)}
 			/>
-			<input
+			<Input
 				id="password-input"
 				bind:value={password}
 				error={passwordError}
@@ -96,7 +96,7 @@
 				disabled={loading}
 				oninput={() => (passwordError = undefined)}
 			/>
-			<input
+			<Input
 				id="repeated-password-input"
 				bind:value={repeatedPassword}
 				error={repeatedPasswordError}

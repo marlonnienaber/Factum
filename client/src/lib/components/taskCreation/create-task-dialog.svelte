@@ -8,7 +8,7 @@
 	import CategorySelect from '$lib/components/taskCreation/category-select.svelte';
 	import Textarea from '$lib/components/shared/textarea.svelte';
 	import { undatedTaskStore } from '$lib/stores/undated-tasks-store.svelte.js';
-	import { createTaskInputSchema } from '$lib/types/inputs/create-task-input.ts';
+	import { createTaskInputSchema } from '$lib/types/inputs/create-task-input';
 
 	type Props = {
 		open: boolean;
@@ -84,7 +84,7 @@
 
 					<div class="task-fields">
 						<label for="task-title">Title *</label>
-						<input
+						<Input
 							id="task-title"
 							bind:value={title}
 							error={titleError}
@@ -93,7 +93,7 @@
 						/>
 
 						<label for="task-description">Description</label>
-						<textarea
+						<Textarea
 							id="task-description"
 							bind:value={description}
 							error={descriptionError}
@@ -109,13 +109,13 @@
 					</div>
 
 					<div class="footer">
-						<button onclick={() => (open = false)}>Cancel</button>
+						<Button onclick={() => (open = false)}>Cancel</Button>
 						<div class="spacer"></div>
 						<span>* required</span>
-						<button
+						<Button
 							variant="success"
 							disabled={categoryId === undefined || undatedTaskStore.loading}
-							onclick={() => void handleCreateTask()}>Create</button
+							onclick={() => void handleCreateTask()}>Create</Button
 						>
 					</div>
 				</div>

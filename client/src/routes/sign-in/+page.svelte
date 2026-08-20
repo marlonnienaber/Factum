@@ -67,7 +67,7 @@
 		</div>
 
 		<div class="inputs">
-			<input
+			<Input
 				bind:value={email}
 				error={emailError}
 				leadingIcon={Mail}
@@ -77,7 +77,7 @@
 				disabled={loading}
 				oninput={() => (emailError = undefined)}
 			/>
-			<input
+			<Input
 				bind:value={password}
 				error={passwordError}
 				leadingIcon={Lock}
