@@ -37,14 +37,14 @@
 	<input {id} bind:value {type} {placeholder} {autocomplete} {disabled} {oninput} />
 	{#if invalid}
 		<span class="error-icon">
-			<popover side="right" align="center" openOnHover>
+			<Popover side="right" align="center" openOnHover>
 				{#snippet trigger()}
 					<span id={id === undefined ? undefined : `${id}-error-trigger`}>
 						<Info size={18} aria-hidden={true} />
 					</span>
 				{/snippet}
 				<span class="error-message">{error}</span>
-			</popover>
+			</Popover>
 		</span>
 	{/if}
 </div>
