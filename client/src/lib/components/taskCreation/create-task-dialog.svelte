@@ -7,6 +7,7 @@
 	import Input from '$lib/components/shared/input.svelte';
 	import CategorySelect from '$lib/components/taskCreation/category-select.svelte';
 	import Textarea from '$lib/components/shared/textarea.svelte';
+	import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-tasks-store.svelte.js';
 	import { undatedTaskStore } from '$lib/stores/undated-tasks-store.svelte.js';
 	import { createTaskInputSchema } from '$lib/types/inputs/create-task-input';
 
@@ -34,10 +35,15 @@
 		}
 
 		clearValidationErrors();
-		await undatedTaskStore.createTask(inputParseResult.data);
+		if (date) {
+			await datedUntrashedOpenTaskStore.createTask({ ...inputParseResult.data, date: date.toString() });
+		} else {
+			await undatedTaskStore.createTask(inputParseResult.data);
+		}
 
 		title = '';
 		description = '';
+		date = undefined;
 		categoryId = undefined;
 		open = false;
 	}
@@ -114,7 +120,7 @@
 						<span>* required</span>
 						<Button
 							variant="success"
-							disabled={categoryId === undefined || undatedTaskStore.loading}
+							disabled={categoryId === undefined || undatedTaskStore.loading || datedUntrashedOpenTaskStore.loading}
 							onclick={() => void handleCreateTask()}>Create</Button
 						>
 					</div>

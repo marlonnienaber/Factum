@@ -4,9 +4,10 @@
     import { categoryStore } from '$lib/stores/category-store.svelte';
     import Category from "$lib/components/shared/category.svelte";
     import { Ellipsis } from '@lucide/svelte';
+    import type {DatedUntrashedOpenTaskResponse} from "$lib/types/responses/dated-untrashed-open-task-response";
 
     type Props = {
-        task: UndatedTaskResponse
+        task: UndatedTaskResponse | DatedUntrashedOpenTaskResponse
     }
 
     const { task }: Props = $props()

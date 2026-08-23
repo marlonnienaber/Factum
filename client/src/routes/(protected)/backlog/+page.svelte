@@ -3,9 +3,18 @@
 	import Button from '$lib/components/shared/button.svelte';
 	import CreateTaskDialog from '$lib/components/taskCreation/create-task-dialog.svelte';
 	import Task from '$lib/components/taskDisplay/task.svelte';
+	import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-tasks-store.svelte';
 	import { undatedTaskStore } from '$lib/stores/undated-tasks-store.svelte';
+	import { getLocalTimeZone, today } from '@internationalized/date';
 
 	let createTaskDialogOpen = $state(false);
+	const todayDate = today(getLocalTimeZone());
+	const todayTasks = $derived(
+		datedUntrashedOpenTaskStore.datedUntrashedOpenTasks.filter((task) => task.date.compare(todayDate) === 0)
+	);
+	const datedTasks = $derived(
+		datedUntrashedOpenTaskStore.datedUntrashedOpenTasks.filter((task) => task.date.compare(todayDate) !== 0)
+	);
 </script>
 
 <svelte:head>
@@ -26,8 +35,16 @@
 			{/each}
 		</div>
 	</div>
-	<div class="date-section"></div>
-	<div class="today-section"></div>
+	<div class="date-section">
+		{#each datedTasks as task (task.id)}
+			<Task {task} />
+		{/each}
+	</div>
+	<div class="today-section">
+		{#each todayTasks as task (task.id)}
+			<Task {task} />
+		{/each}
+	</div>
 </div>
 
 <CreateTaskDialog bind:open={createTaskDialogOpen} />
@@ -78,8 +95,11 @@
 			flex-direction: column;
 			height: 100%;
 			flex: 1;
+			box-sizing: border-box;
+			padding: 0.75rem;
 			border: 1px solid var(--border);
 			border-radius: 0.75rem;
+			gap: 0.75rem;
 		}
 
 		.today-section {
@@ -87,8 +107,11 @@
 			flex-direction: column;
 			height: 100%;
 			flex: 1;
+			box-sizing: border-box;
+			padding: 0.75rem;
 			border: 1px solid var(--border);
 			border-radius: 0.75rem;
+			gap: 0.75rem;
 		}
 	}
 </style>

@@ -3,6 +3,7 @@
 	import { resolve } from '$app/paths';
 	import { authenticationStore } from '$lib/stores/authentication-store.svelte';
 	import { categoryStore } from '$lib/stores/category-store.svelte';
+	import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-tasks-store.svelte';
 	import { themeStore } from '$lib/stores/theme-store.svelte';
 	import { undatedTaskStore } from '$lib/stores/undated-tasks-store.svelte';
 	import { Moon, Sun } from '@lucide/svelte';
@@ -21,6 +22,7 @@
 		if (authentication) {
 			untrack(() => {
 				void categoryStore.fetchCategories();
+				void datedUntrashedOpenTaskStore.fetchDatedUntrashedOpenTasks();
 				void undatedTaskStore.fetchUndatedTasks();
 			});
 		} else {
@@ -32,6 +34,7 @@
 				}
 			}
 			categoryStore.reset();
+			datedUntrashedOpenTaskStore.reset();
 			undatedTaskStore.reset();
 		}
 	});
