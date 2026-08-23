@@ -35,10 +35,6 @@
 		color: var(--text-inverse);
 		cursor: pointer;
 
-		&:hover {
-			opacity: 0.8;
-		}
-
 		&[data-state='checked'] {
 			background: var(--background-check-control-checked);
 		}
