@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { categoryStore } from '$lib/stores/category-store.svelte.js';
+	import { categoryService } from '$lib/services/category-service.svelte.js';
 	import { createNewCategoryInputSchema } from '$lib/types/inputs/create-new-category-input';
 	import { Check, ChevronDown, Plus, Trash2 } from '@lucide/svelte';
 	import { Select as BitsSelect } from 'bits-ui';
@@ -44,7 +45,7 @@
 	async function deleteCategory(event: MouseEvent, itemValue: string): Promise<void> {
 		event.stopPropagation();
 		const categoryId = Number(itemValue);
-		await categoryStore.deleteCategory(categoryId);
+		await categoryService.deleteCategory(categoryId);
 		if (categoryStore.categories.some((category) => category.id === categoryId)) return;
 
 		if (value === itemValue) {
@@ -82,7 +83,7 @@
 		if (!inputParseResult.success) return;
 
 		const oldCategoryIds = new Set(categoryStore.categories.map((category) => category.id));
-		await categoryStore.createCategory({
+		await categoryService.createCategory({
 			title: inputParseResult.data.title,
 			color: newCategoryColor
 		});

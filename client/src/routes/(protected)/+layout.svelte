@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { authenticationStore } from '$lib/stores/authentication-store.svelte';
+	import { categoryService } from '$lib/services/category-service.svelte';
 	import { categoryStore } from '$lib/stores/category-store.svelte';
 	import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-tasks-store.svelte';
 	import { themeStore } from '$lib/stores/theme-store.svelte';
@@ -21,7 +22,7 @@
 	$effect(() => {
 		if (authentication) {
 			untrack(() => {
-				void categoryStore.fetchCategories();
+				void categoryService.fetchCategories();
 				void datedUntrashedOpenTaskStore.fetchDatedUntrashedOpenTasks();
 				void undatedTaskStore.fetchUndatedTasks();
 			});
