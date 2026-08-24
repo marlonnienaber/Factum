@@ -4,10 +4,11 @@
 	import { authenticationService } from '$lib/services/authentication-service.svelte';
 	import { authenticationStore } from '$lib/stores/authentication-store.svelte';
 	import { categoryService } from '$lib/services/category-service.svelte';
+	import { taskService } from '$lib/services/task-service.svelte';
 	import { categoryStore } from '$lib/stores/category-store.svelte';
-	import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-tasks-store.svelte';
+	import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-task-store.svelte';
 	import { themeStore } from '$lib/stores/theme-store.svelte';
-	import { undatedTaskStore } from '$lib/stores/undated-tasks-store.svelte';
+	import { undatedTaskStore } from '$lib/stores/undated-task-store.svelte';
 	import { Moon, Sun } from '@lucide/svelte';
 	import { untrack } from 'svelte';
 	import logoBlack from '$lib/assets/logo-black.svg';
@@ -23,8 +24,8 @@
 		if (authentication) {
 			untrack(() => {
 				void categoryService.fetchCategories();
-				void datedUntrashedOpenTaskStore.fetchDatedUntrashedOpenTasks();
-				void undatedTaskStore.fetchUndatedTasks();
+				void taskService.fetchDatedUntrashedOpenTasks();
+				void taskService.fetchUndatedTasks();
 			});
 		} else {
 			if (!loading) {

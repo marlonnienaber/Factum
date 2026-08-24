@@ -3,8 +3,8 @@
 	import Button from '$lib/components/shared/button.svelte';
 	import CreateTaskDialog from '$lib/components/taskCreation/create-task-dialog.svelte';
 	import Task from '$lib/components/taskDisplay/task.svelte';
-	import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-tasks-store.svelte';
-	import { undatedTaskStore } from '$lib/stores/undated-tasks-store.svelte';
+	import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-task-store.svelte';
+	import { undatedTaskStore } from '$lib/stores/undated-task-store.svelte';
 	import { getLocalTimeZone, today } from '@internationalized/date';
 
 	let createTaskDialogOpen = $state(false);

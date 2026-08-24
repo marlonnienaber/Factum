@@ -7,8 +7,7 @@
 	import Input from '$lib/components/shared/input.svelte';
 	import CategorySelect from '$lib/components/taskCreation/category-select.svelte';
 	import Textarea from '$lib/components/shared/textarea.svelte';
-	import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-tasks-store.svelte.js';
-	import { undatedTaskStore } from '$lib/stores/undated-tasks-store.svelte.js';
+	import { taskService } from '$lib/services/task-service.svelte.js';
 	import { createTaskInputSchema } from '$lib/types/inputs/create-task-input';
 
 	type Props = {
@@ -36,9 +35,9 @@
 
 		clearValidationErrors();
 		if (date) {
-			await datedUntrashedOpenTaskStore.createTask({ ...inputParseResult.data, date: date.toString() });
+			await taskService.createTask({ ...inputParseResult.data, date: date.toString() });
 		} else {
-			await undatedTaskStore.createTask(inputParseResult.data);
+			await taskService.createTask(inputParseResult.data);
 		}
 
 		title = '';
@@ -120,7 +119,7 @@
 						<span>* required</span>
 						<Button
 							variant="success"
-							disabled={categoryId === undefined || undatedTaskStore.loading || datedUntrashedOpenTaskStore.loading}
+							disabled={categoryId === undefined || taskService.taskCreationLoading}
 							onclick={() => void handleCreateTask()}>Create</Button
 						>
 					</div>
