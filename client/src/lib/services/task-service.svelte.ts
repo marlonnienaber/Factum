@@ -1,8 +1,14 @@
-import { type NetworkCall, jsonGetWithoutBodyWithResponse, jsonPostWithBodyWithResponse } from '$lib/api/api';
+import {
+	type NetworkCall,
+	jsonGetWithoutBodyWithResponse,
+	jsonPostWithBodyWithResponse,
+	jsonPutWithBodyWithResponse
+} from '$lib/api/api';
 import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-task-store.svelte';
 import { undatedTaskStore } from '$lib/stores/undated-task-store.svelte';
 import type { CreateTaskRequest } from '$lib/types/requests/create-task-request';
 import type { DatedUntrashedOpenTasksCursor } from '$lib/types/requests/dated-untrashed-open-tasks-cursor';
+import type { UpdateTaskRequest } from '$lib/types/requests/update-task-request';
 import {
 	DatedUntrashedOpenTaskResponseSchema,
 	type DatedUntrashedOpenTaskResponse
@@ -12,10 +18,11 @@ import { z } from 'zod';
 
 let undatedTasksLoading = $state(false);
 let datedUntrashedOpenTasksLoading = $state(false);
-let taskCreationLoading = $state(false);
+let taskMutationLoading = $state(false);
+const taskMutationBlocked = $derived(taskMutationLoading || undatedTasksLoading || datedUntrashedOpenTasksLoading);
 
 async function fetchUndatedTasks(rank?: string): Promise<void> {
-	if (undatedTasksLoading) return;
+	if (undatedTasksLoading || taskMutationLoading) return;
 	undatedTasksLoading = true;
 	try {
 		const networkCall: NetworkCall<UndatedTaskResponse[]> = await jsonGetWithoutBodyWithResponse(
@@ -29,7 +36,7 @@ async function fetchUndatedTasks(rank?: string): Promise<void> {
 }
 
 async function fetchDatedUntrashedOpenTasks(cursor?: DatedUntrashedOpenTasksCursor): Promise<void> {
-	if (datedUntrashedOpenTasksLoading) return;
+	if (datedUntrashedOpenTasksLoading || taskMutationLoading) return;
 	datedUntrashedOpenTasksLoading = true;
 	try {
 		const queryParameters = cursor
@@ -46,8 +53,8 @@ async function fetchDatedUntrashedOpenTasks(cursor?: DatedUntrashedOpenTasksCurs
 }
 
 async function createTask(request: CreateTaskRequest): Promise<void> {
-	if (taskCreationLoading) return;
-	taskCreationLoading = true;
+	if (taskMutationBlocked) return;
+	taskMutationLoading = true;
 	try {
 		if (request.date !== undefined) {
 			const networkCall: NetworkCall<DatedUntrashedOpenTaskResponse> = await jsonPostWithBodyWithResponse(
@@ -65,15 +72,42 @@ async function createTask(request: CreateTaskRequest): Promise<void> {
 			if (networkCall.status === 'success') undatedTaskStore.addUndatedTask(networkCall.result);
 		}
 	} finally {
-		taskCreationLoading = false;
+		taskMutationLoading = false;
+	}
+}
+
+async function updateTask(request: UpdateTaskRequest): Promise<void> {
+	if (taskMutationBlocked) return;
+	taskMutationLoading = true;
+	try {
+		const networkCall: NetworkCall<DatedUntrashedOpenTaskResponse | UndatedTaskResponse> = await jsonPutWithBodyWithResponse(
+			'/api/tasks',
+			request,
+			z.union([DatedUntrashedOpenTaskResponseSchema, UndatedTaskResponseSchema])
+		);
+		if (networkCall.status !== 'success') return;
+
+		undatedTaskStore.removeTask(request.id);
+		datedUntrashedOpenTaskStore.removeTask(request.id);
+		if ('date' in networkCall.result) {
+			datedUntrashedOpenTaskStore.addDatedUntrashedOpenTask(networkCall.result);
+		} else {
+			undatedTaskStore.addUndatedTask(networkCall.result);
+		}
+	} finally {
+		taskMutationLoading = false;
 	}
 }
 
 export const taskService = {
-	get taskCreationLoading(): boolean {
-		return taskCreationLoading;
+	get taskMutationLoading(): boolean {
+		return taskMutationLoading;
+	},
+	get taskMutationBlocked(): boolean {
+		return taskMutationBlocked;
 	},
 	fetchUndatedTasks,
 	fetchDatedUntrashedOpenTasks,
-	createTask
+	createTask,
+	updateTask
 };

@@ -8,13 +8,16 @@
 	import CategorySelect from '$lib/components/taskCreation/category-select.svelte';
 	import Textarea from '$lib/components/shared/textarea.svelte';
 	import { taskService } from '$lib/services/task-service.svelte.js';
-	import { createTaskInputSchema } from '$lib/types/inputs/create-task-input';
+	import { taskInputSchema } from '$lib/types/inputs/task-input';
+	import type { DatedUntrashedOpenTaskResponse } from '$lib/types/responses/dated-untrashed-open-task-response';
+	import type { UndatedTaskResponse } from '$lib/types/responses/undated-task-response';
 
 	type Props = {
 		open: boolean;
+		task?: DatedUntrashedOpenTaskResponse | UndatedTaskResponse;
 	};
 
-	let { open = $bindable() }: Props = $props();
+	let { open = $bindable(), task = $bindable() }: Props = $props();
 	let title = $state('');
 	let description = $state('');
 	let date = $state<CalendarDate>();
@@ -22,8 +25,13 @@
 	let titleError = $state<string>();
 	let descriptionError = $state<string>();
 
-	async function handleCreateTask(): Promise<void> {
-		const inputParseResult = createTaskInputSchema.safeParse({
+	const editing = $derived(task !== undefined);
+	const loading = $derived(taskService.taskMutationLoading);
+
+	async function handleSubmit(): Promise<void> {
+		if (taskService.taskMutationBlocked) return;
+
+		const inputParseResult = taskInputSchema.safeParse({
 			title,
 			description,
 			categoryId
@@ -34,17 +42,15 @@
 		}
 
 		clearValidationErrors();
-		if (date) {
-			await taskService.createTask({ ...inputParseResult.data, date: date.toString() });
+		const request = date ? { ...inputParseResult.data, date: date.toString() } : inputParseResult.data;
+		if (task) {
+			await taskService.updateTask({ ...request, id: task.id });
 		} else {
-			await taskService.createTask(inputParseResult.data);
+			await taskService.createTask(request);
 		}
 
-		title = '';
-		description = '';
-		date = undefined;
-		categoryId = undefined;
 		open = false;
+		task = undefined;
 	}
 
 	function clearValidationErrors(): void {
@@ -60,6 +66,17 @@
 			if (field === 'description') descriptionError = descriptionError ?? issue.message;
 		}
 	}
+
+	$effect(() => {
+		if (open) {
+			title = task?.title ?? '';
+			description = task?.description ?? '';
+			// TODO: rather introduce discriminators in different task types and use them here?
+			date = task && 'date' in task ? task.date : undefined;
+			categoryId = task?.categoryId;
+			clearValidationErrors();
+		}
+	});
 </script>
 
 <Dialog.Root bind:open>
@@ -75,12 +92,12 @@
 					<div class="heading">
 						<Dialog.Title>
 							{#snippet child({ props: titleProps })}
-								<h2 {...titleProps} class="title">Create Task</h2>
+								<h2 {...titleProps} class="title">{editing ? 'Edit Task' : 'Create Task'}</h2>
 							{/snippet}
 						</Dialog.Title>
 						<Dialog.Close>
 							{#snippet child({ props: closeProps })}
-								<button {...closeProps} class="close-button" aria-label="Close create task modal">
+								<button {...closeProps} class="close-button" aria-label={`Close ${editing ? 'edit' : 'create'} task dialog`}>
 									<X size={30} strokeWidth={2.5} aria-hidden="true" />
 								</button>
 							{/snippet}
@@ -110,7 +127,7 @@
 						<DatePicker id="task-date" bind:value={date} />
 
 						<label for="task-category">Category *</label>
-						<CategorySelect id="task-category" onchange={(value) => (categoryId = value)} />
+						<CategorySelect id="task-category" bind:categoryId />
 					</div>
 
 					<div class="footer">
@@ -119,8 +136,9 @@
 						<span>* required</span>
 						<Button
 							variant="success"
-							disabled={categoryId === undefined || taskService.taskCreationLoading}
-							onclick={() => void handleCreateTask()}>Create</Button
+							disabled={categoryId === undefined || taskService.taskMutationBlocked}
+							onclick={() => void handleSubmit()}
+							>{loading ? (editing ? 'Saving...' : 'Creating...') : editing ? 'Save' : 'Create'}</Button
 						>
 					</div>
 				</div>

@@ -1,13 +1,16 @@
 <script lang="ts">
 	import { Plus } from '@lucide/svelte';
 	import Button from '$lib/components/shared/button.svelte';
-	import CreateTaskDialog from '$lib/components/taskCreation/create-task-dialog.svelte';
+	import TaskDialog from '$lib/components/taskCreation/task-dialog.svelte';
 	import Task from '$lib/components/taskDisplay/task.svelte';
 	import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-task-store.svelte';
 	import { undatedTaskStore } from '$lib/stores/undated-task-store.svelte';
 	import { getLocalTimeZone, today } from '@internationalized/date';
+	import type { DatedUntrashedOpenTaskResponse } from '$lib/types/responses/dated-untrashed-open-task-response';
+	import type { UndatedTaskResponse } from '$lib/types/responses/undated-task-response';
 
-	let createTaskDialogOpen = $state(false);
+	let taskDialogOpen = $state(false);
+	let selectedTask = $state<DatedUntrashedOpenTaskResponse | UndatedTaskResponse>();
 	const todayDate = today(getLocalTimeZone());
 	const todayTasks = $derived(
 		datedUntrashedOpenTaskStore.datedUntrashedOpenTasks.filter((task) => task.date.compare(todayDate) === 0)
@@ -15,6 +18,16 @@
 	const datedTasks = $derived(
 		datedUntrashedOpenTaskStore.datedUntrashedOpenTasks.filter((task) => task.date.compare(todayDate) !== 0)
 	);
+
+	function openCreateTaskDialog(): void {
+		selectedTask = undefined;
+		taskDialogOpen = true;
+	}
+
+	function openEditTaskDialog(task: DatedUntrashedOpenTaskResponse | UndatedTaskResponse): void {
+		selectedTask = task;
+		taskDialogOpen = true;
+	}
 </script>
 
 <svelte:head>
@@ -24,30 +37,30 @@
 <div class="frame">
 	<div class="left-column-container">
 		<div class="controls-section">
-			<Button onclick={() => (createTaskDialogOpen = true)}>
+			<Button onclick={openCreateTaskDialog}>
 				Add Task
 				{#snippet trailingIcon()}<Plus size={17} strokeWidth={2.5} />{/snippet}
 			</Button>
 		</div>
 		<div class="no-date-section">
 			{#each undatedTaskStore.undatedTasks as task (task.id)}
-				<Task {task} />
+				<Task {task} onedit={() => openEditTaskDialog(task)} />
 			{/each}
 		</div>
 	</div>
 	<div class="date-section">
 		{#each datedTasks as task (task.id)}
-			<Task {task} />
+			<Task {task} onedit={() => openEditTaskDialog(task)} />
 		{/each}
 	</div>
 	<div class="today-section">
 		{#each todayTasks as task (task.id)}
-			<Task {task} />
+			<Task {task} onedit={() => openEditTaskDialog(task)} />
 		{/each}
 	</div>
 </div>
 
-<CreateTaskDialog bind:open={createTaskDialogOpen} />
+<TaskDialog bind:open={taskDialogOpen} bind:task={selectedTask} />
 
 <style lang="scss">
 	.frame {

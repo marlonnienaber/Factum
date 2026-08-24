@@ -7,12 +7,12 @@
 
 	type Props = {
 		id?: string;
-		onchange: (value: number | undefined) => void;
+		categoryId?: number;
 	};
 
-	let { id, onchange }: Props = $props();
+	let { id, categoryId = $bindable() }: Props = $props();
 	const items = $derived(categoryStore.categories.map((category) => ({ value: String(category.id), label: category.title })));
-	let value = $state<string>();
+	const value = $derived(categoryId === undefined ? undefined : String(categoryId));
 	let open = $state(false);
 	const addCategoryItemValue = $derived(getAvailableAddCategoryItemValue(items));
 	let addCategoryItemSelected = $state(false);
@@ -44,14 +44,11 @@
 
 	async function deleteCategory(event: MouseEvent, itemValue: string): Promise<void> {
 		event.stopPropagation();
-		const categoryId = Number(itemValue);
-		await categoryService.deleteCategory(categoryId);
-		if (categoryStore.categories.some((category) => category.id === categoryId)) return;
+		const deletedCategoryId = Number(itemValue);
+		await categoryService.deleteCategory(deletedCategoryId);
+		if (categoryStore.categories.some((category) => category.id === deletedCategoryId)) return;
 
-		if (value === itemValue) {
-			value = undefined;
-			onchange(value);
-		}
+		if (value === itemValue) categoryId = undefined;
 	}
 
 	function handleCategorySelectKeydown(event: KeyboardEvent, bitsUiHandler: unknown): void {
@@ -90,8 +87,7 @@
 		const createdCategory = categoryStore.categories.find((category) => !oldCategoryIds.has(category.id));
 		if (createdCategory === undefined) return;
 
-		value = String(createdCategory.id);
-		onchange(createdCategory.id);
+		categoryId = createdCategory.id;
 		open = false;
 	}
 
@@ -114,7 +110,17 @@
 	});
 </script>
 
-<BitsSelect.Root type="single" {items} bind:value bind:open onValueChange={(value) => onchange(Number(value))}>
+<BitsSelect.Root
+	type="single"
+	{items}
+	{value}
+	bind:open
+	onValueChange={(selectedValue) => {
+		const selectedCategoryId = Number(selectedValue);
+		if (!Number.isInteger(selectedCategoryId)) return;
+		categoryId = selectedCategoryId;
+	}}
+>
 	<BitsSelect.Trigger>
 		{#snippet child({ props })}
 			<button {...props} {id} class="select-trigger" onkeydown={(event) => handleCategorySelectKeydown(event, props.onkeydown)}>

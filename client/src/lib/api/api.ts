@@ -21,6 +21,14 @@ export async function jsonPostWithBodyWithResponse<B, R>(
 	return await jsonFetchWithBodyWithResponse('POST', url, requestBody, responseSchema);
 }
 
+export async function jsonPutWithBodyWithResponse<B, R>(
+	url: string,
+	requestBody: B,
+	responseSchema: ZodType<R>
+): Promise<NetworkCall<R>> {
+	return await jsonFetchWithBodyWithResponse('PUT', url, requestBody, responseSchema);
+}
+
 export async function jsonPostWithoutBodyWithoutResponse(url: string): Promise<NetworkCall<void>> {
 	return await jsonFetchWithoutBodyWithoutResponse('POST', url);
 }
@@ -59,7 +67,7 @@ async function jsonFetchWithoutBodyWithResponse<R>(
 	}
 
 	try {
-		const result = await parseResponse(response, responseSchema)
+		const result = await parseResponse(response, responseSchema);
 		return { status: 'success', result: result };
 	} catch (error) {
 		const message = error instanceof z.ZodError ? 'Response validation failed.' : 'Failed to parse response body.';
@@ -68,7 +76,7 @@ async function jsonFetchWithoutBodyWithResponse<R>(
 }
 
 async function jsonFetchWithBodyWithResponse<B, R>(
-	httpMethod: 'POST',
+	httpMethod: 'POST' | 'PUT',
 	url: string,
 	requestBody: B,
 	responseSchema: ZodType<R>
@@ -98,7 +106,7 @@ async function jsonFetchWithBodyWithResponse<B, R>(
 	}
 
 	try {
-		const result = await parseResponse(response, responseSchema)
+		const result = await parseResponse(response, responseSchema);
 		return { status: 'success', result: result };
 	} catch (error) {
 		const message = error instanceof z.ZodError ? 'Response validation failed.' : 'Failed to parse response body.';
@@ -134,7 +142,7 @@ async function jsonFetchWithoutBodyWithoutResponse(httpMethod: 'POST' | 'DELETE'
 	return { status: 'success', result: undefined };
 }
 
-function configureRequestOptions<B>(method: 'GET' | 'POST' | 'DELETE', requestBody?: B): RequestInit {
+function configureRequestOptions<B>(method: 'GET' | 'POST' | 'PUT' | 'DELETE', requestBody?: B): RequestInit {
 	const headers = new Headers();
 
 	if (requestBody !== undefined) {
