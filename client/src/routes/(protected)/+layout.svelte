@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import { authenticationService } from '$lib/services/authentication-service.svelte';
 	import { authenticationStore } from '$lib/stores/authentication-store.svelte';
 	import { categoryService } from '$lib/services/category-service.svelte';
 	import { categoryStore } from '$lib/stores/category-store.svelte';
@@ -14,9 +15,8 @@
 
 	const { children } = $props();
 	const authentication = $derived(authenticationStore.authentication);
-	const notAttemptedToFetchAuthentication = $derived(!authenticationStore.fetchAttempted);
-	const authenticationNotLoading = $derived(!authenticationStore.loading);
-	const loading = $derived(authenticationStore.loading);
+	const notAttemptedToFetchAuthentication = $derived(!authenticationService.fetchAttempted);
+	const loading = $derived(authenticationService.loading);
 	const isDarkTheme = $derived(themeStore.isDarkTheme);
 
 	$effect(() => {
@@ -27,9 +27,9 @@
 				void undatedTaskStore.fetchUndatedTasks();
 			});
 		} else {
-			if (authenticationNotLoading) {
+			if (!loading) {
 				if (notAttemptedToFetchAuthentication) {
-					void authenticationStore.fetchCurrentAuthenticationIfNecessary();
+					void authenticationService.fetchCurrentAuthenticationIfNecessary();
 				} else {
 					void goto(resolve('/sign-in'));
 				}
@@ -57,7 +57,7 @@
 						<Moon size={18} aria-hidden={true} />
 					{/if}
 				</button>
-				<button class="sign-out-button" type="button" disabled={loading} onclick={() => void authenticationStore.signOut()}>
+				<button class="sign-out-button" type="button" disabled={loading} onclick={() => void authenticationService.signOut()}>
 					{loading ? 'Signing out...' : 'Sign out'}
 				</button>
 			</div>

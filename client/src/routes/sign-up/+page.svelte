@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import Input from '$lib/components/shared/input.svelte';
+	import { authenticationService } from '$lib/services/authentication-service.svelte';
 	import { authenticationStore } from '$lib/stores/authentication-store.svelte';
 	import { themeStore } from '$lib/stores/theme-store.svelte';
 	import { signUpInputSchema } from '$lib/types/inputs/sign-up-input';
@@ -16,7 +17,7 @@
 	let passwordError = $state<string | undefined>(undefined);
 	let repeatedPasswordError = $state<string | undefined>(undefined);
 	const authenticated = $derived(authenticationStore.authentication !== undefined);
-	const loading = $derived(authenticationStore.loading);
+	const loading = $derived(authenticationService.loading);
 	const isDarkTheme = $derived(themeStore.isDarkTheme);
 
 	$effect(() => {
@@ -33,7 +34,7 @@
 		}
 
 		clearValidationErrors();
-		await authenticationStore.signUp({
+		await authenticationService.signUp({
 			email: inputParseResult.data.email,
 			password: inputParseResult.data.password
 		});
