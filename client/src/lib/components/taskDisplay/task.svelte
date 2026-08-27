@@ -6,7 +6,7 @@
 	import { categoryStore } from '$lib/stores/category-store.svelte';
 	import type { DatedUntrashedOpenTaskResponse } from '$lib/types/responses/dated-untrashed-open-task-response';
 	import type { UndatedTaskResponse } from '$lib/types/responses/undated-task-response';
-	import { Edit3, Ellipsis } from '@lucide/svelte';
+	import { Ellipsis, SquarePen } from '@lucide/svelte';
 
 	type Props = {
 		task: DatedUntrashedOpenTaskResponse | UndatedTaskResponse;
@@ -32,7 +32,7 @@
 				{#snippet trigger()}<Ellipsis size={18} aria-hidden="true" />{/snippet}
 				<Button onclick={handleEdit}>
 					Edit
-					{#snippet trailingIcon()}<Edit3 size={17} aria-hidden="true" />{/snippet}
+					{#snippet trailingIcon()}<SquarePen size={17} aria-hidden="true" />{/snippet}
 				</Button>
 			</Popover>
 			<Checkbox bind:checked ariaLabel={`Mark "${task.title}" as completed`} />
