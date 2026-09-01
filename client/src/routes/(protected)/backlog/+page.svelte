@@ -5,18 +5,16 @@
 	import Task from '$lib/components/taskDisplay/task.svelte';
 	import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-task-store.svelte';
 	import { undatedTaskStore } from '$lib/stores/undated-task-store.svelte';
-	import { getLocalTimeZone, today } from '@internationalized/date';
+	import { getLocalTimeZone, today, type CalendarDate } from '@internationalized/date';
 	import type { DatedUntrashedOpenTaskResponse } from '$lib/types/responses/dated-untrashed-open-task-response';
 	import type { UndatedTaskResponse } from '$lib/types/responses/undated-task-response';
 
 	let taskDialogOpen = $state(false);
 	let selectedTask = $state<DatedUntrashedOpenTaskResponse | UndatedTaskResponse>();
 	const todayDate = today(getLocalTimeZone());
+	const datedTasks = $derived(datedUntrashedOpenTaskStore.datedUntrashedOpenTasks);
 	const todayTasks = $derived(
 		datedUntrashedOpenTaskStore.datedUntrashedOpenTasks.filter((task) => task.date.compare(todayDate) === 0)
-	);
-	const datedTasks = $derived(
-		datedUntrashedOpenTaskStore.datedUntrashedOpenTasks.filter((task) => task.date.compare(todayDate) !== 0)
 	);
 
 	function openCreateTaskDialog(): void {
@@ -27,6 +25,11 @@
 	function openEditTaskDialog(task: DatedUntrashedOpenTaskResponse | UndatedTaskResponse): void {
 		selectedTask = task;
 		taskDialogOpen = true;
+	}
+
+	function formatDate(date: CalendarDate): string {
+		if (date.compare(todayDate) === 0) return 'Today';
+		return `${String(date.day).padStart(2, '0')}.${String(date.month).padStart(2, '0')}.${date.year}`;
 	}
 </script>
 
@@ -43,17 +46,23 @@
 			</Button>
 		</div>
 		<div class="no-date-section">
+			<h1>No Date Assigned</h1>
 			{#each undatedTaskStore.undatedTasks as task (task.id)}
 				<Task {task} onedit={() => openEditTaskDialog(task)} />
 			{/each}
 		</div>
 	</div>
 	<div class="date-section">
-		{#each datedTasks as task (task.id)}
+		<h1>Date Assigned</h1>
+		{#each datedTasks as task, index (task.id)}
+			{#if index === 0 || task.date.compare(datedTasks[index - 1].date) !== 0}
+				<h2>{formatDate(task.date)}</h2>
+			{/if}
 			<Task {task} onedit={() => openEditTaskDialog(task)} />
 		{/each}
 	</div>
 	<div class="today-section">
+		<h1>Today</h1>
 		{#each todayTasks as task (task.id)}
 			<Task {task} onedit={() => openEditTaskDialog(task)} />
 		{/each}
@@ -72,6 +81,18 @@
 		box-sizing: border-box;
 		padding: 1rem;
 		gap: 1rem;
+
+		h1 {
+			font-size: 1.25rem;
+			margin: 0;
+			font-weight: 500;
+		}
+
+		h2 {
+			font-size: 1rem;
+			margin: 0;
+			font-weight: 500;
+		}
 
 		.left-column-container {
 			display: flex;
