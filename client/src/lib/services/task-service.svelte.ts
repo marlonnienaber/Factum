@@ -1,9 +1,11 @@
 import {
 	type NetworkCall,
 	jsonGetWithoutBodyWithResponse,
+	jsonPatchWithoutBodyWithoutResponse,
 	jsonPostWithBodyWithResponse,
 	jsonPutWithBodyWithResponse
 } from '$lib/api/api';
+import { datedUntrashedDoneTaskStore } from '$lib/stores/dated-untrashed-done-task-store.svelte';
 import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-task-store.svelte';
 import { undatedTaskStore } from '$lib/stores/undated-task-store.svelte';
 import type { CreateTaskRequest } from '$lib/types/requests/create-task-request';
@@ -14,6 +16,8 @@ import {
 	type DatedUntrashedOpenTaskResponse
 } from '$lib/types/responses/dated-untrashed-open-task-response';
 import { UndatedTaskResponseSchema, type UndatedTaskResponse } from '$lib/types/responses/undated-task-response';
+import { getLocalTimeZone, today } from '@internationalized/date';
+import { generateKeyBetween } from 'fractional-indexing';
 import { z } from 'zod';
 
 let undatedTasksLoading = $state(false);
@@ -99,6 +103,35 @@ async function updateTask(request: UpdateTaskRequest): Promise<void> {
 	}
 }
 
+async function completeTask(id: number): Promise<void> {
+	if (taskMutationBlocked) return;
+
+	const datedTask = datedUntrashedOpenTaskStore.datedUntrashedOpenTasks.find((task) => task.id === id);
+	const undatedTask = undatedTaskStore.undatedTasks.find((task) => task.id === id);
+	const task = datedTask ?? undatedTask;
+	if (!task) return;
+
+	const date = datedTask?.date ?? today(getLocalTimeZone());
+	const lastTaskForDate = datedUntrashedDoneTaskStore.datedUntrashedDoneTasks
+		.filter((doneTask) => doneTask.date.compare(date) === 0)
+		.at(-1);
+	const rank = generateKeyBetween(lastTaskForDate?.rank, undefined);
+
+	taskMutationLoading = true;
+	try {
+		const networkCall = await jsonPatchWithoutBodyWithoutResponse(
+			`/api/tasks/${id}/toggle-done?rank=${encodeURIComponent(rank)}`
+		);
+		if (networkCall.status !== 'success') return;
+
+		undatedTaskStore.removeTask(id);
+		datedUntrashedOpenTaskStore.removeTask(id);
+		datedUntrashedDoneTaskStore.addDatedUntrashedDoneTask({ ...task, date, rank });
+	} finally {
+		taskMutationLoading = false;
+	}
+}
+
 export const taskService = {
 	get taskMutationLoading(): boolean {
 		return taskMutationLoading;
@@ -109,5 +142,6 @@ export const taskService = {
 	fetchUndatedTasks,
 	fetchDatedUntrashedOpenTasks,
 	createTask,
-	updateTask
+	updateTask,
+	completeTask
 };

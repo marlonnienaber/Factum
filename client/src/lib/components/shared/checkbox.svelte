@@ -5,12 +5,13 @@
 	type Props = {
 		checked: boolean;
 		ariaLabel: string;
+		onCheckedChange?: (checked: boolean) => void;
 	};
 
-	let { checked = $bindable(), ariaLabel }: Props = $props();
+	let { checked, ariaLabel, onCheckedChange }: Props = $props();
 </script>
 
-<BitsCheckbox.Root bind:checked aria-label={ariaLabel}>
+<BitsCheckbox.Root {checked} {onCheckedChange} aria-label={ariaLabel}>
 	{#snippet child({ props, checked })}
 		<button {...props} class="checkbox">
 			{#if checked}

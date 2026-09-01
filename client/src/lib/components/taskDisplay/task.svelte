@@ -3,6 +3,7 @@
 	import Button from '$lib/components/shared/button.svelte';
 	import Category from '$lib/components/shared/category.svelte';
 	import Popover from '$lib/components/shared/popover.svelte';
+	import { taskService } from '$lib/services/task-service.svelte';
 	import { categoryStore } from '$lib/stores/category-store.svelte';
 	import type { DatedUntrashedOpenTaskResponse } from '$lib/types/responses/dated-untrashed-open-task-response';
 	import type { UndatedTaskResponse } from '$lib/types/responses/undated-task-response';
@@ -22,6 +23,12 @@
 		menuOpen = false;
 		onedit();
 	}
+
+	function handleCheckedChange(nextChecked: boolean): void {
+		if (!nextChecked) return;
+		checked = true;
+		void taskService.completeTask(task.id);
+	}
 </script>
 
 <div class="frame">
@@ -35,7 +42,7 @@
 					{#snippet trailingIcon()}<SquarePen size={17} aria-hidden="true" />{/snippet}
 				</Button>
 			</Popover>
-			<Checkbox bind:checked ariaLabel={`Mark "${task.title}" as completed`} />
+			<Checkbox {checked} onCheckedChange={handleCheckedChange} ariaLabel={`Mark "${task.title}" as completed`} />
 		</div>
 	</div>
 	{#if task.description}

@@ -33,6 +33,10 @@ export async function jsonPostWithoutBodyWithoutResponse(url: string): Promise<N
 	return await jsonFetchWithoutBodyWithoutResponse('POST', url);
 }
 
+export async function jsonPatchWithoutBodyWithoutResponse(url: string): Promise<NetworkCall<void>> {
+	return await jsonFetchWithoutBodyWithoutResponse('PATCH', url);
+}
+
 export async function jsonDeleteWithoutBodyWithoutResponse(url: string): Promise<NetworkCall<void>> {
 	return await jsonFetchWithoutBodyWithoutResponse('DELETE', url);
 }
@@ -114,7 +118,10 @@ async function jsonFetchWithBodyWithResponse<B, R>(
 	}
 }
 
-async function jsonFetchWithoutBodyWithoutResponse(httpMethod: 'POST' | 'DELETE', url: string): Promise<NetworkCall<void>> {
+async function jsonFetchWithoutBodyWithoutResponse(
+	httpMethod: 'POST' | 'PATCH' | 'DELETE',
+	url: string
+): Promise<NetworkCall<void>> {
 	let requestOptions: RequestInit;
 	try {
 		requestOptions = configureRequestOptions(httpMethod);
@@ -142,7 +149,7 @@ async function jsonFetchWithoutBodyWithoutResponse(httpMethod: 'POST' | 'DELETE'
 	return { status: 'success', result: undefined };
 }
 
-function configureRequestOptions<B>(method: 'GET' | 'POST' | 'PUT' | 'DELETE', requestBody?: B): RequestInit {
+function configureRequestOptions<B>(method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE', requestBody?: B): RequestInit {
 	const headers = new Headers();
 
 	if (requestBody !== undefined) {
