@@ -125,7 +125,7 @@
 				{#each undatedTaskDragItems as taskDragItem (getTaskDragItemKey(taskDragItem))}
 					<Task
 						task={taskDragItem}
-						isDragShadow={Boolean(taskDragItem[isShadowTask])}
+						isShadowItem={Boolean(taskDragItem[isShadowTask])}
 						onedit={() => openEditTaskDialog(taskDragItem)}
 					/>
 				{/each}
@@ -153,7 +153,7 @@
 						{#each taskDragItems as taskDragItem (getTaskDragItemKey(taskDragItem))}
 							<Task
 								task={taskDragItem}
-								isDragShadow={Boolean(taskDragItem[isShadowTask])}
+								isShadowItem={Boolean(taskDragItem[isShadowTask])}
 								onedit={() => openEditTaskDialog(taskDragItem)}
 							/>
 						{/each}
@@ -178,7 +178,7 @@
 			{#each dateKeyToDatedTaskDragItemsRecord[todayDateKey] as taskDragItem (getTaskDragItemKey(taskDragItem))}
 				<Task
 					task={taskDragItem}
-					isDragShadow={Boolean(taskDragItem[isShadowTask])}
+					isShadowItem={Boolean(taskDragItem[isShadowTask])}
 					onedit={() => openEditTaskDialog(taskDragItem)}
 				/>
 			{/each}
