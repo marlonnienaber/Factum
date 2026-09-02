@@ -13,6 +13,7 @@ import (
 
 func NewGetDatedUntrashedTasksHandler(taskStore *stores.TaskStore) shared.AuthenticatedHandlerFunc {
 	return func(c *shared.AuthenticatedContext) {
+		// TODO: Always load complete day groups when loading next page (potentially more than actual page size) so clients never calculate ranks with missing neighbours.
 		done, doneErr := shared.GetRequiredBooleanQueryParameter(c, "done")
 		date, dateErr := shared.GetOptionalDateQueryParameter(c, "date")
 		rank, rankErr := shared.GetOptionalRankQueryParameter(c, "rank")

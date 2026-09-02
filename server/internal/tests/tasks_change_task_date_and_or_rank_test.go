@@ -15,15 +15,15 @@ import (
 	"roci.dev/fracdex"
 )
 
-func TestTasksChangeDateUnauthenticated(t *testing.T) {
+func TestTasksChangeDateAndOrRankUnauthenticated(t *testing.T) {
 	app := support.PrepareTestEnvironment(t)
 
-	payload, err := json.Marshal(tasksTransport.ChangeTaskDateRequest{
+	payload, err := json.Marshal(tasksTransport.ChangeTaskDateAndOrRankRequest{
 		Id:   1,
 		Rank: "a0",
 	})
 	require.NoError(t, err, "serializing request failed")
-	resp := support.MakeJsonRequest(t, app, http.MethodPatch, "/api/tasks/change-date", payload)
+	resp := support.MakeJsonRequest(t, app, http.MethodPatch, "/api/tasks/change-date-and-or-rank", payload)
 
 	support.AssertErrorResponse(
 		t,
@@ -34,7 +34,7 @@ func TestTasksChangeDateUnauthenticated(t *testing.T) {
 	)
 }
 
-func TestTasksChangeDateInvalidId(t *testing.T) {
+func TestTasksChangeDateAndOrRankInvalidId(t *testing.T) {
 	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
 		Email:    support.TestUser1Email,
@@ -43,17 +43,17 @@ func TestTasksChangeDateInvalidId(t *testing.T) {
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()
 
-	payload, err := json.Marshal(tasksTransport.ChangeTaskDateRequest{
+	payload, err := json.Marshal(tasksTransport.ChangeTaskDateAndOrRankRequest{
 		Id:   -1,
 		Rank: "a0",
 	})
 	require.NoError(t, err, "serializing request failed")
-	resp := support.MakeJsonRequest(t, app, http.MethodPatch, "/api/tasks/change-date", payload, cookies...)
+	resp := support.MakeJsonRequest(t, app, http.MethodPatch, "/api/tasks/change-date-and-or-rank", payload, cookies...)
 
 	support.AssertValidationErrorResponse(t, resp, "id", "id must be greater than 0.")
 }
 
-func TestTasksChangeDateInvalidDate(t *testing.T) {
+func TestTasksChangeDateAndOrRankInvalidDate(t *testing.T) {
 	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
 		Email:    support.TestUser1Email,
@@ -68,7 +68,7 @@ func TestTasksChangeDateInvalidDate(t *testing.T) {
 		"rank": "a0",
 	})
 	require.NoError(t, err, "serializing request failed")
-	resp := support.MakeJsonRequest(t, app, http.MethodPatch, "/api/tasks/change-date", payload, cookies...)
+	resp := support.MakeJsonRequest(t, app, http.MethodPatch, "/api/tasks/change-date-and-or-rank", payload, cookies...)
 
 	support.AssertErrorResponse(
 		t,
@@ -79,7 +79,7 @@ func TestTasksChangeDateInvalidDate(t *testing.T) {
 	)
 }
 
-func TestTasksChangeDateInvalidRank(t *testing.T) {
+func TestTasksChangeDateAndOrRankInvalidRank(t *testing.T) {
 	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
 		Email:    support.TestUser1Email,
@@ -88,17 +88,17 @@ func TestTasksChangeDateInvalidRank(t *testing.T) {
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 	cookies := signUpResp.Result().Cookies()
 
-	payload, err := json.Marshal(tasksTransport.ChangeTaskDateRequest{
+	payload, err := json.Marshal(tasksTransport.ChangeTaskDateAndOrRankRequest{
 		Id:   1,
 		Rank: "!",
 	})
 	require.NoError(t, err, "serializing request failed")
-	resp := support.MakeJsonRequest(t, app, http.MethodPatch, "/api/tasks/change-date", payload, cookies...)
+	resp := support.MakeJsonRequest(t, app, http.MethodPatch, "/api/tasks/change-date-and-or-rank", payload, cookies...)
 
 	support.AssertValidationErrorResponse(t, resp, "rank", "rank must be a valid fractional rank.")
 }
 
-func TestTasksChangeDateTaskNotFound(t *testing.T) {
+func TestTasksChangeDateAndOrRankTaskNotFound(t *testing.T) {
 	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
 		Email:    support.TestUser1Email,
@@ -109,13 +109,13 @@ func TestTasksChangeDateTaskNotFound(t *testing.T) {
 
 	targetDate, err := shared.ParseDate("2026-03-25")
 	require.NoError(t, err, "parsing test date failed")
-	payload, err := json.Marshal(tasksTransport.ChangeTaskDateRequest{
+	payload, err := json.Marshal(tasksTransport.ChangeTaskDateAndOrRankRequest{
 		Id:   1,
 		Date: &targetDate,
 		Rank: "a0",
 	})
 	require.NoError(t, err, "serializing request failed")
-	resp := support.MakeJsonRequest(t, app, http.MethodPatch, "/api/tasks/change-date", payload, cookies...)
+	resp := support.MakeJsonRequest(t, app, http.MethodPatch, "/api/tasks/change-date-and-or-rank", payload, cookies...)
 
 	support.AssertErrorResponse(
 		t,
@@ -126,7 +126,7 @@ func TestTasksChangeDateTaskNotFound(t *testing.T) {
 	)
 }
 
-func TestTasksChangeDateRankAlreadyExists(t *testing.T) {
+func TestTasksChangeDateAndOrRankRankAlreadyExists(t *testing.T) {
 	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
 		Email:    support.TestUser1Email,
@@ -146,13 +146,13 @@ func TestTasksChangeDateRankAlreadyExists(t *testing.T) {
 	require.NotNil(t, datedTasks[0].Date, "expected dated task to have a date")
 	require.NotNil(t, datedTasks[0].Rank, "expected dated task to have a rank")
 
-	payload, err := json.Marshal(tasksTransport.ChangeTaskDateRequest{
+	payload, err := json.Marshal(tasksTransport.ChangeTaskDateAndOrRankRequest{
 		Id:   task.Id,
 		Date: datedTasks[0].Date,
 		Rank: *datedTasks[0].Rank,
 	})
 	require.NoError(t, err, "serializing request failed")
-	resp := support.MakeJsonRequest(t, app, http.MethodPatch, "/api/tasks/change-date", payload, cookies...)
+	resp := support.MakeJsonRequest(t, app, http.MethodPatch, "/api/tasks/change-date-and-or-rank", payload, cookies...)
 
 	support.AssertErrorResponse(
 		t,
@@ -163,7 +163,7 @@ func TestTasksChangeDateRankAlreadyExists(t *testing.T) {
 	)
 }
 
-func TestTasksChangeDateTrashedTaskDateToDate(t *testing.T) {
+func TestTasksChangeDateAndOrRankTrashedTaskDateToDate(t *testing.T) {
 	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
 		Email:    support.TestUser1Email,
@@ -189,24 +189,24 @@ func TestTasksChangeDateTrashedTaskDateToDate(t *testing.T) {
 
 	targetDate, err := shared.ParseDate("2026-03-26")
 	require.NoError(t, err, "parsing test date failed")
-	payload, err := json.Marshal(tasksTransport.ChangeTaskDateRequest{
+	payload, err := json.Marshal(tasksTransport.ChangeTaskDateAndOrRankRequest{
 		Id:   task.Id,
 		Date: &targetDate,
 		Rank: "a0",
 	})
 	require.NoError(t, err, "serializing request failed")
-	resp := support.MakeJsonRequest(t, app, http.MethodPatch, "/api/tasks/change-date", payload, cookies...)
+	resp := support.MakeJsonRequest(t, app, http.MethodPatch, "/api/tasks/change-date-and-or-rank", payload, cookies...)
 
 	support.AssertErrorResponse(
 		t,
 		resp,
 		http.StatusBadRequest,
-		"task_date_change_not_allowed",
-		"This date transition is not allowed.",
+		"task_date_and_or_rank_change_not_allowed",
+		"This date and/or rank transition is not allowed.",
 	)
 }
 
-func TestTasksChangeDateUndatedOpenUntrashedToDatedOpenUntrashedTask(t *testing.T) {
+func TestTasksChangeDateAndOrRankUndatedOpenUntrashedToDatedOpenUntrashedTask(t *testing.T) {
 	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
 		Email:    support.TestUser1Email,
@@ -229,23 +229,18 @@ func TestTasksChangeDateUndatedOpenUntrashedToDatedOpenUntrashedTask(t *testing.
 	rank, err := fracdex.KeyBetween(*lastDatedTask.Rank, "")
 	require.NoError(t, err, "generating task rank failed")
 
-	payload, err := json.Marshal(tasksTransport.ChangeTaskDateRequest{
+	payload, err := json.Marshal(tasksTransport.ChangeTaskDateAndOrRankRequest{
 		Id:   task.Id,
 		Date: lastDatedTask.Date,
 		Rank: rank,
 	})
 	require.NoError(t, err, "serializing request failed")
-	resp := support.MakeJsonRequest(t, app, http.MethodPatch, "/api/tasks/change-date", payload, cookies...)
-	require.Equal(t, http.StatusOK, resp.Code)
-	var respBody tasksTransport.TaskResponse
-	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
-
-	assert.Equal(t, lastDatedTask.Date, respBody.Date, "unexpected task date")
-	assert.Equal(t, &rank, respBody.Rank, "unexpected task rank")
-	assert.False(t, respBody.Done, "expected task to remain open")
+	resp := support.MakeJsonRequest(t, app, http.MethodPatch, "/api/tasks/change-date-and-or-rank", payload, cookies...)
+	require.Equal(t, http.StatusNoContent, resp.Code)
+	assert.Empty(t, resp.Body.String(), "expected an empty response body")
 }
 
-func TestTasksChangeDateDatedOpenUntrashedToUndatedOpenUntrashedTask(t *testing.T) {
+func TestTasksChangeDateAndOrRankDatedOpenUntrashedToUndatedOpenUntrashedTask(t *testing.T) {
 	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
 		Email:    support.TestUser1Email,
@@ -267,22 +262,17 @@ func TestTasksChangeDateDatedOpenUntrashedToUndatedOpenUntrashedTask(t *testing.
 	rank, err := fracdex.KeyBetween(*lastUndatedTask.Rank, "")
 	require.NoError(t, err, "generating task rank failed")
 
-	payload, err := json.Marshal(tasksTransport.ChangeTaskDateRequest{
+	payload, err := json.Marshal(tasksTransport.ChangeTaskDateAndOrRankRequest{
 		Id:   task.Id,
 		Rank: rank,
 	})
 	require.NoError(t, err, "serializing request failed")
-	resp := support.MakeJsonRequest(t, app, http.MethodPatch, "/api/tasks/change-date", payload, cookies...)
-	require.Equal(t, http.StatusOK, resp.Code)
-	var respBody tasksTransport.TaskResponse
-	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
-
-	assert.Nil(t, respBody.Date, "expected task date to be removed")
-	assert.Equal(t, &rank, respBody.Rank, "unexpected task rank")
-	assert.False(t, respBody.Done, "expected task to remain open")
+	resp := support.MakeJsonRequest(t, app, http.MethodPatch, "/api/tasks/change-date-and-or-rank", payload, cookies...)
+	require.Equal(t, http.StatusNoContent, resp.Code)
+	assert.Empty(t, resp.Body.String(), "expected an empty response body")
 }
 
-func TestTasksChangeDateDatedOpenUntrashedToDatedOpenUntrashedTask(t *testing.T) {
+func TestTasksChangeDateAndOrRankDatedOpenUntrashedToDatedOpenUntrashedTask(t *testing.T) {
 	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
 		Email:    support.TestUser1Email,
@@ -303,23 +293,18 @@ func TestTasksChangeDateDatedOpenUntrashedToDatedOpenUntrashedTask(t *testing.T)
 	rank, err := fracdex.KeyBetween("", "")
 	require.NoError(t, err, "generating task rank failed")
 
-	payload, err := json.Marshal(tasksTransport.ChangeTaskDateRequest{
+	payload, err := json.Marshal(tasksTransport.ChangeTaskDateAndOrRankRequest{
 		Id:   task.Id,
 		Date: &targetDate,
 		Rank: rank,
 	})
 	require.NoError(t, err, "serializing request failed")
-	resp := support.MakeJsonRequest(t, app, http.MethodPatch, "/api/tasks/change-date", payload, cookies...)
-	require.Equal(t, http.StatusOK, resp.Code)
-	var respBody tasksTransport.TaskResponse
-	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
-
-	assert.Equal(t, &targetDate, respBody.Date, "unexpected task date")
-	assert.Equal(t, &rank, respBody.Rank, "unexpected task rank")
-	assert.False(t, respBody.Done, "expected task to remain open")
+	resp := support.MakeJsonRequest(t, app, http.MethodPatch, "/api/tasks/change-date-and-or-rank", payload, cookies...)
+	require.Equal(t, http.StatusNoContent, resp.Code)
+	assert.Empty(t, resp.Body.String(), "expected an empty response body")
 }
 
-func TestTasksChangeDateDatedDoneUntrashedToDatedDoneUntrashedTask(t *testing.T) {
+func TestTasksChangeDateAndOrRankDatedDoneUntrashedToDatedDoneUntrashedTask(t *testing.T) {
 	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
 		Email:    support.TestUser1Email,
@@ -340,18 +325,61 @@ func TestTasksChangeDateDatedDoneUntrashedToDatedDoneUntrashedTask(t *testing.T)
 	rank, err := fracdex.KeyBetween("", "")
 	require.NoError(t, err, "generating task rank failed")
 
-	payload, err := json.Marshal(tasksTransport.ChangeTaskDateRequest{
+	payload, err := json.Marshal(tasksTransport.ChangeTaskDateAndOrRankRequest{
 		Id:   task.Id,
 		Date: &targetDate,
 		Rank: rank,
 	})
 	require.NoError(t, err, "serializing request failed")
-	resp := support.MakeJsonRequest(t, app, http.MethodPatch, "/api/tasks/change-date", payload, cookies...)
-	require.Equal(t, http.StatusOK, resp.Code)
-	var respBody tasksTransport.TaskResponse
-	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
+	resp := support.MakeJsonRequest(t, app, http.MethodPatch, "/api/tasks/change-date-and-or-rank", payload, cookies...)
+	require.Equal(t, http.StatusNoContent, resp.Code)
+	assert.Empty(t, resp.Body.String(), "expected an empty response body")
+}
 
-	assert.Equal(t, &targetDate, respBody.Date, "unexpected task date")
-	assert.Equal(t, &rank, respBody.Rank, "unexpected task rank")
-	assert.True(t, respBody.Done, "expected task to remain done")
+func TestTasksChangeDateAndOrRankWithinExistingDatePartitions(t *testing.T) {
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
+	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
+	})
+	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	cookies := signUpResp.Result().Cookies()
+
+	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
+	require.Equal(t, http.StatusCreated, categoryResp.Code)
+	var category categoriesTransport.CategoryResponse
+	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
+
+	undatedTasks := support.PrepareOpenUndatedUntrashedTasks(t, app, category.Id, cookies...)
+	datedTasks := support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, cookies...)
+	doneDatedTasks := support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, cookies...)
+
+	testCases := []struct {
+		name  string
+		tasks []tasksTransport.TaskResponse
+	}{
+		{name: "undated", tasks: undatedTasks},
+		{name: "open dated", tasks: datedTasks},
+		{name: "done dated", tasks: doneDatedTasks},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			task := testCase.tasks[0]
+			lastTask := testCase.tasks[len(testCase.tasks)-1]
+			require.NotNil(t, lastTask.Rank, "expected last task to have a rank")
+			rank, err := fracdex.KeyBetween(*lastTask.Rank, "")
+			require.NoError(t, err, "generating task rank failed")
+
+			payload, err := json.Marshal(tasksTransport.ChangeTaskDateAndOrRankRequest{
+				Id:   task.Id,
+				Date: task.Date,
+				Rank: rank,
+			})
+			require.NoError(t, err, "serializing request failed")
+			resp := support.MakeJsonRequest(t, app, http.MethodPatch, "/api/tasks/change-date-and-or-rank", payload, cookies...)
+			require.Equal(t, http.StatusNoContent, resp.Code)
+			assert.Empty(t, resp.Body.String(), "expected an empty response body")
+		})
+	}
 }

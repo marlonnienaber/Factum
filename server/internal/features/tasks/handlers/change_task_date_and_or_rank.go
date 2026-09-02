@@ -13,13 +13,13 @@ import (
 	"github.com/marlonnienaber/Factum/server/internal/validation"
 )
 
-func NewChangeTaskDateHandler(taskService *services.TaskService) shared.AuthenticatedHandlerFunc {
+func NewChangeTaskDateAndOrRankHandler(taskService *services.TaskService) shared.AuthenticatedHandlerFunc {
 	return func(c *shared.AuthenticatedContext) {
-		slog.Info("/tasks/change-date [PATCH]")
+		slog.Info("/tasks/change-date-and-or-rank [PATCH]")
 
-		unexpectedErrorLogMessage := "handling change task date failed"
+		unexpectedErrorLogMessage := "handling change task date and/or rank failed"
 
-		var request transport.ChangeTaskDateRequest
+		var request transport.ChangeTaskDateAndOrRankRequest
 		if err := c.ShouldBindJSON(&request); err != nil {
 			var validationErrors validator.ValidationErrors
 			if errors.As(err, &validationErrors) {
@@ -30,14 +30,14 @@ func NewChangeTaskDateHandler(taskService *services.TaskService) shared.Authenti
 			return
 		}
 
-		taskResponse, err := taskService.ChangeTaskDate(c.UserId, request)
+		err := taskService.ChangeTaskDateAndOrRank(c.UserId, request)
 		if err != nil {
 			switch {
 			case errors.Is(err, stores.ErrTaskNotFound):
 				c.JSON(http.StatusNotFound, taskNotFoundErrorResponse)
 				return
-			case errors.Is(err, services.ErrTaskDateChangeNotAllowed):
-				c.JSON(http.StatusBadRequest, taskDateChangeNotAllowedErrorResponse)
+			case errors.Is(err, services.ErrTaskDateAndOrRankChangeNotAllowed):
+				c.JSON(http.StatusBadRequest, taskDateAndOrRankChangeNotAllowedErrorResponse)
 				return
 			case errors.Is(err, stores.ErrTaskRankAlreadyExists):
 				c.JSON(http.StatusConflict, taskRankAlreadyExistsErrorResponse)
@@ -49,7 +49,7 @@ func NewChangeTaskDateHandler(taskService *services.TaskService) shared.Authenti
 			}
 		}
 
-		c.JSON(http.StatusOK, taskResponse)
+		c.Status(http.StatusNoContent)
 	}
 }
 
@@ -58,9 +58,9 @@ var taskNotFoundErrorResponse = shared.ErrorResponse{
 	Message:   "No task exists for the provided id.",
 }
 
-var taskDateChangeNotAllowedErrorResponse = shared.ErrorResponse{
-	ErrorCode: "task_date_change_not_allowed",
-	Message:   "This date transition is not allowed.",
+var taskDateAndOrRankChangeNotAllowedErrorResponse = shared.ErrorResponse{
+	ErrorCode: "task_date_and_or_rank_change_not_allowed",
+	Message:   "This date and/or rank transition is not allowed.",
 }
 
 var taskRankAlreadyExistsErrorResponse = shared.ErrorResponse{

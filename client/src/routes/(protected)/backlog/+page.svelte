@@ -5,31 +5,95 @@
 	import Task from '$lib/components/taskDisplay/task.svelte';
 	import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-task-store.svelte';
 	import { undatedTaskStore } from '$lib/stores/undated-task-store.svelte';
-	import { getLocalTimeZone, today, type CalendarDate } from '@internationalized/date';
+	import { taskService } from '$lib/services/task-service.svelte';
+	import { getLocalTimeZone, parseDate, today, type CalendarDate } from '@internationalized/date';
 	import type { DatedUntrashedOpenTaskResponse } from '$lib/types/responses/dated-untrashed-open-task-response';
 	import type { UndatedTaskResponse } from '$lib/types/responses/undated-task-response';
+	import { dndzone, SHADOW_ITEM_MARKER_PROPERTY_NAME as isShadowTask, TRIGGERS, type DndEvent } from 'svelte-dnd-action';
+
+	type TaskDragItem = (DatedUntrashedOpenTaskResponse | UndatedTaskResponse) & {
+		[isShadowTask]?: boolean;
+	};
+
+	const dropTargetStyle = { outline: 'none' };
+	const todayDate = today(getLocalTimeZone());
+	const todayDateKey = todayDate.toString();
 
 	let taskDialogOpen = $state(false);
-	let selectedTask = $state<DatedUntrashedOpenTaskResponse | UndatedTaskResponse>();
-	const todayDate = today(getLocalTimeZone());
-	const datedTasks = $derived(datedUntrashedOpenTaskStore.datedUntrashedOpenTasks);
-	const todayTasks = $derived(
-		datedUntrashedOpenTaskStore.datedUntrashedOpenTasks.filter((task) => task.date.compare(todayDate) === 0)
-	);
+	let dragging = $state(false);
+	let taskDialogTask = $state<DatedUntrashedOpenTaskResponse | UndatedTaskResponse>();
+	let undatedTaskDragItems = $state<TaskDragItem[]>([...undatedTaskStore.undatedTasks]);
+	let dateKeyToDatedTaskDragItemsRecord = $state<Record<string, TaskDragItem[]>>(createGroupKeyToDatedTaskItemsRecord());
 
-	function openCreateTaskDialog(): void {
-		selectedTask = undefined;
-		taskDialogOpen = true;
+	$effect.pre(() => {
+		if (dragging) return;
+		undatedTaskDragItems = [...undatedTaskStore.undatedTasks];
+		dateKeyToDatedTaskDragItemsRecord = createGroupKeyToDatedTaskItemsRecord();
+	});
+
+	function createGroupKeyToDatedTaskItemsRecord(): Record<string, TaskDragItem[]> {
+		const dateKeyToTaskDragItemsMap = Map.groupBy(datedUntrashedOpenTaskStore.datedUntrashedOpenTasks, (task) =>
+			task.date.toString()
+		);
+		return Object.fromEntries(dateKeyToTaskDragItemsMap);
 	}
 
-	function openEditTaskDialog(task: DatedUntrashedOpenTaskResponse | UndatedTaskResponse): void {
-		selectedTask = task;
-		taskDialogOpen = true;
+
+	function handleConsider(event: CustomEvent<DndEvent<TaskDragItem>>, dateKey?: string): void {
+		dragging = true;
+		setTaskDragItems(event.detail.items, dateKey);
+	}
+
+	async function handleFinalize(event: CustomEvent<DndEvent<TaskDragItem>>, dateKey?: string): Promise<void> {
+		const taskDragItems = event.detail.items;
+		setTaskDragItems(taskDragItems, dateKey);
+
+		const taskDragItemId = Number(event.detail.info.id);
+		const wasTaskDragItemDroppedIntoZoneOfHandler = event.detail.info.trigger === TRIGGERS.DROPPED_INTO_ZONE;
+		const doesTaskForTaskDragItemIdExist =
+			undatedTaskStore.undatedTasks.some((task) => task.id === taskDragItemId) ||
+			datedUntrashedOpenTaskStore.datedUntrashedOpenTasks.some((task) => task.id === taskDragItemId);
+		if (wasTaskDragItemDroppedIntoZoneOfHandler && doesTaskForTaskDragItemIdExist) {
+			const taskDragItemIndex = taskDragItems.findIndex((task) => task.id === taskDragItemId);
+			await taskService.changeTaskDateAndOrRank(
+				taskDragItemId,
+				dateKey ? parseDate(dateKey) : undefined,
+				taskDragItems[taskDragItemIndex - 1]?.rank,
+				taskDragItems[taskDragItemIndex + 1]?.rank
+			);
+		}
+
+		dragging = false;
+	}
+
+	function setTaskDragItems(taskDragItems: TaskDragItem[], dateKey?: string): void {
+		if (dateKey) {
+			dateKeyToDatedTaskDragItemsRecord = {
+				...dateKeyToDatedTaskDragItemsRecord,
+				[dateKey]: taskDragItems
+			};
+		} else {
+			undatedTaskDragItems = taskDragItems;
+		}
+	}
+
+	function getTaskDragItemKey(task: TaskDragItem): string {
+		return `${task.id}-${task[isShadowTask] ? 'shadow' : 'item'}`;
 	}
 
 	function formatDate(date: CalendarDate): string {
 		if (date.compare(todayDate) === 0) return 'Today';
 		return `${String(date.day).padStart(2, '0')}.${String(date.month).padStart(2, '0')}.${date.year}`;
+	}
+
+	function openCreateTaskDialog() {
+		taskDialogTask = undefined;
+		taskDialogOpen = true;
+	}
+
+	function openEditTaskDialog(task: DatedUntrashedOpenTaskResponse | UndatedTaskResponse) {
+		taskDialogTask = task;
+		taskDialogOpen = true;
 	}
 </script>
 
@@ -47,37 +111,89 @@
 		</div>
 		<div class="no-date-section">
 			<h1>No Date Assigned</h1>
-			{#each undatedTaskStore.undatedTasks as task (task.id)}
-				<Task {task} onedit={() => openEditTaskDialog(task)} />
-			{/each}
+			<div
+				class="task-item-drop-zone"
+				aria-label="Tasks without a date"
+				use:dndzone={{
+					items: undatedTaskDragItems,
+					dragDisabled: taskService.taskMutationBlocked,
+					dropTargetStyle: dropTargetStyle
+				}}
+				onconsider={handleConsider}
+				onfinalize={handleFinalize}
+			>
+				{#each undatedTaskDragItems as taskDragItem (getTaskDragItemKey(taskDragItem))}
+					<Task
+						task={taskDragItem}
+						isDragShadow={Boolean(taskDragItem[isShadowTask])}
+						onedit={() => openEditTaskDialog(taskDragItem)}
+					/>
+				{/each}
+			</div>
 		</div>
 	</div>
 	<div class="date-section">
 		<h1>Date Assigned</h1>
-		{#each datedTasks as task, index (task.id)}
-			{#if index === 0 || task.date.compare(datedTasks[index - 1].date) !== 0}
-				<h2>{formatDate(task.date)}</h2>
+		{#each Object.entries(dateKeyToDatedTaskDragItemsRecord) as [groupKey, taskDragItems] (groupKey)}
+			{#if groupKey !== todayDateKey}
+				{@const groupDate = parseDate(groupKey)}
+				<div class="date-group">
+					<h2>{formatDate(groupDate)}</h2>
+					<div
+						class="task-item-drop-zone"
+						aria-label={`Tasks dated ${formatDate(groupDate)}`}
+						use:dndzone={{
+							items: taskDragItems,
+							dragDisabled: taskService.taskMutationBlocked,
+							dropTargetStyle: dropTargetStyle
+						}}
+						onconsider={(event) => handleConsider(event, groupKey)}
+						onfinalize={(event) => handleFinalize(event, groupKey)}
+					>
+						{#each taskDragItems as taskDragItem (getTaskDragItemKey(taskDragItem))}
+							<Task
+								task={taskDragItem}
+								isDragShadow={Boolean(taskDragItem[isShadowTask])}
+								onedit={() => openEditTaskDialog(taskDragItem)}
+							/>
+						{/each}
+					</div>
+				</div>
 			{/if}
-			<Task {task} onedit={() => openEditTaskDialog(task)} />
 		{/each}
 	</div>
 	<div class="today-section">
 		<h1>Today</h1>
-		{#each todayTasks as task (task.id)}
-			<Task {task} onedit={() => openEditTaskDialog(task)} />
-		{/each}
+		<div
+			class="task-item-drop-zone"
+			aria-label="Tasks dated Today"
+			use:dndzone={{
+				items: dateKeyToDatedTaskDragItemsRecord[todayDateKey] ?? [],
+				dragDisabled: taskService.taskMutationBlocked,
+				dropTargetStyle: dropTargetStyle
+			}}
+			onconsider={(event) => handleConsider(event, todayDateKey)}
+			onfinalize={(event) => handleFinalize(event, todayDateKey)}
+		>
+			{#each dateKeyToDatedTaskDragItemsRecord[todayDateKey] as taskDragItem (getTaskDragItemKey(taskDragItem))}
+				<Task
+					task={taskDragItem}
+					isDragShadow={Boolean(taskDragItem[isShadowTask])}
+					onedit={() => openEditTaskDialog(taskDragItem)}
+				/>
+			{/each}
+		</div>
 	</div>
 </div>
 
-<TaskDialog bind:open={taskDialogOpen} bind:task={selectedTask} />
+<TaskDialog bind:open={taskDialogOpen} bind:task={taskDialogTask} />
 
 <style lang="scss">
 	.frame {
 		flex: 1;
 		width: 100%;
-		display: flex;
-		justify-content: center;
-		align-items: center;
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
 		box-sizing: border-box;
 		padding: 1rem;
 		gap: 1rem;
@@ -92,6 +208,12 @@
 			font-size: 1rem;
 			margin: 0;
 			font-weight: 500;
+		}
+
+		.task-item-drop-zone {
+			display: flex;
+			flex-direction: column;
+			gap: 0.75rem;
 		}
 
 		.left-column-container {
@@ -121,6 +243,10 @@
 				border: 1px solid var(--border);
 				border-radius: 0.75rem;
 				gap: 0.75rem;
+
+				.task-item-drop-zone {
+					flex: 1;
+				}
 			}
 		}
 
@@ -134,6 +260,20 @@
 			border: 1px solid var(--border);
 			border-radius: 0.75rem;
 			gap: 0.75rem;
+
+			.date-group {
+				display: flex;
+				flex-direction: column;
+				gap: 0.75rem;
+
+				&:last-child {
+					flex: 1;
+
+					.task-item-drop-zone {
+						flex: 1;
+					}
+				}
+			}
 		}
 
 		.today-section {
@@ -146,6 +286,14 @@
 			border: 1px solid var(--border);
 			border-radius: 0.75rem;
 			gap: 0.75rem;
+
+			.task-item-drop-zone {
+				flex: 1;
+			}
 		}
+	}
+
+	:global(#dnd-action-dragged-el) {
+		opacity: 1 !important;
 	}
 </style>

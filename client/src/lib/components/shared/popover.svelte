@@ -55,6 +55,7 @@
 		padding: 0;
 		background: transparent;
 		color: inherit;
+		cursor: pointer;
 	}
 
 	.content {

@@ -14,10 +14,10 @@ import (
 )
 
 var (
-	ErrTaskDateChangeNotAllowed = errors.New("task cannot transition between its current and requested date states")
-	ErrTaskAlreadyTrashed       = errors.New("task is already trashed")
-	ErrTaskAlreadyRestored      = errors.New("task is already restored")
-	ErrTaskRankRequired         = errors.New("task rank is required for an untrashed task")
+	ErrTaskDateAndOrRankChangeNotAllowed = errors.New("requested date and/or rank change not allowed")
+	ErrTaskAlreadyTrashed                = errors.New("task is already trashed")
+	ErrTaskAlreadyRestored               = errors.New("task is already restored")
+	ErrTaskRankRequired                  = errors.New("task rank is required for an untrashed task")
 )
 
 type TaskService struct {
@@ -155,15 +155,16 @@ func (service *TaskService) UpdateTask(userId int64, request transport.UpdateTas
 	return taskResponse, nil
 }
 
-func (service *TaskService) ChangeTaskDate(userId int64, request transport.ChangeTaskDateRequest) (*transport.TaskResponse, error) {
-	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("changing task date failed")
+func (service *TaskService) ChangeTaskDateAndOrRank(userId int64, request transport.ChangeTaskDateAndOrRankRequest) error {
+	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("changing task date and/or rank failed")
 
-	taskResponse, err := shared.ExecuteAsSerializableTransaction(service.db, func(transaction *sqlx.Tx) (*transport.TaskResponse, error) {
+	err := shared.ExecuteAsSerializableTransactionWithoutResult(service.db, func(transaction *sqlx.Tx) error {
 		task, err := service.taskStore.GetTaskByIdForUser(transaction, request.Id, userId)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
+		// TODO: check once more whether the endpoint really only allows allowed transitions (map out transitions that UI allows and compare to logic)
 		isMovingFromDateToDate := task.Date != nil && request.Date != nil && !datesAreEqual(task.Date, request.Date)
 		isAllowedToMoveFromDateToDate := task.TrashedDate == nil && task.Date != nil
 
@@ -173,32 +174,38 @@ func (service *TaskService) ChangeTaskDate(userId int64, request transport.Chang
 		isMovingFromNoDateToDate := task.Date == nil && request.Date != nil
 		isAllowedToMoveFromNoDateToDate := task.TrashedDate == nil && task.Date == nil && !task.Done
 
-		isAllowedToChangeDate := isMovingFromDateToDate && isAllowedToMoveFromDateToDate || isMovingFromDateToNoDate && isAllowedToMoveFromDateToNoDate || isMovingFromNoDateToDate && isAllowedToMoveFromNoDateToDate
+		isOnlyChangingRank := datesAreEqual(task.Date, request.Date)
+		isAllowedToOnlyChangeRank := task.TrashedDate == nil
 
-		if !isAllowedToChangeDate {
-			return nil, ErrTaskDateChangeNotAllowed
+		isAllowedToChangeDateAndOrRank := isMovingFromDateToDate && isAllowedToMoveFromDateToDate ||
+			isMovingFromDateToNoDate && isAllowedToMoveFromDateToNoDate ||
+			isMovingFromNoDateToDate && isAllowedToMoveFromNoDateToDate ||
+			isOnlyChangingRank && isAllowedToOnlyChangeRank
+
+		if !isAllowedToChangeDateAndOrRank {
+			return ErrTaskDateAndOrRankChangeNotAllowed
 		}
 
 		task.Date = request.Date
 		task.Rank = &request.Rank
 		if err := service.taskStore.UpdateTaskDateAndRank(transaction, task); err != nil {
-			return nil, err
+			return err
 		}
 
-		return newTaskResponse(task), nil
+		return nil
 	})
 	if err != nil {
 		switch {
 		case errors.Is(err, stores.ErrTaskNotFound),
 			errors.Is(err, stores.ErrTaskRankAlreadyExists),
-			errors.Is(err, ErrTaskDateChangeNotAllowed):
-			return nil, err
+			errors.Is(err, ErrTaskDateAndOrRankChangeNotAllowed):
+			return err
 		default:
-			return nil, wrapUnexpectedError(err)
+			return wrapUnexpectedError(err)
 		}
 	}
 
-	return taskResponse, nil
+	return nil
 }
 
 func (service *TaskService) TrashTask(userId int64, taskId int64, trashedDate time.Time) error {

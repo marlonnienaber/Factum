@@ -29,6 +29,18 @@ export async function jsonPutWithBodyWithResponse<B, R>(
 	return await jsonFetchWithBodyWithResponse('PUT', url, requestBody, responseSchema);
 }
 
+export async function jsonPatchWithBodyWithResponse<B, R>(
+	url: string,
+	requestBody: B,
+	responseSchema: ZodType<R>
+): Promise<NetworkCall<R>> {
+	return await jsonFetchWithBodyWithResponse('PATCH', url, requestBody, responseSchema);
+}
+
+export async function jsonPatchWithBodyWithoutResponse<B>(url: string, requestBody: B): Promise<NetworkCall<void>> {
+	return await jsonFetchWithBodyWithoutResponse('PATCH', url, requestBody);
+}
+
 export async function jsonPostWithoutBodyWithoutResponse(url: string): Promise<NetworkCall<void>> {
 	return await jsonFetchWithoutBodyWithoutResponse('POST', url);
 }
@@ -80,7 +92,7 @@ async function jsonFetchWithoutBodyWithResponse<R>(
 }
 
 async function jsonFetchWithBodyWithResponse<B, R>(
-	httpMethod: 'POST' | 'PUT',
+	httpMethod: 'POST' | 'PUT' | 'PATCH',
 	url: string,
 	requestBody: B,
 	responseSchema: ZodType<R>
@@ -125,6 +137,34 @@ async function jsonFetchWithoutBodyWithoutResponse(
 	let requestOptions: RequestInit;
 	try {
 		requestOptions = configureRequestOptions(httpMethod);
+	} catch (error) {
+		return handleError(error, 'Failed to configure request.');
+	}
+
+	let response: Response;
+	try {
+		response = await fetch(url, requestOptions);
+	} catch (error) {
+		return handleError(error, 'Request failed before receiving a response.');
+	}
+
+	if (!response.ok) {
+		let errorMessage: string;
+		try {
+			errorMessage = await getErrorResponseMessage(response);
+		} catch (error) {
+			return handleError(error, 'Failed to parse error response.');
+		}
+		return handleErrorResponse(errorMessage);
+	}
+
+	return { status: 'success', result: undefined };
+}
+
+async function jsonFetchWithBodyWithoutResponse<B>(httpMethod: 'PATCH', url: string, requestBody: B): Promise<NetworkCall<void>> {
+	let requestOptions: RequestInit;
+	try {
+		requestOptions = configureRequestOptions(httpMethod, requestBody);
 	} catch (error) {
 		return handleError(error, 'Failed to configure request.');
 	}

@@ -11,10 +11,11 @@
 
 	type Props = {
 		task: DatedUntrashedOpenTaskResponse | UndatedTaskResponse;
+		isShadowItem?: boolean;
 		onedit: () => void;
 	};
 
-	const { task, onedit }: Props = $props();
+	const { task, isShadowItem = false, onedit }: Props = $props();
 	let checked = $state(false);
 	let menuOpen = $state(false);
 	const category = $derived(categoryStore.categories.find((category) => category.id === task.categoryId));
@@ -31,7 +32,7 @@
 	}
 </script>
 
-<div class="frame">
+<div class="frame" aria-label={task.title} data-is-dnd-shadow-item-hint={isShadowItem}>
 	<div class="header">
 		<span class="title">{task.title}</span>
 		<div class="controls">
@@ -62,6 +63,11 @@
 		padding: 1rem;
 		border-radius: 0.5rem;
 		gap: 0.75rem;
+		outline: none;
+
+		&[data-is-dnd-shadow-item-hint='true'] {
+			opacity: 0;
+		}
 
 		.header {
 			display: flex;

@@ -1,6 +1,7 @@
 import {
 	type NetworkCall,
 	jsonGetWithoutBodyWithResponse,
+	jsonPatchWithBodyWithoutResponse,
 	jsonPatchWithoutBodyWithoutResponse,
 	jsonPostWithBodyWithResponse,
 	jsonPutWithBodyWithResponse
@@ -8,6 +9,7 @@ import {
 import { datedUntrashedDoneTaskStore } from '$lib/stores/dated-untrashed-done-task-store.svelte';
 import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-task-store.svelte';
 import { undatedTaskStore } from '$lib/stores/undated-task-store.svelte';
+import type { ChangeTaskDateAndOrRankRequest } from '$lib/types/requests/change-task-date-and-or-rank-request';
 import type { CreateTaskRequest } from '$lib/types/requests/create-task-request';
 import type { DatedUntrashedOpenTasksCursor } from '$lib/types/requests/dated-untrashed-open-tasks-cursor';
 import type { UpdateTaskRequest } from '$lib/types/requests/update-task-request';
@@ -16,7 +18,7 @@ import {
 	type DatedUntrashedOpenTaskResponse
 } from '$lib/types/responses/dated-untrashed-open-task-response';
 import { UndatedTaskResponseSchema, type UndatedTaskResponse } from '$lib/types/responses/undated-task-response';
-import { getLocalTimeZone, today } from '@internationalized/date';
+import { getLocalTimeZone, today, type CalendarDate } from '@internationalized/date';
 import { generateKeyBetween } from 'fractional-indexing';
 import { z } from 'zod';
 
@@ -132,6 +134,52 @@ async function completeTask(id: number): Promise<void> {
 	}
 }
 
+async function changeTaskDateAndOrRank(
+	id: number,
+	newDate: CalendarDate | undefined,
+	previousRank: string | undefined,
+	nextRank: string | undefined
+): Promise<void> {
+	if (taskMutationBlocked) return;
+
+	const undatedTask = undatedTaskStore.undatedTasks.find((task) => task.id === id);
+	const datedTask = datedUntrashedOpenTaskStore.datedUntrashedOpenTasks.find((task) => task.id === id);
+	const task = undatedTask ?? datedTask;
+	if (!task) return;
+
+	const rank = generateKeyBetween(previousRank, nextRank);
+	const request: ChangeTaskDateAndOrRankRequest = { id, date: newDate?.toString(), rank };
+
+	taskMutationLoading = true;
+
+	undatedTaskStore.removeTask(id);
+	datedUntrashedOpenTaskStore.removeTask(id);
+	if (newDate) {
+		datedUntrashedOpenTaskStore.addDatedUntrashedOpenTask({ ...task, date: newDate, rank });
+	} else {
+		undatedTaskStore.addUndatedTask({
+			id: task.id,
+			categoryId: task.categoryId,
+			title: task.title,
+			description: task.description,
+			rank
+		});
+	}
+
+	try {
+		const networkCall = await jsonPatchWithBodyWithoutResponse('/api/tasks/change-date-and-or-rank', request);
+
+		if (networkCall.status === 'failed') {
+			datedUntrashedOpenTaskStore.removeTask(id);
+			undatedTaskStore.removeTask(id);
+			if (datedTask) datedUntrashedOpenTaskStore.addDatedUntrashedOpenTask(datedTask);
+			if (undatedTask) undatedTaskStore.addUndatedTask(undatedTask);
+		}
+	} finally {
+		taskMutationLoading = false;
+	}
+}
+
 export const taskService = {
 	get taskMutationLoading(): boolean {
 		return taskMutationLoading;
@@ -143,5 +191,6 @@ export const taskService = {
 	fetchDatedUntrashedOpenTasks,
 	createTask,
 	updateTask,
-	completeTask
+	completeTask,
+	changeTaskDateAndOrRank
 };
