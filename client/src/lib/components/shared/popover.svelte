@@ -60,9 +60,12 @@
 
 	.content {
 		z-index: 60;
+		display: flex;
+		flex-direction: column;
 		box-sizing: border-box;
 		width: fit-content;
 		padding: 0.5rem;
+		gap: 0.5rem;
 		border: 1px solid var(--border);
 		border-radius: 0.75rem;
 		background: var(--background);

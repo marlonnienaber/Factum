@@ -7,6 +7,7 @@
 	import { taskService } from '$lib/services/task-service.svelte';
 	import { categoryStore } from '$lib/stores/category-store.svelte';
 	import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-task-store.svelte';
+	import { trashedTaskStore } from '$lib/stores/trashed-task-store.svelte';
 	import { themeStore } from '$lib/stores/theme-store.svelte';
 	import { undatedTaskStore } from '$lib/stores/undated-task-store.svelte';
 	import { Moon, Sun } from '@lucide/svelte';
@@ -37,6 +38,7 @@
 			}
 			categoryStore.reset();
 			datedUntrashedOpenTaskStore.reset();
+			trashedTaskStore.reset();
 			undatedTaskStore.reset();
 		}
 	});

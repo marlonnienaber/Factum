@@ -8,6 +8,7 @@ import {
 } from '$lib/api/api';
 import { datedUntrashedDoneTaskStore } from '$lib/stores/dated-untrashed-done-task-store.svelte';
 import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-task-store.svelte';
+import { trashedTaskStore } from '$lib/stores/trashed-task-store.svelte';
 import { undatedTaskStore } from '$lib/stores/undated-task-store.svelte';
 import type { ChangeTaskDateAndOrRankRequest } from '$lib/types/requests/change-task-date-and-or-rank-request';
 import type { CreateTaskRequest } from '$lib/types/requests/create-task-request';
@@ -18,7 +19,7 @@ import {
 	type DatedUntrashedOpenTaskResponse
 } from '$lib/types/responses/dated-untrashed-open-task-response';
 import { UndatedTaskResponseSchema, type UndatedTaskResponse } from '$lib/types/responses/undated-task-response';
-import { getLocalTimeZone, today, type CalendarDate } from '@internationalized/date';
+import { getLocalTimeZone, now, today, type CalendarDate } from '@internationalized/date';
 import { generateKeyBetween } from 'fractional-indexing';
 import { z } from 'zod';
 
@@ -134,6 +135,36 @@ async function completeTask(id: number): Promise<void> {
 	}
 }
 
+async function trashTask(id: number): Promise<void> {
+	if (taskMutationBlocked) return;
+	const datedTask = datedUntrashedOpenTaskStore.datedUntrashedOpenTasks.find((task) => task.id === id);
+	const undatedTask = undatedTaskStore.undatedTasks.find((task) => task.id === id);
+	const task = datedTask ?? undatedTask;
+	if (!task) return;
+
+	taskMutationLoading = true;
+	try {
+		const trashedDate = now(getLocalTimeZone());
+		const encodedTrashedDate = encodeURIComponent(trashedDate.toAbsoluteString());
+		const networkCall = await jsonPatchWithoutBodyWithoutResponse(`/api/tasks/${id}/trash?trashedDate=${encodedTrashedDate}`);
+		if (networkCall.status !== 'success') return;
+
+		undatedTaskStore.removeTask(id);
+		datedUntrashedOpenTaskStore.removeTask(id);
+		trashedTaskStore.addTrashedTask({
+			id: task.id,
+			categoryId: task.categoryId,
+			title: task.title,
+			description: task.description,
+			date: datedTask?.date,
+			done: false,
+			trashedDate
+		});
+	} finally {
+		taskMutationLoading = false;
+	}
+}
+
 async function changeTaskDateAndOrRank(
 	id: number,
 	newDate: CalendarDate | undefined,
@@ -192,5 +223,6 @@ export const taskService = {
 	createTask,
 	updateTask,
 	completeTask,
+	trashTask,
 	changeTaskDateAndOrRank
 };

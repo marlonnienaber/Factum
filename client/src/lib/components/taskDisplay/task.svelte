@@ -7,7 +7,7 @@
 	import { categoryStore } from '$lib/stores/category-store.svelte';
 	import type { DatedUntrashedOpenTaskResponse } from '$lib/types/responses/dated-untrashed-open-task-response';
 	import type { UndatedTaskResponse } from '$lib/types/responses/undated-task-response';
-	import { Ellipsis, SquarePen } from '@lucide/svelte';
+	import { Ellipsis, SquarePen, Trash2 } from '@lucide/svelte';
 
 	type Props = {
 		task: DatedUntrashedOpenTaskResponse | UndatedTaskResponse;
@@ -23,6 +23,11 @@
 	function handleEdit(): void {
 		menuOpen = false;
 		onedit();
+	}
+
+	function handleTrash(): void {
+		menuOpen = false;
+		void taskService.trashTask(task.id);
 	}
 
 	function handleCheckedChange(nextChecked: boolean): void {
@@ -41,6 +46,10 @@
 				<Button onclick={handleEdit}>
 					Edit
 					{#snippet trailingIcon()}<SquarePen size={17} aria-hidden="true" />{/snippet}
+				</Button>
+				<Button variant="danger" disabled={taskService.taskMutationBlocked} onclick={handleTrash}>
+					Trash
+					{#snippet trailingIcon()}<Trash2 size={17} aria-hidden="true" />{/snippet}
 				</Button>
 			</Popover>
 			<Checkbox {checked} onCheckedChange={handleCheckedChange} ariaLabel={`Mark "${task.title}" as completed`} />

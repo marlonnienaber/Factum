@@ -25,6 +25,7 @@
 	.button {
 		display: flex;
 		align-items: center;
+		justify-content: space-between;
 		gap: 0.25rem;
 		padding: 0.375rem 0.5rem;
 		border: none;
