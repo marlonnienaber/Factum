@@ -143,7 +143,7 @@
 		outline: none;
 
 		&:focus {
-			background: var(--surface-subtle);
+			background: var(--surface);
 		}
 	}
 
