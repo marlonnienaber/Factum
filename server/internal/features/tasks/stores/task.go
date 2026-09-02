@@ -14,6 +14,11 @@ import (
 
 const tasksBatchSize = 50
 
+type dateAndRankPair struct {
+	Date shared.Date `db:"date"`
+	Rank string      `db:"rank"`
+}
+
 var (
 	ErrCategoryNotFound      = errors.New("no category exists for the given id")
 	ErrTaskNotFound          = errors.New("no task exists for the given id and user id")
@@ -56,6 +61,165 @@ func (store *TaskStore) GetTaskByIdForUser(transaction *sqlx.Tx, id int64, userI
 	}
 
 	return &task, nil
+}
+
+func (store *TaskStore) GetTasksByIdsForUser(transaction *sqlx.Tx, ids []int64, userId int64) ([]domain.Task, error) {
+	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("retrieving tasks by ids and user id failed")
+
+	tasks := make([]domain.Task, 0, len(ids))
+	err := transaction.Select(&tasks, `
+		SELECT id,
+		       user_id,
+		       category_id,
+		       title,
+		       description,
+		       date,
+		       rank,
+		       done,
+		       trashed_date
+		FROM tasks
+		WHERE id = ANY($1::BIGINT[])
+		  AND user_id = $2
+	`, pq.Array(ids), userId)
+	if err != nil {
+		return nil, wrapUnexpectedError(err)
+	}
+	if len(tasks) != len(ids) {
+		return nil, ErrTaskNotFound
+	}
+
+	return tasks, nil
+}
+
+func (store *TaskStore) GetHighestUntrashedTaskRanksByDate(
+	transaction *sqlx.Tx,
+	userId int64,
+	dates []shared.Date,
+	done bool,
+) (map[shared.Date]string, error) {
+	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("retrieving highest untrashed task ranks by date failed")
+
+	if len(dates) == 0 {
+		return map[shared.Date]string{}, nil
+	}
+
+	var dateAndRankPairs []dateAndRankPair
+	err := transaction.Select(&dateAndRankPairs, `
+		SELECT date,
+		       MAX(rank) AS rank
+		FROM tasks
+		WHERE user_id = $1
+		  AND date = ANY($2::DATE[])
+		  AND done = $3
+		  AND trashed_date IS NULL
+		GROUP BY date
+	`, userId, pq.Array(dates), done)
+	if err != nil {
+		return nil, wrapUnexpectedError(err)
+	}
+
+	highestRanksByDate := make(map[shared.Date]string, len(dateAndRankPairs))
+	for _, dateWithHighestRank := range dateAndRankPairs {
+		highestRanksByDate[dateWithHighestRank.Date] = dateWithHighestRank.Rank
+	}
+	return highestRanksByDate, nil
+}
+
+func (store *TaskStore) UpdateUntrashedTasksDoneState(
+	transaction *sqlx.Tx,
+	userId int64,
+	tasks []*domain.Task,
+	targetDoneState bool,
+) error {
+	if len(tasks) == 0 {
+		return nil
+	}
+
+	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("updating untrashed tasks done state failed")
+
+	ids := make([]int64, 0, len(tasks))
+	dates := make([]shared.Date, 0, len(tasks))
+	ranks := make([]string, 0, len(tasks))
+	for _, task := range tasks {
+		ids = append(ids, task.Id)
+		dates = append(dates, *task.Date)
+		ranks = append(ranks, *task.Rank)
+	}
+
+	result, err := transaction.Exec(`
+		UPDATE tasks
+		SET date = updates.date,
+		    rank = updates.rank,
+		    done = $4
+		FROM UNNEST(
+			$1::BIGINT[],
+			$2::DATE[],
+			$3::TEXT[]
+		) AS updates(id, date, rank)
+		WHERE tasks.id = updates.id
+		  AND tasks.user_id = $5
+		  AND tasks.trashed_date IS NULL
+	`, pq.Array(ids), pq.Array(dates), pq.Array(ranks), targetDoneState, userId)
+	if err != nil {
+		var postgresError *pq.Error
+		if errors.As(err, &postgresError) && postgresError.Constraint == "tasks_untrashed_user_id_done_date_rank_unique" {
+			return ErrTaskRankAlreadyExists
+		}
+		return wrapUnexpectedError(err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return wrapUnexpectedError(err)
+	}
+	if rowsAffected != int64(len(tasks)) {
+		return ErrTaskNotFound
+	}
+	return nil
+}
+
+func (store *TaskStore) UpdateTrashedTasksDoneState(
+	transaction *sqlx.Tx,
+	userId int64,
+	tasks []*domain.Task,
+	targetDoneState bool,
+) error {
+	if len(tasks) == 0 {
+		return nil
+	}
+
+	ids := make([]int64, 0, len(tasks))
+	dates := make([]shared.Date, 0, len(tasks))
+	for _, task := range tasks {
+		ids = append(ids, task.Id)
+		dates = append(dates, *task.Date)
+	}
+
+	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("updating trashed tasks done state failed")
+	result, err := transaction.Exec(`
+		UPDATE tasks
+		SET date = updates.date,
+		    done = $3
+		FROM UNNEST(
+			$1::BIGINT[],
+			$2::DATE[]
+		) AS updates(id, date)
+		WHERE tasks.id = updates.id
+		  AND tasks.user_id = $4
+		  AND tasks.trashed_date IS NOT NULL
+	`, pq.Array(ids), pq.Array(dates), targetDoneState, userId)
+	if err != nil {
+		return wrapUnexpectedError(err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return wrapUnexpectedError(err)
+	}
+	if rowsAffected != int64(len(tasks)) {
+		return ErrTaskNotFound
+	}
+	return nil
 }
 
 func (store *TaskStore) UpdateTaskDateAndRank(transaction *sqlx.Tx, task *domain.Task) error {

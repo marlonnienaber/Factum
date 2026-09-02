@@ -66,9 +66,17 @@ func validationErrorMessage(fieldError validator.FieldError) string {
 	case "email":
 		return field + " must be a valid email address."
 	case "min":
+		if fieldError.Kind() == reflect.Slice || fieldError.Kind() == reflect.Array {
+			return field + " must contain at least " + fieldError.Param() + " items."
+		}
 		return field + " must be at least " + fieldError.Param() + " characters long."
 	case "max":
+		if fieldError.Kind() == reflect.Slice || fieldError.Kind() == reflect.Array {
+			return field + " must contain at most " + fieldError.Param() + " items."
+		}
 		return field + " must be at most " + fieldError.Param() + " characters long."
+	case "unique":
+		return field + " must not contain duplicate values."
 	case "datetime":
 		switch fieldError.Param() {
 		case "2006-01-02":
