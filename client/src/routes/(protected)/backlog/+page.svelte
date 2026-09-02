@@ -38,7 +38,6 @@
 		return Object.fromEntries(dateKeyToTaskDragItemsMap);
 	}
 
-
 	function handleConsider(event: CustomEvent<DndEvent<TaskDragItem>>, dateKey?: string): void {
 		dragging = true;
 		setTaskDragItems(event.detail.items, dateKey);

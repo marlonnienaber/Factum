@@ -15,7 +15,7 @@
 		display: inline-flex;
 		align-items: center;
 		width: fit-content;
-        box-sizing: border-box;
+		box-sizing: border-box;
 		padding: 0.125rem 0.375rem;
 		border-radius: 1rem;
 		color: var(--text);

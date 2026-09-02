@@ -18,10 +18,10 @@
 	<textarea {id} bind:value {placeholder} {oninput} aria-invalid={invalid}></textarea>
 	{#if invalid}
 		<span class="info-icon">
-			<popover side="right" align="center" openOnHover>
+			<Popover side="right" align="center" openOnHover>
 				{#snippet trigger()}<Info size={18} aria-hidden="true" />{/snippet}
 				<span class="error-message">{error}</span>
-			</popover>
+			</Popover>
 		</span>
 	{/if}
 </div>
