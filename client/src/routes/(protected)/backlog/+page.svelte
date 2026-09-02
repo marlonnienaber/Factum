@@ -292,6 +292,7 @@
 		}
 	}
 
+	/*noinspection CssUnusedSymbol*/
 	:global(#dnd-action-dragged-el) {
 		opacity: 1 !important;
 	}
