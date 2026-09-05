@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Plus } from '@lucide/svelte';
+	import { CheckCheck, MousePointer2, Plus, Trash2, XCircle } from '@lucide/svelte';
 	import Button from '$lib/components/shared/button.svelte';
 	import TaskDialog from '$lib/components/taskCreation/task-dialog.svelte';
 	import Task from '$lib/components/taskDisplay/task.svelte';
@@ -21,6 +21,8 @@
 
 	let taskDialogOpen = $state(false);
 	let dragging = $state(false);
+	let selectionEnabled = $state(false);
+	let selectedTaskIds = $state<number[]>([]);
 	let taskDialogTask = $state<DatedUntrashedOpenTaskResponse | UndatedTaskResponse>();
 	let undatedTaskDragItems = $state<TaskDragItem[]>([...undatedTaskStore.undatedTasks]);
 	let dateKeyToDatedTaskDragItemsRecord = $state<Record<string, TaskDragItem[]>>(createGroupKeyToDatedTaskItemsRecord());
@@ -29,6 +31,10 @@
 		if (dragging) return;
 		undatedTaskDragItems = [...undatedTaskStore.undatedTasks];
 		dateKeyToDatedTaskDragItemsRecord = createGroupKeyToDatedTaskItemsRecord();
+	});
+
+	$effect(() => {
+		console.log('Selected task IDs:', $state.snapshot(selectedTaskIds));
 	});
 
 	function createGroupKeyToDatedTaskItemsRecord(): Record<string, TaskDragItem[]> {
@@ -94,6 +100,23 @@
 		taskDialogTask = task;
 		taskDialogOpen = true;
 	}
+
+	function startTaskSelection(): void {
+		selectionEnabled = true;
+	}
+
+	function cancelTaskSelection(): void {
+		selectionEnabled = false;
+		selectedTaskIds = [];
+	}
+
+	function updateTaskSelection(taskId: number, selected: boolean): void {
+		if (selected && !selectedTaskIds.includes(taskId)) {
+			selectedTaskIds = [...selectedTaskIds, taskId];
+		} else if (!selected) {
+			selectedTaskIds = selectedTaskIds.filter((selectedTaskId) => selectedTaskId !== taskId);
+		}
+	}
 </script>
 
 <svelte:head>
@@ -103,10 +126,32 @@
 <div class="frame">
 	<div class="left-column-container">
 		<div class="controls-section">
-			<Button onclick={openCreateTaskDialog}>
-				Add Task
-				{#snippet trailingIcon()}<Plus size={17} strokeWidth={2.5} />{/snippet}
-			</Button>
+			{#if selectionEnabled}
+				<Button onclick={cancelTaskSelection}>
+					Cancel Selection
+					{#snippet trailingIcon()}<XCircle size={17} aria-hidden="true" />{/snippet}
+				</Button>
+				<Button variant="success" onclick={() => undefined}>
+					Complete All
+					{#snippet trailingIcon()}<CheckCheck size={17} aria-hidden="true" />{/snippet}
+				</Button>
+				<Button variant="danger" onclick={() => undefined}>
+					Trash All
+					{#snippet trailingIcon()}<Trash2 size={17} aria-hidden="true" />{/snippet}
+				</Button>
+			{:else}
+				<Button onclick={openCreateTaskDialog}>
+					Add Task
+					{#snippet trailingIcon()}<Plus size={17} strokeWidth={2.5} />{/snippet}
+				</Button>
+				<Button onclick={startTaskSelection}>
+					Select Tasks
+					{#snippet trailingIcon()}<MousePointer2 size={17} aria-hidden="true" />{/snippet}
+				</Button>
+			{/if}
+			{#if selectionEnabled}
+				<span class="selection-count">{selectedTaskIds.length} / 50</span>
+			{/if}
 		</div>
 		<div class="no-date-section">
 			<h1>No Date Assigned</h1>
@@ -125,6 +170,9 @@
 					<Task
 						task={taskDragItem}
 						isShadowItem={Boolean(taskDragItem[isShadowTask])}
+						{selectionEnabled}
+						selected={selectedTaskIds.includes(taskDragItem.id)}
+						onSelectedChange={updateTaskSelection}
 						onedit={() => openEditTaskDialog(taskDragItem)}
 					/>
 				{/each}
@@ -153,6 +201,9 @@
 							<Task
 								task={taskDragItem}
 								isShadowItem={Boolean(taskDragItem[isShadowTask])}
+								{selectionEnabled}
+								selected={selectedTaskIds.includes(taskDragItem.id)}
+								onSelectedChange={updateTaskSelection}
 								onedit={() => openEditTaskDialog(taskDragItem)}
 							/>
 						{/each}
@@ -178,6 +229,9 @@
 				<Task
 					task={taskDragItem}
 					isShadowItem={Boolean(taskDragItem[isShadowTask])}
+					{selectionEnabled}
+					selected={selectedTaskIds.includes(taskDragItem.id)}
+					onSelectedChange={updateTaskSelection}
 					onedit={() => openEditTaskDialog(taskDragItem)}
 				/>
 			{/each}
@@ -225,11 +279,18 @@
 			.controls-section {
 				display: flex;
 				align-items: center;
+				gap: 0.75rem;
 				width: 100%;
 				box-sizing: border-box;
 				padding: 0.75rem;
 				border: 1px solid var(--border);
 				border-radius: 0.75rem;
+
+				.selection-count {
+					margin-left: auto;
+					color: var(--text-subtle);
+					font-size: 0.865rem;
+				}
 			}
 
 			.no-date-section {

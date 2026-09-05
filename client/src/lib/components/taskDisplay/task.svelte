@@ -12,13 +12,15 @@
 
 	type Props = {
 		task: DatedUntrashedOpenTaskResponse | UndatedTaskResponse;
-		isShadowItem?: boolean;
+		isShadowItem: boolean;
+		selectionEnabled: boolean;
+		selected: boolean;
+		onSelectedChange: (taskId: number, selected: boolean) => void;
 		onedit: () => void;
 	};
 
-	const { task, isShadowItem = false, onedit }: Props = $props();
+	const { task, isShadowItem, selectionEnabled, selected, onSelectedChange, onedit }: Props = $props();
 	let checked = $state(false);
-	let selected = $state(false);
 	let menuOpen = $state(false);
 	const category = $derived(categoryStore.categories.find((category) => category.id === task.categoryId));
 
@@ -42,23 +44,31 @@
 <div class="frame" aria-label={task.title} data-is-dnd-shadow-item-hint={isShadowItem}>
 	<div class="header">
 		<div class="selection-toggle-and-title">
-			<CheckCircle checked={selected} onCheckedChange={(checked) => (selected = checked)} ariaLabel={`Select "${task.title}"`} />
+			{#if selectionEnabled}
+				<CheckCircle
+					checked={selected}
+					onCheckedChange={(selected) => onSelectedChange(task.id, selected)}
+					ariaLabel={`Select "${task.title}"`}
+				/>
+			{/if}
 			<span class="title">{task.title}</span>
 		</div>
-		<div class="actions-and-done-toggle">
-			<Popover bind:open={menuOpen} side="bottom" align="end" triggerAriaLabel={`More options for "${task.title}"`}>
-				{#snippet trigger()}<Ellipsis size={18} aria-hidden="true" />{/snippet}
-				<Button onclick={handleEdit}>
-					Edit
-					{#snippet trailingIcon()}<SquarePen size={17} aria-hidden="true" />{/snippet}
-				</Button>
-				<Button variant="danger" disabled={taskService.taskMutationBlocked} onclick={handleTrash}>
-					Trash
-					{#snippet trailingIcon()}<Trash2 size={17} aria-hidden="true" />{/snippet}
-				</Button>
-			</Popover>
-			<Checkbox {checked} onCheckedChange={handleCheckedChange} ariaLabel={`Mark "${task.title}" as completed`} />
-		</div>
+		{#if !selectionEnabled}
+			<div class="actions-and-done-toggle">
+				<Popover bind:open={menuOpen} side="bottom" align="end" triggerAriaLabel={`More options for "${task.title}"`}>
+					{#snippet trigger()}<Ellipsis size={18} aria-hidden="true" />{/snippet}
+					<Button onclick={handleEdit}>
+						Edit
+						{#snippet trailingIcon()}<SquarePen size={17} aria-hidden="true" />{/snippet}
+					</Button>
+					<Button variant="danger" disabled={taskService.taskMutationBlocked} onclick={handleTrash}>
+						Trash
+						{#snippet trailingIcon()}<Trash2 size={17} aria-hidden="true" />{/snippet}
+					</Button>
+				</Popover>
+				<Checkbox {checked} onCheckedChange={handleCheckedChange} ariaLabel={`Mark "${task.title}" as completed`} />
+			</div>
+		{/if}
 	</div>
 	{#if task.description}
 		<span class="description">{task.description}</span>

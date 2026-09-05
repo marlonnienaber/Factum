@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { CalendarDays, ChevronLeft, ChevronRight, X } from '@lucide/svelte';
-	import type { CalendarDate } from '@internationalized/date';
+	import { getLocalTimeZone, today, type CalendarDate } from '@internationalized/date';
 	import { DatePicker } from 'bits-ui';
 
 	type Props = {
@@ -8,15 +8,22 @@
 		value: CalendarDate | undefined;
 	};
 
+	const todayDate = today(getLocalTimeZone());
+
 	let { id, value = $bindable() }: Props = $props();
 	let open = $state(false);
+	let placeholder = $state(value ?? todayDate);
+
+	$effect(() => {
+		if (open) placeholder = value ?? todayDate;
+	});
 
 	function isPlaceholder(segmentValue: string): boolean {
 		return segmentValue === 'dd' || segmentValue === 'mm' || segmentValue === 'yyyy';
 	}
 </script>
 
-<DatePicker.Root bind:value bind:open locale="en-GB" weekdayFormat="short" fixedWeeks>
+<DatePicker.Root bind:value bind:open bind:placeholder locale="en-GB" weekdayFormat="short" fixedWeeks>
 	<DatePicker.Input {id} name="date">
 		{#snippet child({ props: inputProps, segments })}
 			<div {...inputProps} class:active={open} class="date-input">
@@ -209,6 +216,11 @@
 			height: 2rem;
 			border-radius: 0.5rem;
 			cursor: pointer;
+		}
+
+		.calendar-day[data-today]:not([data-selected]) {
+			background: var(--surface-subtle);
+			font-weight: 600;
 		}
 
 		.calendar-day:hover,
