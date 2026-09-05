@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Checkbox from '$lib/components/shared/checkbox.svelte';
+	import CheckCircle from '$lib/components/shared/checkcircle.svelte';
 	import Button from '$lib/components/shared/button.svelte';
 	import Category from '$lib/components/shared/category.svelte';
 	import Popover from '$lib/components/shared/popover.svelte';
@@ -17,6 +18,7 @@
 
 	const { task, isShadowItem = false, onedit }: Props = $props();
 	let checked = $state(false);
+	let selected = $state(false);
 	let menuOpen = $state(false);
 	const category = $derived(categoryStore.categories.find((category) => category.id === task.categoryId));
 
@@ -39,8 +41,11 @@
 
 <div class="frame" aria-label={task.title} data-is-dnd-shadow-item-hint={isShadowItem}>
 	<div class="header">
-		<span class="title">{task.title}</span>
-		<div class="controls">
+		<div class="selection-toggle-and-title">
+			<CheckCircle checked={selected} onCheckedChange={(checked) => (selected = checked)} ariaLabel={`Select "${task.title}"`} />
+			<span class="title">{task.title}</span>
+		</div>
+		<div class="actions-and-done-toggle">
 			<Popover bind:open={menuOpen} side="bottom" align="end" triggerAriaLabel={`More options for "${task.title}"`}>
 				{#snippet trigger()}<Ellipsis size={18} aria-hidden="true" />{/snippet}
 				<Button onclick={handleEdit}>
@@ -83,12 +88,18 @@
 			justify-content: space-between;
 			align-items: center;
 
-			.title {
-				line-height: 1rem;
-				font-size: 1rem;
+			.selection-toggle-and-title {
+				display: flex;
+				align-items: center;
+				gap: 0.5rem;
+
+				.title {
+					line-height: 1rem;
+					font-size: 1rem;
+				}
 			}
 
-			.controls {
+			.actions-and-done-toggle {
 				display: flex;
 				align-items: center;
 				gap: 0.5rem;
