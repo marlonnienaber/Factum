@@ -44,13 +44,14 @@
 <div class="frame" aria-label={task.title} data-is-dnd-shadow-item-hint={isShadowItem}>
 	<div class="header">
 		<div class="selection-toggle-and-title">
-			{#if selectionEnabled}
+			<div class="selection-toggle" data-enabled={selectionEnabled}>
 				<CheckCircle
 					checked={selected}
+					disabled={!selectionEnabled}
 					onCheckedChange={(selected) => onSelectedChange(task.id, selected)}
 					ariaLabel={`Select "${task.title}"`}
 				/>
-			{/if}
+			</div>
 			<span class="title">{task.title}</span>
 		</div>
 		{#if !selectionEnabled}
@@ -97,11 +98,33 @@
 			display: flex;
 			justify-content: space-between;
 			align-items: center;
+			min-height: 1.125rem;
 
 			.selection-toggle-and-title {
 				display: flex;
 				align-items: center;
-				gap: 0.5rem;
+
+				.selection-toggle {
+					width: 0;
+					height: 1rem;
+					margin-right: 0;
+					overflow: hidden;
+					opacity: 0;
+					transition:
+						width 150ms ease,
+						margin-right 150ms ease,
+						opacity 75ms ease;
+
+					&[data-enabled='true'] {
+						width: 1rem;
+						margin-right: 0.5rem;
+						opacity: 1;
+						transition:
+							width 150ms ease,
+							margin-right 150ms ease,
+							opacity 100ms ease 100ms;
+					}
+				}
 
 				.title {
 					line-height: 1rem;
@@ -118,6 +141,12 @@
 
 		.description {
 			font-size: 0.75rem;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.selection-toggle {
+			transition: none !important;
 		}
 	}
 </style>

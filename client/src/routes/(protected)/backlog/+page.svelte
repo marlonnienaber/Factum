@@ -181,36 +181,38 @@
 	</div>
 	<div class="date-section">
 		<h1>Date Assigned</h1>
-		{#each Object.entries(dateKeyToDatedTaskDragItemsRecord) as [groupKey, taskDragItems] (groupKey)}
-			{#if groupKey !== todayDateKey}
-				{@const groupDate = parseDate(groupKey)}
-				<div class="date-group">
-					<h2>{formatDate(groupDate)}</h2>
-					<div
-						class="task-item-drop-zone"
-						aria-label={`Tasks dated ${formatDate(groupDate)}`}
-						use:dndzone={{
-							items: taskDragItems,
-							dragDisabled: taskService.taskMutationBlocked,
-							dropTargetStyle: dropTargetStyle
-						}}
-						onconsider={(event) => handleConsider(event, groupKey)}
-						onfinalize={(event) => handleFinalize(event, groupKey)}
-					>
-						{#each taskDragItems as taskDragItem (getTaskDragItemKey(taskDragItem))}
-							<Task
-								task={taskDragItem}
-								isShadowItem={Boolean(taskDragItem[isShadowTask])}
-								{selectionEnabled}
-								selected={selectedTaskIds.includes(taskDragItem.id)}
-								onSelectedChange={updateTaskSelection}
-								onedit={() => openEditTaskDialog(taskDragItem)}
-							/>
-						{/each}
+		<div class="date-groups">
+			{#each Object.entries(dateKeyToDatedTaskDragItemsRecord) as [groupKey, taskDragItems] (groupKey)}
+				{#if groupKey !== todayDateKey}
+					{@const groupDate = parseDate(groupKey)}
+					<div class="date-group">
+						<h2>{formatDate(groupDate)}</h2>
+						<div
+							class="task-item-drop-zone"
+							aria-label={`Tasks dated ${formatDate(groupDate)}`}
+							use:dndzone={{
+								items: taskDragItems,
+								dragDisabled: taskService.taskMutationBlocked,
+								dropTargetStyle: dropTargetStyle
+							}}
+							onconsider={(event) => handleConsider(event, groupKey)}
+							onfinalize={(event) => handleFinalize(event, groupKey)}
+						>
+							{#each taskDragItems as taskDragItem (getTaskDragItemKey(taskDragItem))}
+								<Task
+									task={taskDragItem}
+									isShadowItem={Boolean(taskDragItem[isShadowTask])}
+									{selectionEnabled}
+									selected={selectedTaskIds.includes(taskDragItem.id)}
+									onSelectedChange={updateTaskSelection}
+									onedit={() => openEditTaskDialog(taskDragItem)}
+								/>
+							{/each}
+						</div>
 					</div>
-				</div>
-			{/if}
-		{/each}
+				{/if}
+			{/each}
+		</div>
 	</div>
 	<div class="today-section">
 		<h1>Today</h1>
@@ -244,12 +246,14 @@
 <style lang="scss">
 	.frame {
 		flex: 1;
+		min-height: 0;
 		width: 100%;
 		display: grid;
 		grid-template-columns: repeat(3, minmax(0, 1fr));
 		box-sizing: border-box;
 		padding: 1rem;
 		gap: 1rem;
+		overflow: hidden;
 
 		h1 {
 			font-size: 1.25rem;
@@ -267,12 +271,18 @@
 			display: flex;
 			flex-direction: column;
 			gap: 0.75rem;
+			scrollbar-width: none;
+
+			&::-webkit-scrollbar {
+				display: none;
+			}
 		}
 
 		.left-column-container {
 			display: flex;
 			flex-direction: column;
 			height: 100%;
+			min-height: 0;
 			flex: 1;
 			gap: 1rem;
 
@@ -298,6 +308,7 @@
 				flex-direction: column;
 				width: 100%;
 				flex: 1;
+				min-height: 0;
 				box-sizing: border-box;
 				padding: 0.75rem;
 				border: 1px solid var(--border);
@@ -306,6 +317,8 @@
 
 				.task-item-drop-zone {
 					flex: 1;
+					min-height: 0;
+					overflow-y: auto;
 				}
 			}
 		}
@@ -314,12 +327,27 @@
 			display: flex;
 			flex-direction: column;
 			height: 100%;
+			min-height: 0;
 			flex: 1;
 			box-sizing: border-box;
 			padding: 0.75rem;
 			border: 1px solid var(--border);
 			border-radius: 0.75rem;
 			gap: 0.75rem;
+
+			.date-groups {
+				display: flex;
+				flex: 1;
+				min-height: 0;
+				flex-direction: column;
+				gap: 0.75rem;
+				overflow-y: auto;
+				scrollbar-width: none;
+
+				&::-webkit-scrollbar {
+					display: none;
+				}
+			}
 
 			.date-group {
 				display: flex;
@@ -340,6 +368,7 @@
 			display: flex;
 			flex-direction: column;
 			height: 100%;
+			min-height: 0;
 			flex: 1;
 			box-sizing: border-box;
 			padding: 0.75rem;
@@ -349,6 +378,8 @@
 
 			.task-item-drop-zone {
 				flex: 1;
+				min-height: 0;
+				overflow-y: auto;
 			}
 		}
 	}
