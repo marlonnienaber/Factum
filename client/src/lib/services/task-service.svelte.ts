@@ -1,6 +1,7 @@
 import {
 	type NetworkCall,
 	jsonGetWithoutBodyWithResponse,
+	jsonPatchWithBodyWithResponse,
 	jsonPatchWithBodyWithoutResponse,
 	jsonPatchWithoutBodyWithoutResponse,
 	jsonPostWithBodyWithResponse,
@@ -10,10 +11,15 @@ import { datedUntrashedDoneTaskStore } from '$lib/stores/dated-untrashed-done-ta
 import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-task-store.svelte';
 import { trashedTaskStore } from '$lib/stores/trashed-task-store.svelte';
 import { undatedTaskStore } from '$lib/stores/undated-task-store.svelte';
+import type { BatchToggleTaskDoneRequest } from '$lib/types/requests/batch-toggle-task-done-request';
 import type { ChangeTaskDateAndOrRankRequest } from '$lib/types/requests/change-task-date-and-or-rank-request';
 import type { CreateTaskRequest } from '$lib/types/requests/create-task-request';
 import type { DatedUntrashedOpenTasksCursor } from '$lib/types/requests/dated-untrashed-open-tasks-cursor';
 import type { UpdateTaskRequest } from '$lib/types/requests/update-task-request';
+import {
+	BatchToggleTaskDoneResponseSchema,
+	type BatchToggleTaskDoneResponse
+} from '$lib/types/responses/batch-toggle-task-done-response';
 import {
 	DatedUntrashedOpenTaskResponseSchema,
 	type DatedUntrashedOpenTaskResponse
@@ -36,7 +42,7 @@ async function fetchUndatedTasks(rank?: string): Promise<void> {
 			`/api/tasks/undated${rank ? `?rank=${encodeURIComponent(rank)}` : ''}`,
 			z.array(UndatedTaskResponseSchema)
 		);
-		if (networkCall.status === 'success') undatedTaskStore.addUndatedTasks(networkCall.result);
+		if (networkCall.status === 'success') undatedTaskStore.addTasks(networkCall.result);
 	} finally {
 		undatedTasksLoading = false;
 	}
@@ -53,7 +59,7 @@ async function fetchDatedUntrashedOpenTasks(cursor?: DatedUntrashedOpenTasksCurs
 			`/api/tasks/dated-untrashed?done=false${queryParameters}`,
 			z.array(DatedUntrashedOpenTaskResponseSchema)
 		);
-		if (networkCall.status === 'success') datedUntrashedOpenTaskStore.addDatedUntrashedOpenTasks(networkCall.result);
+		if (networkCall.status === 'success') datedUntrashedOpenTaskStore.addTasks(networkCall.result);
 	} finally {
 		datedUntrashedOpenTasksLoading = false;
 	}
@@ -69,14 +75,14 @@ async function createTask(request: CreateTaskRequest): Promise<void> {
 				request,
 				DatedUntrashedOpenTaskResponseSchema
 			);
-			if (networkCall.status === 'success') datedUntrashedOpenTaskStore.addDatedUntrashedOpenTask(networkCall.result);
+			if (networkCall.status === 'success') datedUntrashedOpenTaskStore.addTask(networkCall.result);
 		} else {
 			const networkCall: NetworkCall<UndatedTaskResponse> = await jsonPostWithBodyWithResponse(
 				'/api/tasks',
 				request,
 				UndatedTaskResponseSchema
 			);
-			if (networkCall.status === 'success') undatedTaskStore.addUndatedTask(networkCall.result);
+			if (networkCall.status === 'success') undatedTaskStore.addTask(networkCall.result);
 		}
 	} finally {
 		taskMutationLoading = false;
@@ -97,9 +103,9 @@ async function updateTask(request: UpdateTaskRequest): Promise<void> {
 		undatedTaskStore.removeTask(request.id);
 		datedUntrashedOpenTaskStore.removeTask(request.id);
 		if ('date' in networkCall.result) {
-			datedUntrashedOpenTaskStore.addDatedUntrashedOpenTask(networkCall.result);
+			datedUntrashedOpenTaskStore.addTask(networkCall.result);
 		} else {
-			undatedTaskStore.addUndatedTask(networkCall.result);
+			undatedTaskStore.addTask(networkCall.result);
 		}
 	} finally {
 		taskMutationLoading = false;
@@ -129,7 +135,31 @@ async function completeTask(id: number): Promise<void> {
 
 		undatedTaskStore.removeTask(id);
 		datedUntrashedOpenTaskStore.removeTask(id);
-		datedUntrashedDoneTaskStore.addDatedUntrashedDoneTask({ ...task, date, rank });
+		datedUntrashedDoneTaskStore.addTask({ ...task, date, rank });
+	} finally {
+		taskMutationLoading = false;
+	}
+}
+
+async function completeTasks(taskIds: number[]): Promise<boolean> {
+	if (taskMutationBlocked) return false;
+
+	const request: BatchToggleTaskDoneRequest = { taskIds };
+	taskMutationLoading = true;
+	try {
+		const networkCall: NetworkCall<BatchToggleTaskDoneResponse> = await jsonPatchWithBodyWithResponse(
+			'/api/tasks/batch-toggle-done',
+			request,
+			BatchToggleTaskDoneResponseSchema
+		);
+		if (networkCall.status !== 'success') return false;
+
+		for (const taskId of taskIds) {
+			undatedTaskStore.removeTask(taskId);
+			datedUntrashedOpenTaskStore.removeTask(taskId);
+		}
+		datedUntrashedDoneTaskStore.addTasks(networkCall.result.datedUntrashedDoneTasks);
+		return true;
 	} finally {
 		taskMutationLoading = false;
 	}
@@ -151,7 +181,7 @@ async function trashTask(id: number): Promise<void> {
 
 		undatedTaskStore.removeTask(id);
 		datedUntrashedOpenTaskStore.removeTask(id);
-		trashedTaskStore.addTrashedTask({
+		trashedTaskStore.addTask({
 			id: task.id,
 			categoryId: task.categoryId,
 			title: task.title,
@@ -186,9 +216,9 @@ async function changeTaskDateAndOrRank(
 	undatedTaskStore.removeTask(id);
 	datedUntrashedOpenTaskStore.removeTask(id);
 	if (newDate) {
-		datedUntrashedOpenTaskStore.addDatedUntrashedOpenTask({ ...task, date: newDate, rank });
+		datedUntrashedOpenTaskStore.addTask({ ...task, date: newDate, rank });
 	} else {
-		undatedTaskStore.addUndatedTask({
+		undatedTaskStore.addTask({
 			id: task.id,
 			categoryId: task.categoryId,
 			title: task.title,
@@ -203,8 +233,8 @@ async function changeTaskDateAndOrRank(
 		if (networkCall.status === 'failed') {
 			datedUntrashedOpenTaskStore.removeTask(id);
 			undatedTaskStore.removeTask(id);
-			if (datedTask) datedUntrashedOpenTaskStore.addDatedUntrashedOpenTask(datedTask);
-			if (undatedTask) undatedTaskStore.addUndatedTask(undatedTask);
+			if (datedTask) datedUntrashedOpenTaskStore.addTask(datedTask);
+			if (undatedTask) undatedTaskStore.addTask(undatedTask);
 		}
 	} finally {
 		taskMutationLoading = false;
@@ -223,6 +253,7 @@ export const taskService = {
 	createTask,
 	updateTask,
 	completeTask,
+	completeTasks,
 	trashTask,
 	changeTaskDateAndOrRank
 };

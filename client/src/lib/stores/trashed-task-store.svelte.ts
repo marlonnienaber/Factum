@@ -2,14 +2,14 @@ import type { TrashedTaskResponse } from '$lib/types/responses/trashed-task-resp
 
 let trashedTasks: TrashedTaskResponse[] = $state<TrashedTaskResponse[]>([]);
 
-function addTrashedTasks(tasks: TrashedTaskResponse[]) {
+function addTasks(tasks: TrashedTaskResponse[]) {
 	const taskIds = new Set(tasks.map((task) => task.id));
 	const deduplicatedTasks = trashedTasks.filter((task) => !taskIds.has(task.id));
 	trashedTasks = [...deduplicatedTasks, ...tasks].sort(compareTasksByTrashedDateAndId);
 }
 
-function addTrashedTask(task: TrashedTaskResponse): void {
-	addTrashedTasks([task]);
+function addTask(task: TrashedTaskResponse): void {
+	addTasks([task]);
 }
 
 function compareTasksByTrashedDateAndId(first: TrashedTaskResponse, second: TrashedTaskResponse): number {
@@ -26,6 +26,7 @@ export const trashedTaskStore = {
 	get trashedTasks(): TrashedTaskResponse[] {
 		return trashedTasks;
 	},
-	addTrashedTask,
+	addTasks,
+	addTask,
 	reset
 };

@@ -16,6 +16,7 @@
 	};
 
 	const dropTargetStyle = { outline: 'none' };
+	const maximumBatchSize = 50;
 	const todayDate = today(getLocalTimeZone());
 	const todayDateKey = todayDate.toString();
 
@@ -110,6 +111,11 @@
 		selectedTaskIds = [];
 	}
 
+	async function completeSelectedTasks(): Promise<void> {
+		const completed = await taskService.completeTasks(selectedTaskIds);
+		if (completed) cancelTaskSelection();
+	}
+
 	function updateTaskSelection(taskId: number, selected: boolean): void {
 		if (selected && !selectedTaskIds.includes(taskId)) {
 			selectedTaskIds = [...selectedTaskIds, taskId];
@@ -131,7 +137,11 @@
 					Cancel Selection
 					{#snippet trailingIcon()}<XCircle size={17} aria-hidden="true" />{/snippet}
 				</Button>
-				<Button variant="success" onclick={() => undefined}>
+				<Button
+					variant="success"
+					disabled={selectedTaskIds.length === 0 || selectedTaskIds.length > maximumBatchSize || taskService.taskMutationBlocked}
+					onclick={completeSelectedTasks}
+				>
 					Complete All
 					{#snippet trailingIcon()}<CheckCheck size={17} aria-hidden="true" />{/snippet}
 				</Button>
@@ -150,7 +160,9 @@
 				</Button>
 			{/if}
 			{#if selectionEnabled}
-				<span class="selection-count">{selectedTaskIds.length} / 50</span>
+				<span class:limit-exceeded={selectedTaskIds.length > maximumBatchSize} class="selection-count">
+					{selectedTaskIds.length} / {maximumBatchSize}
+				</span>
 			{/if}
 		</div>
 		<div class="no-date-section">
@@ -300,6 +312,10 @@
 					margin-left: auto;
 					color: var(--text-subtle);
 					font-size: 0.865rem;
+
+					&.limit-exceeded {
+						color: var(--danger);
+					}
 				}
 			}
 
