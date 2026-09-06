@@ -1,25 +1,16 @@
 <script lang="ts">
-	import { Checkbox as BitsCheckbox } from 'bits-ui';
-
 	type Props = {
 		checked: boolean;
-		ariaLabel: string;
-		disabled?: boolean;
-		onCheckedChange?: (checked: boolean) => void;
 	};
 
-	let { checked, ariaLabel, disabled = false, onCheckedChange }: Props = $props();
+	let { checked }: Props = $props();
 </script>
 
-<BitsCheckbox.Root {checked} {disabled} {onCheckedChange} aria-label={ariaLabel}>
-	{#snippet child({ props, checked })}
-		<button {...props} class="check-circle" onpointerdown={(event) => event.stopPropagation()}>
-			{#if checked}
-				<span class="check-circle-dot"></span>
-			{/if}
-		</button>
-	{/snippet}
-</BitsCheckbox.Root>
+<span class="check-circle" data-checked={checked} aria-hidden="true">
+	{#if checked}
+		<span class="check-circle-dot"></span>
+	{/if}
+</span>
 
 <style lang="scss">
 	.check-circle {
@@ -33,20 +24,9 @@
 		border: 1px solid var(--border-check-control);
 		border-radius: 50%;
 		background: var(--background-check-control-unchecked);
-		cursor: pointer;
 
-		&[data-state='checked'] {
+		&[data-checked='true'] {
 			background: var(--background-check-control-checked);
-		}
-
-		&:focus-visible {
-			outline: 2px solid var(--border-accented);
-			outline-offset: 2px;
-		}
-
-		&:disabled {
-			cursor: default;
-			opacity: 0.5;
 		}
 	}
 

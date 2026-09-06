@@ -160,7 +160,7 @@
 				aria-label="Tasks without a date"
 				use:dndzone={{
 					items: undatedTaskDragItems,
-					dragDisabled: taskService.taskMutationBlocked,
+					dragDisabled: selectionEnabled || taskService.taskMutationBlocked,
 					dropTargetStyle: dropTargetStyle
 				}}
 				onconsider={handleConsider}
@@ -192,7 +192,7 @@
 							aria-label={`Tasks dated ${formatDate(groupDate)}`}
 							use:dndzone={{
 								items: taskDragItems,
-								dragDisabled: taskService.taskMutationBlocked,
+								dragDisabled: selectionEnabled || taskService.taskMutationBlocked,
 								dropTargetStyle: dropTargetStyle
 							}}
 							onconsider={(event) => handleConsider(event, groupKey)}
@@ -221,7 +221,7 @@
 			aria-label="Tasks dated Today"
 			use:dndzone={{
 				items: dateKeyToDatedTaskDragItemsRecord[todayDateKey] ?? [],
-				dragDisabled: taskService.taskMutationBlocked,
+				dragDisabled: selectionEnabled || taskService.taskMutationBlocked,
 				dropTargetStyle: dropTargetStyle
 			}}
 			onconsider={(event) => handleConsider(event, todayDateKey)}

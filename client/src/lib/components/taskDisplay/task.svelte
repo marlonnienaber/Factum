@@ -39,18 +39,25 @@
 		checked = true;
 		void taskService.completeTask(task.id);
 	}
+
+	function toggleSelection(): void {
+		if (selectionEnabled) onSelectedChange(task.id, !selected);
+	}
 </script>
 
-<div class="frame" aria-label={task.title} data-is-dnd-shadow-item-hint={isShadowItem}>
+<div
+	class="frame"
+	role="button"
+	tabindex="-1"
+	data-selection-enabled={selectionEnabled}
+	aria-label={task.title}
+	data-is-dnd-shadow-item-hint={isShadowItem}
+	onpointerup={toggleSelection}
+>
 	<div class="header">
 		<div class="selection-toggle-and-title">
 			<div class="selection-toggle" data-enabled={selectionEnabled}>
-				<CheckCircle
-					checked={selected}
-					disabled={!selectionEnabled}
-					onCheckedChange={(selected) => onSelectedChange(task.id, selected)}
-					ariaLabel={`Select "${task.title}"`}
-				/>
+				<CheckCircle checked={selected} />
 			</div>
 			<span class="title">{task.title}</span>
 		</div>
@@ -89,6 +96,10 @@
 		border-radius: 0.5rem;
 		gap: 0.75rem;
 		outline: none;
+
+		&[data-selection-enabled='true'] {
+			cursor: pointer;
+		}
 
 		&[data-is-dnd-shadow-item-hint='true'] {
 			opacity: 0;
