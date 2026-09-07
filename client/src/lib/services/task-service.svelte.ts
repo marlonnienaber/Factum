@@ -11,15 +11,12 @@ import { datedUntrashedDoneTaskStore } from '$lib/stores/dated-untrashed-done-ta
 import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-task-store.svelte';
 import { trashedTaskStore } from '$lib/stores/trashed-task-store.svelte';
 import { undatedTaskStore } from '$lib/stores/undated-task-store.svelte';
-import type { BatchToggleTaskDoneRequest } from '$lib/types/requests/batch-toggle-task-done-request';
+import type { BatchUpdateDoneRequest } from '$lib/types/requests/batch-update-done-request';
 import type { ChangeTaskDateAndOrRankRequest } from '$lib/types/requests/change-task-date-and-or-rank-request';
 import type { CreateTaskRequest } from '$lib/types/requests/create-task-request';
 import type { DatedUntrashedOpenTasksCursor } from '$lib/types/requests/dated-untrashed-open-tasks-cursor';
 import type { UpdateTaskRequest } from '$lib/types/requests/update-task-request';
-import {
-	BatchToggleTaskDoneResponseSchema,
-	type BatchToggleTaskDoneResponse
-} from '$lib/types/responses/batch-toggle-task-done-response';
+import { BatchCompleteResponseSchema, type BatchCompleteResponse } from '$lib/types/responses/batch-complete-response';
 import {
 	DatedUntrashedOpenTaskResponseSchema,
 	type DatedUntrashedOpenTaskResponse
@@ -144,13 +141,13 @@ async function completeTask(id: number): Promise<void> {
 async function completeTasks(taskIds: number[]): Promise<boolean> {
 	if (taskMutationBlocked) return false;
 
-	const request: BatchToggleTaskDoneRequest = { taskIds };
+	const request: BatchUpdateDoneRequest = { taskIds };
 	taskMutationLoading = true;
 	try {
-		const networkCall: NetworkCall<BatchToggleTaskDoneResponse> = await jsonPatchWithBodyWithResponse(
-			'/api/tasks/batch-toggle-done',
+		const networkCall: NetworkCall<BatchCompleteResponse> = await jsonPatchWithBodyWithResponse(
+			'/api/tasks/batch-complete',
 			request,
-			BatchToggleTaskDoneResponseSchema
+			BatchCompleteResponseSchema
 		);
 		if (networkCall.status !== 'success') return false;
 
