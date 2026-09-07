@@ -336,11 +336,11 @@ func (service *TaskService) ToggleTaskDone(userId int64, taskId int64, rank *str
 	return nil
 }
 
-func (service *TaskService) BatchCompleteTasks(userId int64, taskIds []int64) (*transport.BatchUpdateDoneResponse, error) {
+func (service *TaskService) BatchCompleteTasks(userId int64, taskIds []int64) (*transport.BatchCompleteResponse, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("batch completing tasks failed")
 	currentDate := shared.NewDate(time.Now())
 
-	response, err := shared.ExecuteAsSerializableTransaction(service.db, func(transaction *sqlx.Tx) (*transport.BatchUpdateDoneResponse, error) {
+	response, err := shared.ExecuteAsSerializableTransaction(service.db, func(transaction *sqlx.Tx) (*transport.BatchCompleteResponse, error) {
 		tasks, err := service.taskStore.GetTasksByIdsForUser(transaction, taskIds, userId)
 		if err != nil {
 			return nil, err
@@ -364,7 +364,7 @@ func (service *TaskService) BatchCompleteTasks(userId int64, taskIds []int64) (*
 			return nil, err
 		}
 
-		return service.createBatchUpdateDoneResponse(tasks), nil
+		return service.createBatchCompleteTasksResponse(tasks), nil
 	})
 	if err != nil {
 		switch {
@@ -379,10 +379,10 @@ func (service *TaskService) BatchCompleteTasks(userId int64, taskIds []int64) (*
 	return response, nil
 }
 
-func (service *TaskService) BatchOpenTasks(userId int64, taskIds []int64) (*transport.BatchUpdateDoneResponse, error) {
+func (service *TaskService) BatchOpenTasks(userId int64, taskIds []int64) (*transport.BatchOpenResponse, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("batch opening tasks failed")
 
-	response, err := shared.ExecuteAsSerializableTransaction(service.db, func(transaction *sqlx.Tx) (*transport.BatchUpdateDoneResponse, error) {
+	response, err := shared.ExecuteAsSerializableTransaction(service.db, func(transaction *sqlx.Tx) (*transport.BatchOpenResponse, error) {
 		tasks, err := service.taskStore.GetTasksByIdsForUser(transaction, taskIds, userId)
 		if err != nil {
 			return nil, err
@@ -406,7 +406,7 @@ func (service *TaskService) BatchOpenTasks(userId int64, taskIds []int64) (*tran
 			return nil, err
 		}
 
-		return service.createBatchUpdateDoneResponse(tasks), nil
+		return service.createBatchOpenTasksResponse(tasks), nil
 	})
 	if err != nil {
 		switch {
@@ -515,9 +515,8 @@ func (service *TaskService) extractTrashedTasks(tasks []domain.Task) []*domain.T
 	return trashedTasks
 }
 
-func (service *TaskService) createBatchUpdateDoneResponse(tasks []domain.Task) *transport.BatchUpdateDoneResponse {
-	response := &transport.BatchUpdateDoneResponse{
-		DatedUntrashedOpenTasks: make([]transport.TaskResponse, 0),
+func (service *TaskService) createBatchCompleteTasksResponse(tasks []domain.Task) *transport.BatchCompleteResponse {
+	response := &transport.BatchCompleteResponse{
 		DatedUntrashedDoneTasks: make([]transport.TaskResponse, 0),
 		TrashedTasks:            make([]transport.TaskResponse, 0),
 	}
@@ -527,8 +526,24 @@ func (service *TaskService) createBatchUpdateDoneResponse(tasks []domain.Task) *
 		switch {
 		case task.TrashedDate != nil:
 			response.TrashedTasks = append(response.TrashedTasks, taskResponse)
-		case task.Done:
+		default:
 			response.DatedUntrashedDoneTasks = append(response.DatedUntrashedDoneTasks, taskResponse)
+		}
+	}
+	return response
+}
+
+func (service *TaskService) createBatchOpenTasksResponse(tasks []domain.Task) *transport.BatchOpenResponse {
+	response := &transport.BatchOpenResponse{
+		DatedUntrashedOpenTasks: make([]transport.TaskResponse, 0),
+		TrashedTasks:            make([]transport.TaskResponse, 0),
+	}
+	for index := range tasks {
+		task := &tasks[index]
+		taskResponse := *task.ToTaskResponse()
+		switch {
+		case task.TrashedDate != nil:
+			response.TrashedTasks = append(response.TrashedTasks, taskResponse)
 		default:
 			response.DatedUntrashedOpenTasks = append(response.DatedUntrashedOpenTasks, taskResponse)
 		}
