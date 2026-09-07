@@ -23,7 +23,7 @@ type ChangeTaskDateAndOrRankRequest struct {
 	Rank string       `json:"rank" binding:"rank"`
 }
 
-type BatchToggleTaskDoneRequest struct {
+type BatchUpdateDoneRequest struct {
 	TaskIds []int64 `json:"taskIds" binding:"required,min=1,max=50,unique,dive,gt=0"`
 }
 

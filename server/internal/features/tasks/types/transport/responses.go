@@ -25,7 +25,7 @@ type UndatedTaskResponse struct {
 	Rank        string  `db:"rank" json:"rank"`
 }
 
-type BatchToggleTaskDoneResponse struct {
+type BatchUpdateDoneResponse struct {
 	DatedUntrashedOpenTasks []TaskResponse `json:"datedUntrashedOpenTasks"`
 	DatedUntrashedDoneTasks []TaskResponse `json:"datedUntrashedDoneTasks"`
 	TrashedTasks            []TaskResponse `json:"trashedTasks"`

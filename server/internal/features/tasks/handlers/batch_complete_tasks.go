@@ -13,13 +13,13 @@ import (
 	"github.com/marlonnienaber/Factum/server/internal/validation"
 )
 
-func NewBatchToggleTaskDoneHandler(taskService *services.TaskService) shared.AuthenticatedHandlerFunc {
+func NewBatchCompleteTasksHandler(taskService *services.TaskService) shared.AuthenticatedHandlerFunc {
 	return func(c *shared.AuthenticatedContext) {
-		slog.Info("/tasks/batch-toggle-done [PATCH]")
+		slog.Info("/tasks/batch-complete [PATCH]")
 
-		unexpectedErrorLogMessage := "handling batch toggle task done failed"
+		unexpectedErrorLogMessage := "handling batch complete tasks failed"
 
-		var request transport.BatchToggleTaskDoneRequest
+		var request transport.BatchUpdateDoneRequest
 		if err := c.ShouldBindJSON(&request); err != nil {
 			var validationErrors validator.ValidationErrors
 			if errors.As(err, &validationErrors) {
@@ -30,14 +30,14 @@ func NewBatchToggleTaskDoneHandler(taskService *services.TaskService) shared.Aut
 			return
 		}
 
-		response, err := taskService.BatchToggleTaskDone(c.UserId, request.TaskIds)
+		response, err := taskService.BatchCompleteTasks(c.UserId, request.TaskIds)
 		if err != nil {
 			switch {
 			case errors.Is(err, stores.ErrTaskNotFound):
 				c.JSON(http.StatusNotFound, oneOfProvidedTasksNotFoundErrorResponse)
 				return
-			case errors.Is(err, services.ErrTasksHaveDifferentDoneStates):
-				c.JSON(http.StatusBadRequest, tasksHaveDifferentDoneStatesErrorResponse)
+			case errors.Is(err, services.ErrTaskAlreadyCompleted):
+				c.JSON(http.StatusBadRequest, oneOfProvidedTasksAlreadyCompletedErrorResponse)
 				return
 			default:
 				slog.Error(unexpectedErrorLogMessage, "error", err)
@@ -50,12 +50,7 @@ func NewBatchToggleTaskDoneHandler(taskService *services.TaskService) shared.Aut
 	}
 }
 
-var oneOfProvidedTasksNotFoundErrorResponse = shared.ErrorResponse{
-	ErrorCode: "one_of_provided_tasks_not_found",
-	Message:   "One of the provided tasks could not be found.",
-}
-
-var tasksHaveDifferentDoneStatesErrorResponse = shared.ErrorResponse{
-	ErrorCode: "tasks_have_different_done_states",
-	Message:   "All tasks in a batch must have the same done state.",
+var oneOfProvidedTasksAlreadyCompletedErrorResponse = shared.ErrorResponse{
+	ErrorCode: "one_of_provided_tasks_already_completed",
+	Message:   "One of the provided tasks is already completed.",
 }

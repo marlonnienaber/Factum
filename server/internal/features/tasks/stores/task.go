@@ -125,11 +125,11 @@ func (store *TaskStore) GetHighestUntrashedTaskRanksByDate(
 	return highestRanksByDate, nil
 }
 
-func (store *TaskStore) UpdateUntrashedTasksDoneState(
+func (store *TaskStore) BatchUpdateDoneForUntrashedTasks(
 	transaction *sqlx.Tx,
 	userId int64,
 	tasks []*domain.Task,
-	targetDoneState bool,
+	done bool,
 ) error {
 	if len(tasks) == 0 {
 		return nil
@@ -159,7 +159,7 @@ func (store *TaskStore) UpdateUntrashedTasksDoneState(
 		WHERE tasks.id = updates.id
 		  AND tasks.user_id = $5
 		  AND tasks.trashed_date IS NULL
-	`, pq.Array(ids), pq.Array(dates), pq.Array(ranks), targetDoneState, userId)
+	`, pq.Array(ids), pq.Array(dates), pq.Array(ranks), done, userId)
 	if err != nil {
 		var postgresError *pq.Error
 		if errors.As(err, &postgresError) && postgresError.Constraint == "tasks_untrashed_user_id_done_date_rank_unique" {
@@ -178,11 +178,11 @@ func (store *TaskStore) UpdateUntrashedTasksDoneState(
 	return nil
 }
 
-func (store *TaskStore) UpdateTrashedTasksDoneState(
+func (store *TaskStore) BatchUpdateDoneForTrashedTasks(
 	transaction *sqlx.Tx,
 	userId int64,
 	tasks []*domain.Task,
-	targetDoneState bool,
+	done bool,
 ) error {
 	if len(tasks) == 0 {
 		return nil
@@ -207,7 +207,7 @@ func (store *TaskStore) UpdateTrashedTasksDoneState(
 		WHERE tasks.id = updates.id
 		  AND tasks.user_id = $4
 		  AND tasks.trashed_date IS NOT NULL
-	`, pq.Array(ids), pq.Array(dates), targetDoneState, userId)
+	`, pq.Array(ids), pq.Array(dates), done, userId)
 	if err != nil {
 		return wrapUnexpectedError(err)
 	}

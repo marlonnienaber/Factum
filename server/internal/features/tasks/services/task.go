@@ -17,8 +17,9 @@ var (
 	ErrTaskDateAndOrRankChangeNotAllowed = errors.New("requested date and/or rank change not allowed")
 	ErrTaskAlreadyTrashed                = errors.New("task is already trashed")
 	ErrTaskAlreadyRestored               = errors.New("task is already restored")
+	ErrTaskAlreadyCompleted              = errors.New("task is already completed")
+	ErrTaskAlreadyOpen                   = errors.New("task is already open")
 	ErrTaskRankRequired                  = errors.New("task rank is required for an untrashed task")
-	ErrTasksHaveDifferentDoneStates      = errors.New("tasks have different done states")
 )
 
 type TaskService struct {
@@ -335,48 +336,40 @@ func (service *TaskService) ToggleTaskDone(userId int64, taskId int64, rank *str
 	return nil
 }
 
-func (service *TaskService) BatchToggleTaskDone(
-	userId int64,
-	taskIds []int64,
-) (*transport.BatchToggleTaskDoneResponse, error) {
-	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("batch toggling tasks done failed")
+func (service *TaskService) BatchCompleteTasks(userId int64, taskIds []int64) (*transport.BatchUpdateDoneResponse, error) {
+	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("batch completing tasks failed")
 	currentDate := shared.NewDate(time.Now())
 
-	response, err := shared.ExecuteAsSerializableTransaction(
-		service.db,
-		func(transaction *sqlx.Tx) (*transport.BatchToggleTaskDoneResponse, error) {
-			tasks, err := service.taskStore.GetTasksByIdsForUser(transaction, taskIds, userId)
-			if err != nil {
-				return nil, err
-			}
+	response, err := shared.ExecuteAsSerializableTransaction(service.db, func(transaction *sqlx.Tx) (*transport.BatchUpdateDoneResponse, error) {
+		tasks, err := service.taskStore.GetTasksByIdsForUser(transaction, taskIds, userId)
+		if err != nil {
+			return nil, err
+		}
 
-			targetDoneState, err := service.determineTargetDoneStateForBatch(tasks)
-			if err != nil {
-				return nil, err
-			}
+		if err := service.checkThatTasksAreOpen(tasks); err != nil {
+			return nil, err
+		}
+		service.setDoneFlagAndIfNeededDate(tasks, currentDate)
 
-			service.applyTargetDoneStateToTasks(tasks, targetDoneState, currentDate)
+		untrashedTasks := service.extractUntrashedTasks(tasks)
+		if err := service.assignRanksForBatchDoneUpdate(transaction, userId, true, untrashedTasks); err != nil {
+			return nil, err
+		}
+		if err := service.taskStore.BatchUpdateDoneForUntrashedTasks(transaction, userId, untrashedTasks, true); err != nil {
+			return nil, err
+		}
 
-			untrashedTasks := service.getUntrashedTasks(tasks)
-			if err := service.assignRanksForBatchToggleTaskDone(transaction, userId, targetDoneState, untrashedTasks); err != nil {
-				return nil, err
-			}
-			if err := service.taskStore.UpdateUntrashedTasksDoneState(transaction, userId, untrashedTasks, targetDoneState); err != nil {
-				return nil, err
-			}
+		trashedTasks := service.extractTrashedTasks(tasks)
+		if err := service.taskStore.BatchUpdateDoneForTrashedTasks(transaction, userId, trashedTasks, true); err != nil {
+			return nil, err
+		}
 
-			trashedTasks := service.getTrashedTasks(tasks)
-			if err := service.taskStore.UpdateTrashedTasksDoneState(transaction, userId, trashedTasks, targetDoneState); err != nil {
-				return nil, err
-			}
-
-			return service.createBatchToggleTaskDoneResponse(tasks), nil
-		},
-	)
+		return service.createBatchUpdateDoneResponse(tasks), nil
+	})
 	if err != nil {
 		switch {
 		case errors.Is(err, stores.ErrTaskNotFound),
-			errors.Is(err, ErrTasksHaveDifferentDoneStates):
+			errors.Is(err, ErrTaskAlreadyCompleted):
 			return nil, err
 		default:
 			return nil, wrapUnexpectedError(err)
@@ -386,48 +379,90 @@ func (service *TaskService) BatchToggleTaskDone(
 	return response, nil
 }
 
-func (service *TaskService) determineTargetDoneStateForBatch(tasks []domain.Task) (bool, error) {
-	currentDoneState := tasks[0].Done
-	for _, task := range tasks {
-		if task.Done != currentDoneState {
-			return false, ErrTasksHaveDifferentDoneStates
+func (service *TaskService) BatchOpenTasks(userId int64, taskIds []int64) (*transport.BatchUpdateDoneResponse, error) {
+	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("batch opening tasks failed")
+
+	response, err := shared.ExecuteAsSerializableTransaction(service.db, func(transaction *sqlx.Tx) (*transport.BatchUpdateDoneResponse, error) {
+		tasks, err := service.taskStore.GetTasksByIdsForUser(transaction, taskIds, userId)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := service.checkThatTasksAreCompleted(tasks); err != nil {
+			return nil, err
+		}
+		service.unsetDoneFlag(tasks)
+
+		untrashedTasks := service.extractUntrashedTasks(tasks)
+		if err := service.assignRanksForBatchDoneUpdate(transaction, userId, false, untrashedTasks); err != nil {
+			return nil, err
+		}
+		if err := service.taskStore.BatchUpdateDoneForUntrashedTasks(transaction, userId, untrashedTasks, false); err != nil {
+			return nil, err
+		}
+
+		trashedTasks := service.extractTrashedTasks(tasks)
+		if err := service.taskStore.BatchUpdateDoneForTrashedTasks(transaction, userId, trashedTasks, false); err != nil {
+			return nil, err
+		}
+
+		return service.createBatchUpdateDoneResponse(tasks), nil
+	})
+	if err != nil {
+		switch {
+		case errors.Is(err, stores.ErrTaskNotFound),
+			errors.Is(err, ErrTaskAlreadyOpen):
+			return nil, err
+		default:
+			return nil, wrapUnexpectedError(err)
 		}
 	}
-	return !currentDoneState, nil
+
+	return response, nil
 }
 
-func (service *TaskService) applyTargetDoneStateToTasks(
-	tasks []domain.Task,
-	targetDoneState bool,
-	currentDate shared.Date,
-) {
+func (service *TaskService) checkThatTasksAreOpen(tasks []domain.Task) error {
+	for _, task := range tasks {
+		if task.Done {
+			return ErrTaskAlreadyCompleted
+		}
+	}
+	return nil
+}
+
+func (service *TaskService) checkThatTasksAreCompleted(tasks []domain.Task) error {
+	for _, task := range tasks {
+		if !task.Done {
+			return ErrTaskAlreadyOpen
+		}
+	}
+	return nil
+}
+
+func (service *TaskService) setDoneFlagAndIfNeededDate(tasks []domain.Task, currentDate shared.Date) {
 	for index := range tasks {
-		tasks[index].Done = targetDoneState
-		if tasks[index].Done && tasks[index].Date == nil {
+		tasks[index].Done = true
+		if tasks[index].Date == nil {
 			taskDate := currentDate
 			tasks[index].Date = &taskDate
 		}
 	}
 }
 
-func (service *TaskService) getUntrashedTasks(tasks []domain.Task) []*domain.Task {
-	untrashedTasks := make([]*domain.Task, 0, len(tasks)/2)
+func (service *TaskService) unsetDoneFlag(tasks []domain.Task) {
 	for index := range tasks {
-		if tasks[index].TrashedDate == nil {
-			untrashedTasks = append(untrashedTasks, &tasks[index])
-		}
+		tasks[index].Done = false
 	}
-	return untrashedTasks
 }
 
-func (service *TaskService) assignRanksForBatchToggleTaskDone(
+func (service *TaskService) assignRanksForBatchDoneUpdate(
 	transaction *sqlx.Tx,
 	userId int64,
 	targetDoneState bool,
 	untrashedTasks []*domain.Task,
 ) error {
-	untrashedTasksByDate := make(map[shared.Date][]*domain.Task)
 	untrashedTaskDates := make([]shared.Date, 0)
+	untrashedTasksByDate := make(map[shared.Date][]*domain.Task)
 	for _, task := range untrashedTasks {
 		taskDate := *task.Date
 		if _, exists := untrashedTasksByDate[taskDate]; !exists {
@@ -460,7 +495,17 @@ func (service *TaskService) assignRanksForBatchToggleTaskDone(
 	return nil
 }
 
-func (service *TaskService) getTrashedTasks(tasks []domain.Task) []*domain.Task {
+func (service *TaskService) extractUntrashedTasks(tasks []domain.Task) []*domain.Task {
+	untrashedTasks := make([]*domain.Task, 0, len(tasks)/2)
+	for index := range tasks {
+		if tasks[index].TrashedDate == nil {
+			untrashedTasks = append(untrashedTasks, &tasks[index])
+		}
+	}
+	return untrashedTasks
+}
+
+func (service *TaskService) extractTrashedTasks(tasks []domain.Task) []*domain.Task {
 	trashedTasks := make([]*domain.Task, 0, len(tasks)/2)
 	for index := range tasks {
 		if tasks[index].TrashedDate != nil {
@@ -470,8 +515,8 @@ func (service *TaskService) getTrashedTasks(tasks []domain.Task) []*domain.Task 
 	return trashedTasks
 }
 
-func (service *TaskService) createBatchToggleTaskDoneResponse(tasks []domain.Task) *transport.BatchToggleTaskDoneResponse {
-	response := &transport.BatchToggleTaskDoneResponse{
+func (service *TaskService) createBatchUpdateDoneResponse(tasks []domain.Task) *transport.BatchUpdateDoneResponse {
+	response := &transport.BatchUpdateDoneResponse{
 		DatedUntrashedOpenTasks: make([]transport.TaskResponse, 0),
 		DatedUntrashedDoneTasks: make([]transport.TaskResponse, 0),
 		TrashedTasks:            make([]transport.TaskResponse, 0),
