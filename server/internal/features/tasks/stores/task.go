@@ -280,6 +280,37 @@ func (store *TaskStore) UpdateTaskTrashedState(transaction *sqlx.Tx, task *domai
 	return nil
 }
 
+func (store *TaskStore) UpdateTasksTrashedState(
+	transaction *sqlx.Tx,
+	userId int64,
+	taskIds []int64,
+	trashedDate time.Time,
+) error {
+	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("updating tasks trash state failed")
+
+	result, err := transaction.Exec(`
+		UPDATE tasks
+		SET trashed_date = $1,
+		    rank = NULL
+		WHERE id = ANY($2::BIGINT[])
+		  AND user_id = $3
+		  AND trashed_date IS NULL
+	`, trashedDate, pq.Array(taskIds), userId)
+	if err != nil {
+		return wrapUnexpectedError(err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return wrapUnexpectedError(err)
+	}
+	if rowsAffected != int64(len(taskIds)) {
+		return ErrTaskNotFound
+	}
+
+	return nil
+}
+
 func (store *TaskStore) UpdateTaskDoneState(transaction *sqlx.Tx, task *domain.Task) error {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("updating task done state failed")
 

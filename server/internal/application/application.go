@@ -42,6 +42,7 @@ func NewApplication(cfg configuration.Configuration, db *sqlx.DB) *gin.Engine {
 	api.POST("/tasks", shared.RequireAuth(tasksHandlers.NewCreateTaskHandler(taskService)))
 	api.PUT("/tasks", shared.RequireAuth(tasksHandlers.NewUpdateTaskHandler(taskService)))
 	api.PATCH("/tasks/change-date-and-or-rank", shared.RequireAuth(tasksHandlers.NewChangeTaskDateAndOrRankHandler(taskService)))
+	api.PATCH("/tasks/batch-trash", shared.RequireAuth(tasksHandlers.NewBatchTrashTasksHandler(taskService)))
 	api.PATCH("/tasks/batch-toggle-done", shared.RequireAuth(tasksHandlers.NewBatchToggleTaskDoneHandler(taskService)))
 	api.PATCH("/tasks/:id/trash", shared.RequireAuth(tasksHandlers.NewTrashTaskHandler(taskService)))
 	api.PATCH("/tasks/:id/restore", shared.RequireAuth(tasksHandlers.NewRestoreTaskHandler(taskService)))

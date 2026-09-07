@@ -238,6 +238,36 @@ func (service *TaskService) TrashTask(userId int64, taskId int64, trashedDate ti
 	return nil
 }
 
+func (service *TaskService) BatchTrashTasks(userId int64, taskIds []int64, trashedDate time.Time) error {
+	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("batch trashing tasks failed")
+
+	err := shared.ExecuteAsSerializableTransactionWithoutResult(service.db, func(transaction *sqlx.Tx) error {
+		tasks, err := service.taskStore.GetTasksByIdsForUser(transaction, taskIds, userId)
+		if err != nil {
+			return err
+		}
+
+		for index := range tasks {
+			if tasks[index].TrashedDate != nil {
+				return ErrTaskAlreadyTrashed
+			}
+		}
+
+		return service.taskStore.UpdateTasksTrashedState(transaction, userId, taskIds, trashedDate)
+	})
+	if err != nil {
+		switch {
+		case errors.Is(err, stores.ErrTaskNotFound),
+			errors.Is(err, ErrTaskAlreadyTrashed):
+			return err
+		default:
+			return wrapUnexpectedError(err)
+		}
+	}
+
+	return nil
+}
+
 func (service *TaskService) RestoreTask(userId int64, taskId int64, rank string) error {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("restoring task failed")
 
