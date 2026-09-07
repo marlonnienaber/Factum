@@ -1,0 +1,231 @@
+package tests
+
+import (
+	"encoding/json"
+	"net/http"
+	"testing"
+
+	authenticationTransport "github.com/marlonnienaber/Factum/server/internal/features/authentication/types/transport"
+	categoriesTransport "github.com/marlonnienaber/Factum/server/internal/features/categories/types/transport"
+	tasksTransport "github.com/marlonnienaber/Factum/server/internal/features/tasks/types/transport"
+	"github.com/marlonnienaber/Factum/server/internal/tests/support"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestTasksBatchOpenUnauthenticated(t *testing.T) {
+	app := support.PrepareTestEnvironment(t)
+
+	payload, err := json.Marshal(tasksTransport.BatchUpdateDoneRequest{TaskIds: []int64{1}})
+	require.NoError(t, err, "serializing request failed")
+	resp := support.MakeJsonRequest(t, app, http.MethodPatch, "/api/tasks/batch-open", payload)
+
+	support.AssertErrorResponse(
+		t,
+		resp,
+		http.StatusUnauthorized,
+		"authentication_required",
+		"This endpoint requires authentication. Please sign-in.",
+	)
+}
+
+func TestTasksBatchOpenEmptyTaskIds(t *testing.T) {
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
+	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
+	})
+	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	cookies := signUpResp.Result().Cookies()
+
+	payload, err := json.Marshal(tasksTransport.BatchUpdateDoneRequest{TaskIds: []int64{}})
+	require.NoError(t, err, "serializing request failed")
+	resp := support.MakeJsonRequest(t, app, http.MethodPatch, "/api/tasks/batch-open", payload, cookies...)
+
+	support.AssertValidationErrorResponse(t, resp, "taskIds", "taskIds must contain at least 1 items.")
+}
+
+func TestTasksBatchOpenTooManyTaskIds(t *testing.T) {
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
+	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
+	})
+	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	cookies := signUpResp.Result().Cookies()
+
+	taskIds := make([]int64, 51)
+	for index := range taskIds {
+		taskIds[index] = int64(index + 1)
+	}
+	payload, err := json.Marshal(tasksTransport.BatchUpdateDoneRequest{TaskIds: taskIds})
+	require.NoError(t, err, "serializing request failed")
+	resp := support.MakeJsonRequest(t, app, http.MethodPatch, "/api/tasks/batch-open", payload, cookies...)
+
+	support.AssertValidationErrorResponse(t, resp, "taskIds", "taskIds must contain at most 50 items.")
+}
+
+func TestTasksBatchOpenDuplicateTaskId(t *testing.T) {
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
+	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
+	})
+	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	cookies := signUpResp.Result().Cookies()
+
+	payload, err := json.Marshal(tasksTransport.BatchUpdateDoneRequest{TaskIds: []int64{1, 1}})
+	require.NoError(t, err, "serializing request failed")
+	resp := support.MakeJsonRequest(t, app, http.MethodPatch, "/api/tasks/batch-open", payload, cookies...)
+
+	support.AssertValidationErrorResponse(t, resp, "taskIds", "taskIds must not contain duplicate values.")
+}
+
+func TestTasksBatchOpenInvalidTaskId(t *testing.T) {
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
+	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
+	})
+	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	cookies := signUpResp.Result().Cookies()
+
+	payload, err := json.Marshal(tasksTransport.BatchUpdateDoneRequest{TaskIds: []int64{0}})
+	require.NoError(t, err, "serializing request failed")
+	resp := support.MakeJsonRequest(t, app, http.MethodPatch, "/api/tasks/batch-open", payload, cookies...)
+
+	support.AssertValidationErrorResponse(t, resp, "taskIds[0]", "taskIds[0] must be greater than 0.")
+}
+
+func TestTasksBatchOpenOneTaskOwnedByDifferentUser(t *testing.T) {
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(
+		t,
+		support.TestUser1Email,
+		support.TestUser2Email,
+	)
+	firstSignUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
+	})
+	require.Equal(t, http.StatusCreated, firstSignUpResp.Code)
+	firstUserCookies := firstSignUpResp.Result().Cookies()
+	secondSignUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
+		Email:    support.TestUser2Email,
+		Password: support.TestUser2Password,
+	})
+	require.Equal(t, http.StatusCreated, secondSignUpResp.Code)
+	secondUserCookies := secondSignUpResp.Result().Cookies()
+
+	firstCategoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", firstUserCookies...)
+	require.Equal(t, http.StatusCreated, firstCategoryResp.Code)
+	var firstCategory categoriesTransport.CategoryResponse
+	require.NoError(t, json.NewDecoder(firstCategoryResp.Body).Decode(&firstCategory), "failed to decode first category response")
+
+	secondCategoryResp := support.MakeCreateCategoryRequest(t, app, "Personal", "#3b82f6", secondUserCookies...)
+	require.Equal(t, http.StatusCreated, secondCategoryResp.Code)
+	var secondCategory categoriesTransport.CategoryResponse
+	require.NoError(t, json.NewDecoder(secondCategoryResp.Body).Decode(&secondCategory), "failed to decode second category response")
+
+	firstUserTasks := support.PrepareDoneDatedUntrashedTasks(t, app, firstCategory.Id, firstUserCookies...)
+	secondUserTasks := support.PrepareDoneDatedUntrashedTasks(t, app, secondCategory.Id, secondUserCookies...)
+
+	payload, err := json.Marshal(tasksTransport.BatchUpdateDoneRequest{
+		TaskIds: []int64{firstUserTasks[0].Id, secondUserTasks[0].Id},
+	})
+	require.NoError(t, err, "serializing request failed")
+	resp := support.MakeJsonRequest(t, app, http.MethodPatch, "/api/tasks/batch-open", payload, firstUserCookies...)
+
+	support.AssertErrorResponse(
+		t,
+		resp,
+		http.StatusNotFound,
+		"one_of_provided_tasks_not_found",
+		"One of the provided tasks could not be found.",
+	)
+}
+
+func TestTasksBatchOpenOneTaskAlreadyOpen(t *testing.T) {
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
+	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
+	})
+	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	cookies := signUpResp.Result().Cookies()
+
+	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
+	require.Equal(t, http.StatusCreated, categoryResp.Code)
+	var category categoriesTransport.CategoryResponse
+	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
+
+	completedTasks := support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, cookies...)
+	openTasks := support.PrepareOpenUndatedUntrashedTasks(t, app, category.Id, cookies...)
+
+	payload, err := json.Marshal(tasksTransport.BatchUpdateDoneRequest{
+		TaskIds: []int64{completedTasks[0].Id, openTasks[0].Id},
+	})
+	require.NoError(t, err, "serializing request failed")
+	resp := support.MakeJsonRequest(t, app, http.MethodPatch, "/api/tasks/batch-open", payload, cookies...)
+
+	support.AssertErrorResponse(
+		t,
+		resp,
+		http.StatusBadRequest,
+		"one_of_provided_tasks_already_open",
+		"One of the provided tasks is already open.",
+	)
+}
+
+func TestTasksBatchOpenTasksFromAllValidPartitions(t *testing.T) {
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
+	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
+	})
+	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	cookies := signUpResp.Result().Cookies()
+
+	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
+	require.Equal(t, http.StatusCreated, categoryResp.Code)
+	var category categoriesTransport.CategoryResponse
+	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
+
+	trashedTasks := support.PrepareTrashedTasks(t, app, category.Id, cookies...)
+	completedUntrashedTasks := support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, cookies...)
+	var completedTrashedTask tasksTransport.TaskResponse
+	for _, task := range trashedTasks {
+		if task.Done {
+			completedTrashedTask = task
+			break
+		}
+	}
+	require.NotZero(t, completedTrashedTask.Id, "expected a completed trashed task")
+	require.NotNil(t, completedUntrashedTasks[0].Date, "expected completed task to have a date")
+	require.NotNil(t, completedTrashedTask.Date, "expected completed task to have a date")
+
+	payload, err := json.Marshal(tasksTransport.BatchUpdateDoneRequest{
+		TaskIds: []int64{completedUntrashedTasks[0].Id, completedTrashedTask.Id},
+	})
+	require.NoError(t, err, "serializing request failed")
+	resp := support.MakeJsonRequest(t, app, http.MethodPatch, "/api/tasks/batch-open", payload, cookies...)
+
+	require.Equal(t, http.StatusOK, resp.Code)
+	var respBody tasksTransport.BatchOpenResponse
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
+	require.Len(t, respBody.DatedUntrashedOpenTasks, 1)
+	require.Len(t, respBody.TrashedTasks, 1)
+
+	openedUntrashedTask := respBody.DatedUntrashedOpenTasks[0]
+	assert.Equal(t, completedUntrashedTasks[0].Id, openedUntrashedTask.Id)
+	assert.False(t, openedUntrashedTask.Done, "expected task to be open")
+	assert.Equal(t, completedUntrashedTasks[0].Date, openedUntrashedTask.Date, "expected date to remain unchanged")
+	assert.NotNil(t, openedUntrashedTask.Rank, "expected untrashed task to have a rank")
+	assert.Nil(t, openedUntrashedTask.TrashedDate, "expected task to be untrashed")
+
+	openedTrashedTask := respBody.TrashedTasks[0]
+	assert.Equal(t, completedTrashedTask.Id, openedTrashedTask.Id)
+	assert.False(t, openedTrashedTask.Done, "expected task to be open")
+	assert.Equal(t, completedTrashedTask.Date, openedTrashedTask.Date, "expected date to remain unchanged")
+	assert.Nil(t, openedTrashedTask.Rank, "expected trashed task not to have a rank")
+	assert.Equal(t, completedTrashedTask.TrashedDate, openedTrashedTask.TrashedDate, "expected task to remain trashed")
+}
