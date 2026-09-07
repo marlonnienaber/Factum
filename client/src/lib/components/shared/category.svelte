@@ -16,7 +16,7 @@
 		align-items: center;
 		width: fit-content;
 		box-sizing: border-box;
-		padding: 0.125rem 0.375rem;
+		padding: 0.25rem 0.625rem;
 		border-radius: 1rem;
 		color: var(--text);
 		font-size: 0.75rem;
