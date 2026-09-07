@@ -13,7 +13,12 @@ function addTask(task: UndatedTaskResponse): void {
 }
 
 function removeTask(id: number): void {
-	undatedTasks = undatedTasks.filter((task) => task.id !== id);
+	removeTasks([id]);
+}
+
+function removeTasks(ids: number[]): void {
+	const taskIds = new Set(ids);
+	undatedTasks = undatedTasks.filter((task) => !taskIds.has(task.id));
 }
 
 function compareTasksByRank(first: UndatedTaskResponse, second: UndatedTaskResponse): number {
@@ -31,5 +36,6 @@ export const undatedTaskStore = {
 	addTasks,
 	addTask,
 	removeTask,
+	removeTasks,
 	reset
 };

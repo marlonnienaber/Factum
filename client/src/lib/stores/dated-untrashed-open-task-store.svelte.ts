@@ -13,7 +13,12 @@ function addTask(task: DatedUntrashedOpenTaskResponse): void {
 }
 
 function removeTask(id: number): void {
-	datedUntrashedOpenTasks = datedUntrashedOpenTasks.filter((task) => task.id !== id);
+	removeTasks([id]);
+}
+
+function removeTasks(ids: number[]): void {
+	const taskIds = new Set(ids);
+	datedUntrashedOpenTasks = datedUntrashedOpenTasks.filter((task) => !taskIds.has(task.id));
 }
 
 function compareTasksByDateAndRank(first: DatedUntrashedOpenTaskResponse, second: DatedUntrashedOpenTaskResponse): number {
@@ -33,5 +38,6 @@ export const datedUntrashedOpenTaskStore = {
 	addTasks,
 	addTask,
 	removeTask,
+	removeTasks,
 	reset
 };

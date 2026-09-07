@@ -11,6 +11,7 @@ import { datedUntrashedDoneTaskStore } from '$lib/stores/dated-untrashed-done-ta
 import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-task-store.svelte';
 import { trashedTaskStore } from '$lib/stores/trashed-task-store.svelte';
 import { undatedTaskStore } from '$lib/stores/undated-task-store.svelte';
+import type { BatchTrashTasksRequest } from '$lib/types/requests/batch-trash-tasks-request';
 import type { BatchUpdateDoneRequest } from '$lib/types/requests/batch-update-done-request';
 import type { ChangeTaskDateAndOrRankRequest } from '$lib/types/requests/change-task-date-and-or-rank-request';
 import type { CreateTaskRequest } from '$lib/types/requests/create-task-request';
@@ -21,8 +22,9 @@ import {
 	DatedUntrashedOpenTaskResponseSchema,
 	type DatedUntrashedOpenTaskResponse
 } from '$lib/types/responses/dated-untrashed-open-task-response';
+import type { TrashedTaskResponse } from '$lib/types/responses/trashed-task-response';
 import { UndatedTaskResponseSchema, type UndatedTaskResponse } from '$lib/types/responses/undated-task-response';
-import { getLocalTimeZone, now, today, type CalendarDate } from '@internationalized/date';
+import { getLocalTimeZone, now, today, type CalendarDate, type ZonedDateTime } from '@internationalized/date';
 import { generateKeyBetween } from 'fractional-indexing';
 import { z } from 'zod';
 
@@ -151,10 +153,8 @@ async function completeTasks(taskIds: number[]): Promise<boolean> {
 		);
 		if (networkCall.status !== 'success') return false;
 
-		for (const taskId of taskIds) {
-			undatedTaskStore.removeTask(taskId);
-			datedUntrashedOpenTaskStore.removeTask(taskId);
-		}
+		undatedTaskStore.removeTasks(taskIds);
+		datedUntrashedOpenTaskStore.removeTasks(taskIds);
 		datedUntrashedDoneTaskStore.addTasks(networkCall.result.datedUntrashedDoneTasks);
 		return true;
 	} finally {
@@ -187,6 +187,50 @@ async function trashTask(id: number): Promise<void> {
 			done: false,
 			trashedDate
 		});
+	} finally {
+		taskMutationLoading = false;
+	}
+}
+
+async function trashTasks(taskIds: number[]): Promise<boolean> {
+	if (taskMutationBlocked) return false;
+
+	const tasks = taskIds
+		.map((taskId) => {
+			const datedTask = datedUntrashedOpenTaskStore.datedUntrashedOpenTasks.find((task) => task.id === taskId);
+			const undatedTask = undatedTaskStore.undatedTasks.find((task) => task.id === taskId);
+			return datedTask ?? undatedTask;
+		})
+		.filter((task) => task !== undefined);
+	if (tasks.length !== taskIds.length) return false;
+
+	const trashedDate: ZonedDateTime = now(getLocalTimeZone());
+	const encodedTrashedDate: string = encodeURIComponent(trashedDate.toAbsoluteString());
+	const request: BatchTrashTasksRequest = { taskIds };
+	taskMutationLoading = true;
+	try {
+		const networkCall: NetworkCall<void> = await jsonPatchWithBodyWithoutResponse(
+			`/api/tasks/batch-trash?trashedDate=${encodedTrashedDate}`,
+			request
+		);
+		if (networkCall.status !== 'success') return false;
+
+		const trashedTasks: TrashedTaskResponse[] = tasks.map((task) => {
+			const datedTask = datedUntrashedOpenTaskStore.datedUntrashedOpenTasks.find((datedTask) => datedTask.id === task.id);
+			return {
+				id: task.id,
+				categoryId: task.categoryId,
+				title: task.title,
+				description: task.description,
+				date: datedTask?.date,
+				done: false,
+				trashedDate
+			};
+		});
+		undatedTaskStore.removeTasks(taskIds);
+		datedUntrashedOpenTaskStore.removeTasks(taskIds);
+		trashedTaskStore.addTasks(trashedTasks);
+		return true;
 	} finally {
 		taskMutationLoading = false;
 	}
@@ -252,5 +296,6 @@ export const taskService = {
 	completeTask,
 	completeTasks,
 	trashTask,
+	trashTasks,
 	changeTaskDateAndOrRank
 };
