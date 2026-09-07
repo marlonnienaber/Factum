@@ -280,7 +280,7 @@ func (store *TaskStore) UpdateTaskTrashedState(transaction *sqlx.Tx, task *domai
 	return nil
 }
 
-func (store *TaskStore) UpdateTasksTrashedState(
+func (store *TaskStore) TrashTasks(
 	transaction *sqlx.Tx,
 	userId int64,
 	taskIds []int64,

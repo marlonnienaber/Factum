@@ -253,7 +253,7 @@ func (service *TaskService) BatchTrashTasks(userId int64, taskIds []int64, trash
 			}
 		}
 
-		return service.taskStore.UpdateTasksTrashedState(transaction, userId, taskIds, trashedDate)
+		return service.taskStore.TrashTasks(transaction, userId, taskIds, trashedDate)
 	})
 	if err != nil {
 		switch {
