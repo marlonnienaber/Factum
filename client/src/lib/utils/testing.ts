@@ -1,3 +1,4 @@
+import { waitFor } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import { expect, vi } from 'vitest';
 
@@ -31,6 +32,9 @@ export async function expectInputToBeInvalid(queries: InputQueries, inputId: str
 
 	await userEvent.click(errorIndicator);
 	expect(await queries.findByText(expectedError)).toBeInTheDocument();
+
+	await userEvent.click(errorIndicator);
+	await waitFor(() => expect(queries.container.ownerDocument.body).not.toHaveTextContent(expectedError));
 }
 
 export function mockPendingFetch(fetchMock: ReturnType<typeof vi.fn>): (response: Response) => void {
