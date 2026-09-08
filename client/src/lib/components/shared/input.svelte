@@ -4,7 +4,7 @@
 	import type { HTMLInputAttributes } from 'svelte/elements';
 
 	type Props = {
-		id?: string;
+		id: string;
 		value: string;
 		error?: string;
 		leadingIcon?: LucideIcon;
@@ -34,16 +34,16 @@
 	{#if LeadingIcon}
 		<span class="leading-icon"><LeadingIcon size={18} /></span>
 	{/if}
-	<input {id} bind:value {type} {placeholder} {autocomplete} {disabled} {oninput} />
+	<input {id} bind:value {type} {placeholder} {autocomplete} {disabled} {oninput} aria-invalid={invalid} />
 	{#if invalid}
-		<span class="error-icon">
+		<span class="error-indicator-icon">
 			<Popover side="right" align="center" openOnHover>
 				{#snippet trigger()}
-					<span id={id === undefined ? undefined : `${id}-error-trigger`}>
+					<span id={`${id}-error-indicator-popover-trigger`}>
 						<Info size={18} aria-hidden={true} />
 					</span>
 				{/snippet}
-				<span class="error-message">{error}</span>
+				<span class="error-indicator-message">{error}</span>
 			</Popover>
 		</span>
 	{/if}
@@ -86,7 +86,7 @@
 			font-size: 0.865rem;
 		}
 
-		.error-icon {
+		.error-indicator-icon {
 			display: flex;
 			align-items: center;
 			width: 1.125rem;
@@ -96,7 +96,7 @@
 		}
 	}
 
-	.error-message {
+	.error-indicator-message {
 		color: var(--text);
 		font-size: 0.865rem;
 	}

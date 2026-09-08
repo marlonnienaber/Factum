@@ -3,7 +3,7 @@ import {
 	jsonGetWithoutBodyWithResponse,
 	jsonPostWithoutBodyWithoutResponse,
 	jsonPostWithBodyWithResponse
-} from '$lib/api/api';
+} from '$lib/utils/networking';
 import { authenticationStore } from '$lib/stores/authentication-store.svelte';
 import type { AuthenticationRequest } from '$lib/types/requests/authentication-request';
 import { AuthenticationResponseSchema, type AuthenticationResponse } from '$lib/types/responses/authentication-response';

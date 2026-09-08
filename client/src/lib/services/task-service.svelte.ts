@@ -6,7 +6,7 @@ import {
 	jsonPatchWithoutBodyWithoutResponse,
 	jsonPostWithBodyWithResponse,
 	jsonPutWithBodyWithResponse
-} from '$lib/api/api';
+} from '$lib/utils/networking';
 import { datedUntrashedDoneTaskStore } from '$lib/stores/dated-untrashed-done-task-store.svelte';
 import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-task-store.svelte';
 import { trashedTaskStore } from '$lib/stores/trashed-task-store.svelte';

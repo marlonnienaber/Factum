@@ -69,6 +69,7 @@
 
 		<div class="inputs">
 			<Input
+				id="email-input"
 				bind:value={email}
 				error={emailError}
 				leadingIcon={Mail}
@@ -79,6 +80,7 @@
 				oninput={() => (emailError = undefined)}
 			/>
 			<Input
+				id="password-input"
 				bind:value={password}
 				error={passwordError}
 				leadingIcon={Lock}

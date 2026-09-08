@@ -3,7 +3,7 @@ import {
 	jsonDeleteWithoutBodyWithoutResponse,
 	jsonGetWithoutBodyWithResponse,
 	jsonPostWithBodyWithResponse
-} from '$lib/api/api';
+} from '$lib/utils/networking';
 import { categoryStore } from '$lib/stores/category-store.svelte';
 import type { CreateNewCategoryRequest } from '$lib/types/requests/create-new-category-request';
 import { CategoryResponseSchema, type CategoryResponse } from '$lib/types/responses/category-response';

@@ -1,7 +1,7 @@
 import { browser } from '$app/environment';
 import { toast } from 'svelte-sonner';
 import { z, type ZodType } from 'zod';
-import { ErrorResponseSchema } from '../types/responses/error-response';
+import { ErrorResponseSchema } from '$lib/types/responses/error-response';
 
 export type NetworkCall<T> = { status: 'success'; result: T } | { status: 'failed' };
 

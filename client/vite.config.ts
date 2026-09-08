@@ -30,6 +30,8 @@ export default defineConfig(({ mode }) => {
 				include: ['src/**/*.{ts,svelte}'],
 				exclude: [
 					'src/app.d.ts',
+					'src/lib/utils/testing.ts',
+					'src/lib/utils/testing-setup.ts',
 					'src/**/*.d.ts',
 					'src/**/*.test.{js,ts}',
 					'src/**/*.spec.{js,ts}',
@@ -43,6 +45,7 @@ export default defineConfig(({ mode }) => {
 					test: {
 						name: 'client',
 						environment: 'jsdom',
+						setupFiles: ['./src/lib/utils/testing-setup.ts'],
 						include: ['src/**/*.svelte.{test,spec}.{js,ts}']
 					}
 				},
