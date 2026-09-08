@@ -150,6 +150,8 @@ func PrepareOpenUndatedUntrashedTasks(
 
 		var task tasksTransport.TaskResponse
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&task), "failed to decode task response")
+		task.CategoryId = categoryId
+		task.Title = "Undated task"
 		tasks = append(tasks, task)
 	}
 	return tasks
@@ -173,6 +175,9 @@ func PrepareOpenDatedUntrashedTasks(
 
 		var task tasksTransport.TaskResponse
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&task), "failed to decode task response")
+		task.CategoryId = categoryId
+		task.Title = "Dated task"
+		task.Date = &date
 		tasks = append(tasks, task)
 	}
 	return tasks
@@ -223,6 +228,8 @@ func PrepareTrashedTasks(
 		json.NewDecoder(openUndatedResp.Body).Decode(&openUndatedTask),
 		"failed to decode task response",
 	)
+	openUndatedTask.CategoryId = categoryId
+	openUndatedTask.Title = "Open undated task"
 
 	openDatedResp := MakeCreateTaskRequest(t, app, "Open dated task", nil, &date, categoryId, cookies...)
 	require.Equal(t, http.StatusCreated, openDatedResp.Code)
@@ -232,6 +239,9 @@ func PrepareTrashedTasks(
 		json.NewDecoder(openDatedResp.Body).Decode(&openDatedTask),
 		"failed to decode task response",
 	)
+	openDatedTask.CategoryId = categoryId
+	openDatedTask.Title = "Open dated task"
+	openDatedTask.Date = &date
 
 	doneDatedResp := MakeCreateTaskRequest(t, app, "Done dated task", nil, &date, categoryId, cookies...)
 	require.Equal(t, http.StatusCreated, doneDatedResp.Code)
@@ -241,6 +251,9 @@ func PrepareTrashedTasks(
 		json.NewDecoder(doneDatedResp.Body).Decode(&doneDatedTask),
 		"failed to decode task response",
 	)
+	doneDatedTask.CategoryId = categoryId
+	doneDatedTask.Title = "Done dated task"
+	doneDatedTask.Date = &date
 	require.NotNil(t, doneDatedTask.Rank, "expected created task to have a rank")
 	toggleDoneResp := MakeToggleDoneRequest(t, app, doneDatedTask.Id, doneDatedTask.Rank, cookies...)
 	require.Equal(t, http.StatusNoContent, toggleDoneResp.Code)

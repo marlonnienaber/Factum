@@ -465,20 +465,15 @@ func (store *TaskStore) InsertTask(
 	userId int64,
 	request transport.CreateTaskRequest,
 	rank string,
-) (*transport.TaskResponse, error) {
+) (*transport.CreateTaskResponse, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("inserting task failed")
 
-	var task transport.TaskResponse
+	var task transport.CreateTaskResponse
 	err := transaction.Get(&task, `
 		INSERT INTO tasks (user_id, category_id, title, description, date, rank)
 		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING id,
-		          category_id,
-		          title,
-		          description,
-		          date,
-		          rank,
-		          done
+		          rank
 	`,
 		userId,
 		request.CategoryId,

@@ -18,13 +18,14 @@ import type { CreateTaskRequest } from '$lib/types/requests/create-task-request'
 import type { DatedUntrashedOpenTasksCursor } from '$lib/types/requests/dated-untrashed-open-tasks-cursor';
 import type { UpdateTaskRequest } from '$lib/types/requests/update-task-request';
 import { BatchCompleteResponseSchema, type BatchCompleteResponse } from '$lib/types/responses/batch-complete-response';
+import { CreateTaskResponseSchema, type CreateTaskResponse } from '$lib/types/responses/create-task-response';
 import {
 	DatedUntrashedOpenTaskResponseSchema,
 	type DatedUntrashedOpenTaskResponse
 } from '$lib/types/responses/dated-untrashed-open-task-response';
 import type { TrashedTaskResponse } from '$lib/types/responses/trashed-task-response';
 import { UndatedTaskResponseSchema, type UndatedTaskResponse } from '$lib/types/responses/undated-task-response';
-import { getLocalTimeZone, now, today, type CalendarDate, type ZonedDateTime } from '@internationalized/date';
+import { getLocalTimeZone, now, parseDate, today, type CalendarDate, type ZonedDateTime } from '@internationalized/date';
 import { generateKeyBetween } from 'fractional-indexing';
 import { z } from 'zod';
 
@@ -68,20 +69,21 @@ async function createTask(request: CreateTaskRequest): Promise<void> {
 	if (taskMutationBlocked) return;
 	taskMutationLoading = true;
 	try {
+		const networkCall: NetworkCall<CreateTaskResponse> = await jsonPostWithBodyWithResponse(
+			'/api/tasks',
+			request,
+			CreateTaskResponseSchema
+		);
+		if (networkCall.status !== 'success') return;
+
 		if (request.date !== undefined) {
-			const networkCall: NetworkCall<DatedUntrashedOpenTaskResponse> = await jsonPostWithBodyWithResponse(
-				'/api/tasks',
-				request,
-				DatedUntrashedOpenTaskResponseSchema
-			);
-			if (networkCall.status === 'success') datedUntrashedOpenTaskStore.addTask(networkCall.result);
+			datedUntrashedOpenTaskStore.addTask({
+				...request,
+				...networkCall.result,
+				date: parseDate(request.date)
+			});
 		} else {
-			const networkCall: NetworkCall<UndatedTaskResponse> = await jsonPostWithBodyWithResponse(
-				'/api/tasks',
-				request,
-				UndatedTaskResponseSchema
-			);
-			if (networkCall.status === 'success') undatedTaskStore.addTask(networkCall.result);
+			undatedTaskStore.addTask({ ...request, ...networkCall.result });
 		}
 	} finally {
 		taskMutationLoading = false;

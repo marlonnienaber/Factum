@@ -288,7 +288,7 @@ func TestTasksUpdateTaskCategoryNotFound(t *testing.T) {
 
 	payload, err := json.Marshal(tasksTransport.UpdateTaskRequest{
 		Id:         task.Id,
-		Title:      task.Title,
+		Title:      "Task",
 		CategoryId: category.Id + 1,
 	})
 	require.NoError(t, err, "serializing request failed")
@@ -344,7 +344,7 @@ func TestTasksUpdateTaskWithCategoryOwnedByDifferentUser(t *testing.T) {
 
 	payload, err := json.Marshal(tasksTransport.UpdateTaskRequest{
 		Id:         task.Id,
-		Title:      task.Title,
+		Title:      "Task",
 		CategoryId: secondCategory.Id,
 	})
 	require.NoError(t, err, "serializing request failed")
@@ -415,7 +415,7 @@ func TestTasksUpdateTaskAddDescription(t *testing.T) {
 	description := "Description"
 	payload, err := json.Marshal(tasksTransport.UpdateTaskRequest{
 		Id:          task.Id,
-		Title:       task.Title,
+		Title:       "Task",
 		Description: &description,
 		CategoryId:  category.Id,
 	})
@@ -451,7 +451,7 @@ func TestTasksUpdateTaskRemoveDescription(t *testing.T) {
 
 	payload, err := json.Marshal(tasksTransport.UpdateTaskRequest{
 		Id:         task.Id,
-		Title:      task.Title,
+		Title:      "Task",
 		CategoryId: category.Id,
 	})
 	require.NoError(t, err, "serializing request failed")
@@ -487,7 +487,7 @@ func TestTasksUpdateTaskChangeDescription(t *testing.T) {
 	newDescription := "New description"
 	payload, err := json.Marshal(tasksTransport.UpdateTaskRequest{
 		Id:          task.Id,
-		Title:       task.Title,
+		Title:       "Task",
 		Description: &newDescription,
 		CategoryId:  category.Id,
 	})
@@ -522,7 +522,7 @@ func TestTasksUpdateTaskFromOpenWithoutDateUntrashedToDate(t *testing.T) {
 
 	payload, err := json.Marshal(tasksTransport.UpdateTaskRequest{
 		Id:         task.Id,
-		Title:      task.Title,
+		Title:      "Task",
 		Date:       datedTasks[0].Date,
 		CategoryId: category.Id,
 	})
@@ -557,7 +557,7 @@ func TestTasksUpdateTaskFromOpenWithDateUntrashedToNoDate(t *testing.T) {
 
 	payload, err := json.Marshal(tasksTransport.UpdateTaskRequest{
 		Id:         task.Id,
-		Title:      task.Title,
+		Title:      "Task",
 		CategoryId: category.Id,
 	})
 	require.NoError(t, err, "serializing request failed")
@@ -591,7 +591,7 @@ func TestTasksUpdateTaskFromDoneWithDateUntrashedToNoDate(t *testing.T) {
 
 	payload, err := json.Marshal(tasksTransport.UpdateTaskRequest{
 		Id:         task.Id,
-		Title:      task.Title,
+		Title:      "Task",
 		CategoryId: category.Id,
 	})
 	require.NoError(t, err, "serializing request failed")
@@ -632,7 +632,7 @@ func TestTasksUpdateTaskFromDoneWithDateTrashedToNoDateTrashed(t *testing.T) {
 
 	payload, err := json.Marshal(tasksTransport.UpdateTaskRequest{
 		Id:         task.Id,
-		Title:      task.Title,
+		Title:      "Task",
 		CategoryId: category.Id,
 	})
 	require.NoError(t, err, "serializing request failed")
@@ -673,7 +673,7 @@ func TestTasksUpdateTaskFromOpenWithDateTrashedToNoDateTrashed(t *testing.T) {
 
 	payload, err := json.Marshal(tasksTransport.UpdateTaskRequest{
 		Id:         task.Id,
-		Title:      task.Title,
+		Title:      "Task",
 		CategoryId: category.Id,
 	})
 	require.NoError(t, err, "serializing request failed")
@@ -716,7 +716,7 @@ func TestTasksUpdateTaskFromOpenWithoutDateTrashedToDateTrashed(t *testing.T) {
 
 	payload, err := json.Marshal(tasksTransport.UpdateTaskRequest{
 		Id:         task.Id,
-		Title:      task.Title,
+		Title:      "Task",
 		Date:       &targetDate,
 		CategoryId: category.Id,
 	})
@@ -752,7 +752,7 @@ func TestTasksUpdateTaskFromOpenWithDateToOtherDate(t *testing.T) {
 
 	payload, err := json.Marshal(tasksTransport.UpdateTaskRequest{
 		Id:         task.Id,
-		Title:      task.Title,
+		Title:      "Task",
 		Date:       &targetDate,
 		CategoryId: category.Id,
 	})
@@ -788,7 +788,7 @@ func TestTasksUpdateTaskFromDoneWithDateToOtherDate(t *testing.T) {
 
 	payload, err := json.Marshal(tasksTransport.UpdateTaskRequest{
 		Id:         task.Id,
-		Title:      task.Title,
+		Title:      "Task",
 		Date:       &targetDate,
 		CategoryId: category.Id,
 	})
@@ -829,7 +829,7 @@ func TestTasksUpdateTaskChangeCategory(t *testing.T) {
 
 	payload, err := json.Marshal(tasksTransport.UpdateTaskRequest{
 		Id:         task.Id,
-		Title:      task.Title,
+		Title:      "Task",
 		CategoryId: newCategory.Id,
 	})
 	require.NoError(t, err, "serializing request failed")

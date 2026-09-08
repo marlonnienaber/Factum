@@ -421,20 +421,12 @@ func TestTasksCreateTaskWithDescriptionWithDate(t *testing.T) {
 		signUpResp.Result().Cookies()...,
 	)
 	require.Equal(t, http.StatusCreated, resp.Code)
-
-	var respBody tasksTransport.TaskResponse
+	var respBody tasksTransport.CreateTaskResponse
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode response")
 
 	assert.Equal(t, int64(1), respBody.Id, "unexpected task id")
-	assert.Equal(t, category.Id, respBody.CategoryId, "unexpected category id")
-	assert.Equal(t, "Task", respBody.Title, "unexpected task title")
-	assert.Equal(t, &description, respBody.Description, "unexpected task description")
-	assert.Equal(t, &date, respBody.Date, "unexpected task date")
-	require.NotNil(t, respBody.Rank, "expected task rank")
-	_, err = fracdex.Float64Approx(*respBody.Rank)
+	_, err = fracdex.Float64Approx(respBody.Rank)
 	assert.NoError(t, err, "expected a valid task rank")
-	assert.False(t, respBody.Done, "expected task to be open")
-	assert.Nil(t, respBody.TrashedDate, "expected task not to be trashed")
 }
 
 func TestTasksCreateTaskWithoutDescriptionWithoutDate(t *testing.T) {
@@ -474,21 +466,13 @@ func TestTasksCreateTaskWithoutDescriptionWithoutDate(t *testing.T) {
 		payload,
 		signUpResp.Result().Cookies()...,
 	)
-
 	require.Equal(t, http.StatusCreated, resp.Code)
-
-	var respBody tasksTransport.TaskResponse
+	var respBody tasksTransport.CreateTaskResponse
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode response")
+
 	assert.Equal(t, int64(1), respBody.Id, "unexpected task id")
-	assert.Equal(t, category.Id, respBody.CategoryId, "unexpected category id")
-	assert.Equal(t, "Task", respBody.Title, "unexpected task title")
-	assert.Nil(t, respBody.Description, "expected no task description")
-	assert.Nil(t, respBody.Date, "expected no task date")
-	require.NotNil(t, respBody.Rank, "expected task rank")
-	_, err = fracdex.Float64Approx(*respBody.Rank)
+	_, err = fracdex.Float64Approx(respBody.Rank)
 	assert.NoError(t, err, "expected a valid task rank")
-	assert.False(t, respBody.Done, "expected task to be open")
-	assert.Nil(t, respBody.TrashedDate, "expected task not to be trashed")
 }
 
 const (

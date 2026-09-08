@@ -40,10 +40,10 @@ func NewTaskService(
 	}
 }
 
-func (service *TaskService) CreateTask(userId int64, request transport.CreateTaskRequest) (*transport.TaskResponse, error) {
+func (service *TaskService) CreateTask(userId int64, request transport.CreateTaskRequest) (*transport.CreateTaskResponse, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("creating task failed")
 
-	task, err := shared.ExecuteAsSerializableTransaction(service.db, func(transaction *sqlx.Tx) (*transport.TaskResponse, error) {
+	task, err := shared.ExecuteAsSerializableTransaction(service.db, func(transaction *sqlx.Tx) (*transport.CreateTaskResponse, error) {
 		categoryExists, err := service.categoryStore.DoesCategoryExistForUser(transaction, request.CategoryId, userId)
 		if err != nil {
 			return nil, err
