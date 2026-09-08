@@ -3,24 +3,27 @@
 	import { Info } from '@lucide/svelte';
 
 	type Props = {
-		id?: string;
+		id: string;
 		value: string;
 		placeholder?: string;
 		error?: string;
 		oninput?: () => void;
+		onblur?: () => void;
 	};
 
-	let { id, value = $bindable(), placeholder, error, oninput }: Props = $props();
+	let { id, value = $bindable(), placeholder, error, oninput, onblur }: Props = $props();
 	const invalid = $derived(error !== undefined);
 </script>
 
 <div class:invalid class="textarea-container">
-	<textarea {id} bind:value {placeholder} {oninput} aria-invalid={invalid}></textarea>
+	<textarea {id} bind:value {placeholder} {oninput} {onblur} aria-invalid={invalid}></textarea>
 	{#if invalid}
-		<span class="info-icon">
+		<span class="error-indicator-icon">
 			<Popover side="right" align="center" openOnHover>
-				{#snippet trigger()}<Info size={18} aria-hidden="true" />{/snippet}
-				<span class="error-message">{error}</span>
+				{#snippet trigger()}
+					<span id={`${id}-error-indicator-popover-trigger`}><Info size={18} aria-hidden="true" /></span>
+				{/snippet}
+				<span class="error-indicator-message">{error}</span>
 			</Popover>
 		</span>
 	{/if}
@@ -59,7 +62,7 @@
 			}
 		}
 
-		.info-icon {
+		.error-indicator-icon {
 			position: absolute;
 			top: 50%;
 			right: 0.625rem;
@@ -69,7 +72,7 @@
 			transform: translateY(-50%);
 			color: var(--danger);
 
-			.error-message {
+			.error-indicator-message {
 				color: var(--text);
 			}
 		}

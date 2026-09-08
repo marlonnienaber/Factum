@@ -13,6 +13,7 @@
 		autocomplete?: HTMLInputAttributes['autocomplete'];
 		disabled?: boolean;
 		oninput?: () => void;
+		onblur?: () => void;
 	};
 
 	let {
@@ -24,7 +25,8 @@
 		type = 'text',
 		autocomplete,
 		disabled = false,
-		oninput
+		oninput,
+		onblur
 	}: Props = $props();
 
 	const invalid = $derived(error !== undefined);
@@ -34,7 +36,7 @@
 	{#if LeadingIcon}
 		<span class="leading-icon"><LeadingIcon size={18} /></span>
 	{/if}
-	<input {id} bind:value {type} {placeholder} {autocomplete} {disabled} {oninput} aria-invalid={invalid} />
+	<input {id} bind:value {type} {placeholder} {autocomplete} {disabled} {oninput} {onblur} aria-invalid={invalid} />
 	{#if invalid}
 		<span class="error-indicator-icon">
 			<Popover side="right" align="center" openOnHover>

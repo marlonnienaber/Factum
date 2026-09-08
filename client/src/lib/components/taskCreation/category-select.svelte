@@ -1,16 +1,20 @@
 <script lang="ts">
 	import { categoryStore } from '$lib/stores/category-store.svelte.js';
 	import { categoryService } from '$lib/services/category-service.svelte.js';
+	import Popover from '$lib/components/shared/popover.svelte';
 	import { createNewCategoryInputSchema } from '$lib/types/inputs/create-new-category-input';
-	import { Check, ChevronDown, Plus, Trash2 } from '@lucide/svelte';
+	import { Check, ChevronDown, Info, Plus, Trash2 } from '@lucide/svelte';
 	import { Select as BitsSelect } from 'bits-ui';
 
 	type Props = {
-		id?: string;
+		id: string;
 		categoryId?: number;
+		error?: string;
+		onblur?: () => void;
 	};
 
-	let { id, categoryId = $bindable() }: Props = $props();
+	let { id, categoryId = $bindable(), error, onblur }: Props = $props();
+	const invalid = $derived(error !== undefined);
 	const items = $derived(categoryStore.categories.map((category) => ({ value: String(category.id), label: category.title })));
 	const value = $derived(categoryId === undefined ? undefined : String(categoryId));
 	let open = $state(false);
@@ -48,7 +52,9 @@
 		await categoryService.deleteCategory(deletedCategoryId);
 		if (categoryStore.categories.some((category) => category.id === deletedCategoryId)) return;
 
-		if (value === itemValue) categoryId = undefined;
+		if (value === itemValue) {
+			categoryId = undefined;
+		}
 	}
 
 	function handleCategorySelectKeydown(event: KeyboardEvent, bitsUiHandler: unknown): void {
@@ -60,6 +66,17 @@
 		} else if (typeof bitsUiHandler === 'function') {
 			bitsUiHandler(event);
 		}
+	}
+
+	function handleCategorySelectBlur(event: FocusEvent, bitsUiHandler: unknown): void {
+		if (typeof bitsUiHandler === 'function') bitsUiHandler(event);
+		if (onblur) onblur();
+	}
+
+	function handleCategoryValueChange(selectedValue: string): void {
+		const selectedCategoryId = Number(selectedValue);
+		if (!Number.isInteger(selectedCategoryId)) return;
+		categoryId = selectedCategoryId;
 	}
 
 	async function handleNewCategoryNameInputKeydown(event: KeyboardEvent): Promise<void> {
@@ -110,123 +127,170 @@
 	});
 </script>
 
-<BitsSelect.Root
-	type="single"
-	{items}
-	{value}
-	bind:open
-	onValueChange={(selectedValue) => {
-		const selectedCategoryId = Number(selectedValue);
-		if (!Number.isInteger(selectedCategoryId)) return;
-		categoryId = selectedCategoryId;
-	}}
->
-	<BitsSelect.Trigger>
-		{#snippet child({ props })}
-			<button {...props} {id} class="select-trigger" onkeydown={(event) => handleCategorySelectKeydown(event, props.onkeydown)}>
-				<BitsSelect.Value placeholder="None chosen" />
-				<ChevronDown size={18} />
-			</button>
-		{/snippet}
-	</BitsSelect.Trigger>
+<div class:invalid class="select-container">
+	<BitsSelect.Root type="single" {items} {value} bind:open onValueChange={handleCategoryValueChange}>
+		<BitsSelect.Trigger>
+			{#snippet child({ props })}
+				<button
+					{...props}
+					{id}
+					role="combobox"
+					class="select-trigger"
+					aria-invalid={invalid}
+					onblur={(event) => handleCategorySelectBlur(event, props.onblur)}
+					onkeydown={(event) => handleCategorySelectKeydown(event, props.onkeydown)}
+				>
+					<BitsSelect.Value placeholder="None chosen" />
+					<span class="select-action"><ChevronDown size={18} /></span>
+				</button>
+			{/snippet}
+		</BitsSelect.Trigger>
 
-	<BitsSelect.Portal>
-		<BitsSelect.Content sideOffset={6}>
-			{#snippet child({ props: contentProps, wrapperProps })}
-				<div {...wrapperProps}>
-					<div {...contentProps} class:creating-new-category={creatingNewCategory} class="select-content">
-						<BitsSelect.Viewport>
-							{#snippet child({ props })}
-								<div {...props}>
-									{#each items as item (item.value)}
-										<BitsSelect.Item value={item.value} label={item.label}>
-											{#snippet child({ props, selected })}
-												<div {...props} class="select-item">
-													<span>{item.label}</span>
-													<span class="item-icons">
-														{#if selected}<Check size={18} aria-hidden="true" />{/if}
+		<BitsSelect.Portal>
+			<BitsSelect.Content sideOffset={6}>
+				{#snippet child({ props: contentProps, wrapperProps })}
+					<div {...wrapperProps}>
+						<div {...contentProps} class:creating-new-category={creatingNewCategory} class="select-content">
+							<BitsSelect.Viewport>
+								{#snippet child({ props })}
+									<div {...props}>
+										{#each items as item (item.value)}
+											<BitsSelect.Item value={item.value} label={item.label}>
+												{#snippet child({ props, selected })}
+													<div {...props} class="select-item">
+														<span>{item.label}</span>
+														<span class="item-icons">
+															{#if selected}<Check size={18} aria-hidden="true" />{/if}
+															<button
+																type="button"
+																class="delete-button"
+																aria-label={`Delete ${item.label}`}
+																onpointerdown={(event) => event.stopPropagation()}
+																onpointerup={(event) => event.stopPropagation()}
+																onclick={(event) => void deleteCategory(event, item.value)}
+															>
+																<Trash2 size={18} aria-hidden="true" />
+															</button>
+														</span>
+													</div>
+												{/snippet}
+											</BitsSelect.Item>
+										{/each}
+										<BitsSelect.Item
+											value={addCategoryItemValue}
+											label="Add category"
+											onHighlight={() => (addCategoryItemSelected = true)}
+											onUnhighlight={() => (addCategoryItemSelected = false)}
+										>
+											{#snippet child({ props })}
+												<div
+													{...props}
+													class:editing={creatingNewCategory}
+													class="create-new-category-item"
+													onpointerdown={(event) => event.stopPropagation()}
+													onpointerup={handleMouseUpOnCreateNewCategoryItem}
+												>
+													{#if creatingNewCategory}
+														<input
+															class="category-name-input"
+															{@attach (element) => element.focus()}
+															value={newCategoryName}
+															aria-label="Category name"
+															placeholder="Category name"
+															maxlength="50"
+															oninput={handleNewCategoryNameInput}
+															onkeydown={handleNewCategoryNameInputKeydown}
+														/>
+														<label
+															class="color-pill"
+															style:background-color={newCategoryColor}
+															title={`Category color: ${newCategoryColor}`}
+														>
+															<span class="color-pill-label">{newCategoryColor}</span>
+															<input
+																type="color"
+																bind:value={newCategoryColor}
+																aria-label="Choose category color"
+																onclick={(event) => event.stopPropagation()}
+															/>
+														</label>
 														<button
 															type="button"
-															class="delete-button"
-															aria-label={`Delete ${item.label}`}
+															class="category-create-button"
+															aria-label="Create category"
+															disabled={newCategoryName === ''}
 															onpointerdown={(event) => event.stopPropagation()}
 															onpointerup={(event) => event.stopPropagation()}
-															onclick={(event) => void deleteCategory(event, item.value)}
+															onclick={handleCreateNewCategoryButtonClicked}
 														>
-															<Trash2 size={18} aria-hidden="true" />
+															<Plus size={18} aria-hidden="true" />
 														</button>
-													</span>
+													{:else}
+														<span>Add category</span>
+														<Plus size={18} aria-hidden="true" />
+													{/if}
 												</div>
 											{/snippet}
 										</BitsSelect.Item>
-									{/each}
-									<BitsSelect.Item
-										value={addCategoryItemValue}
-										label="Add category"
-										onHighlight={() => (addCategoryItemSelected = true)}
-										onUnhighlight={() => (addCategoryItemSelected = false)}
-									>
-										{#snippet child({ props })}
-											<div
-												{...props}
-												class:editing={creatingNewCategory}
-												class="create-new-category-item"
-												onpointerdown={(event) => event.stopPropagation()}
-												onpointerup={handleMouseUpOnCreateNewCategoryItem}
-											>
-												{#if creatingNewCategory}
-													<input
-														class="category-name-input"
-														{@attach (element) => element.focus()}
-														value={newCategoryName}
-														aria-label="Category name"
-														placeholder="Category name"
-														maxlength="50"
-														oninput={handleNewCategoryNameInput}
-														onkeydown={handleNewCategoryNameInputKeydown}
-													/>
-													<label
-														class="color-pill"
-														style:background-color={newCategoryColor}
-														title={`Category color: ${newCategoryColor}`}
-													>
-														<span class="color-pill-label">{newCategoryColor}</span>
-														<input
-															type="color"
-															bind:value={newCategoryColor}
-															aria-label="Choose category color"
-															onclick={(event) => event.stopPropagation()}
-														/>
-													</label>
-													<button
-														type="button"
-														class="category-create-button"
-														aria-label="Create category"
-														disabled={newCategoryName === ''}
-														onpointerdown={(event) => event.stopPropagation()}
-														onpointerup={(event) => event.stopPropagation()}
-														onclick={handleCreateNewCategoryButtonClicked}
-													>
-														<Plus size={18} aria-hidden="true" />
-													</button>
-												{:else}
-													<span>Add category</span>
-													<Plus size={18} aria-hidden="true" />
-												{/if}
-											</div>
-										{/snippet}
-									</BitsSelect.Item>
-								</div>
-							{/snippet}
-						</BitsSelect.Viewport>
+									</div>
+								{/snippet}
+							</BitsSelect.Viewport>
+						</div>
 					</div>
-				</div>
-			{/snippet}
-		</BitsSelect.Content>
-	</BitsSelect.Portal>
-</BitsSelect.Root>
+				{/snippet}
+			</BitsSelect.Content>
+		</BitsSelect.Portal>
+	</BitsSelect.Root>
+
+	{#if invalid}
+		<span class="error-indicator-icon">
+			<Popover side="right" align="center" openOnHover>
+				{#snippet trigger()}
+					<span class="error-indicator-popover-trigger" id={`${id}-error-indicator-popover-trigger`}>
+						<Info size={18} aria-hidden="true" />
+					</span>
+				{/snippet}
+				<span class="error-indicator-message">{error}</span>
+			</Popover>
+		</span>
+	{/if}
+</div>
 
 <style lang="scss">
+	.select-container {
+		position: relative;
+
+		&.invalid {
+			.select-trigger {
+				border-color: var(--danger);
+				padding-right: calc(0.625rem + 1.125rem + 0.5rem);
+			}
+		}
+
+		.error-indicator-icon {
+			position: absolute;
+			top: 50%;
+			right: 0.625rem;
+			display: flex;
+			align-items: center;
+			width: 1.125rem;
+			height: 1.125rem;
+			transform: translateY(-50%);
+			color: var(--danger);
+			line-height: 0;
+
+			.error-indicator-popover-trigger {
+				display: flex;
+				align-items: center;
+			}
+		}
+	}
+
+	.error-indicator-message {
+		color: var(--text);
+		font-size: 0.865rem;
+	}
+
 	.select-trigger {
 		display: flex;
 		align-items: center;
@@ -253,6 +317,11 @@
 
 		&[data-placeholder] {
 			color: var(--text-subtle);
+		}
+
+		.select-action {
+			display: flex;
+			color: var(--text);
 		}
 	}
 

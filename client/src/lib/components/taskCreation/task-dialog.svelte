@@ -22,26 +22,21 @@
 	let description = $state('');
 	let date = $state<CalendarDate>();
 	let categoryId = $state<number>();
-	let titleError = $state<string>();
-	let descriptionError = $state<string>();
+
+	let titleTouched = $state(false);
+	let descriptionTouched = $state(false);
+	let categoryTouched = $state(false);
+	const titleError = $derived(titleTouched ? getValidationError('title') : undefined);
+	const descriptionError = $derived(descriptionTouched ? getValidationError('description') : undefined);
+	const categoryError = $derived(categoryTouched ? getValidationError('categoryId') : undefined);
 
 	const editing = $derived(task !== undefined);
 	const loading = $derived(taskService.taskMutationLoading);
+	const inputParseResult = $derived(taskInputSchema.safeParse({ title, description, categoryId }));
 
 	async function handleSubmit(): Promise<void> {
-		if (taskService.taskMutationBlocked) return;
+		if (taskService.taskMutationBlocked || !inputParseResult.success) return;
 
-		const inputParseResult = taskInputSchema.safeParse({
-			title,
-			description,
-			categoryId
-		});
-		if (!inputParseResult.success) {
-			applyValidationErrors(inputParseResult.error.issues);
-			return;
-		}
-
-		clearValidationErrors();
 		const request = date ? { ...inputParseResult.data, date } : inputParseResult.data;
 		if (task) {
 			await taskService.updateTask({ ...request, id: task.id });
@@ -53,18 +48,9 @@
 		task = undefined;
 	}
 
-	function clearValidationErrors(): void {
-		titleError = undefined;
-		descriptionError = undefined;
-	}
-
-	function applyValidationErrors(issues: Array<{ path: PropertyKey[]; message: string }>): void {
-		clearValidationErrors();
-		for (const issue of issues) {
-			const field = issue.path[0];
-			if (field === 'title') titleError = titleError ?? issue.message;
-			if (field === 'description') descriptionError = descriptionError ?? issue.message;
-		}
+	function getValidationError(field: 'title' | 'description' | 'categoryId'): string | undefined {
+		if (inputParseResult.success) return undefined;
+		return inputParseResult.error.issues.find((issue) => issue.path[0] === field)?.message;
 	}
 
 	$effect(() => {
@@ -74,7 +60,9 @@
 			// TODO: rather introduce discriminators in different task types and use them here?
 			date = task && 'date' in task ? task.date : undefined;
 			categoryId = task?.categoryId;
-			clearValidationErrors();
+			titleTouched = false;
+			descriptionTouched = false;
+			categoryTouched = false;
 		}
 	});
 </script>
@@ -111,7 +99,7 @@
 							bind:value={title}
 							error={titleError}
 							placeholder="None chosen"
-							oninput={() => (titleError = undefined)}
+							onblur={() => titleTouched = true}
 						/>
 
 						<label for="task-description">Description</label>
@@ -120,14 +108,19 @@
 							bind:value={description}
 							error={descriptionError}
 							placeholder="None chosen"
-							oninput={() => (descriptionError = undefined)}
+							onblur={() => descriptionTouched = true}
 						/>
 
 						<label for="task-date">Date</label>
 						<DatePicker id="task-date" bind:value={date} />
 
 						<label for="task-category">Category *</label>
-						<CategorySelect id="task-category" bind:categoryId />
+						<CategorySelect
+							id="task-category"
+							bind:categoryId
+							error={categoryError}
+							onblur={() => categoryTouched = true}
+						/>
 					</div>
 
 					<div class="footer">
@@ -136,8 +129,8 @@
 						<span>* required</span>
 						<Button
 							variant="success"
-							disabled={categoryId === undefined || taskService.taskMutationBlocked}
-							onclick={() => void handleSubmit()}
+							disabled={!inputParseResult.success || taskService.taskMutationBlocked}
+							onclick={handleSubmit}
 							>{loading ? (editing ? 'Saving...' : 'Creating...') : editing ? 'Save' : 'Create'}</Button
 						>
 					</div>
