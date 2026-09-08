@@ -99,7 +99,7 @@
 							bind:value={title}
 							error={titleError}
 							placeholder="None chosen"
-							onblur={() => titleTouched = true}
+							onblur={() => (titleTouched = true)}
 						/>
 
 						<label for="task-description">Description</label>
@@ -108,19 +108,14 @@
 							bind:value={description}
 							error={descriptionError}
 							placeholder="None chosen"
-							onblur={() => descriptionTouched = true}
+							onblur={() => (descriptionTouched = true)}
 						/>
 
 						<label for="task-date">Date</label>
 						<DatePicker id="task-date" bind:value={date} />
 
 						<label for="task-category">Category *</label>
-						<CategorySelect
-							id="task-category"
-							bind:categoryId
-							error={categoryError}
-							onblur={() => categoryTouched = true}
-						/>
+						<CategorySelect id="task-category" bind:categoryId error={categoryError} onblur={() => (categoryTouched = true)} />
 					</div>
 
 					<div class="footer">
@@ -130,8 +125,7 @@
 						<Button
 							variant="success"
 							disabled={!inputParseResult.success || taskService.taskMutationBlocked}
-							onclick={handleSubmit}
-							>{loading ? (editing ? 'Saving...' : 'Creating...') : editing ? 'Save' : 'Create'}</Button
+							onclick={handleSubmit}>{loading ? (editing ? 'Saving...' : 'Creating...') : editing ? 'Save' : 'Create'}</Button
 						>
 					</div>
 				</div>

@@ -23,6 +23,7 @@ export default defineConfig(({ mode }) => {
 		test: {
 			expect: { requireAssertions: true },
 			passWithNoTests: true,
+			silent: 'passed-only',
 			coverage: {
 				provider: 'v8',
 				reporter: ['text-summary', 'html'],

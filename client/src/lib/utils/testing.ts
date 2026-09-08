@@ -2,39 +2,76 @@ import { waitFor } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import { expect, vi } from 'vitest';
 
-type InputQueries = {
+type PageQueries = {
 	container: HTMLElement;
 	findByText: (text: string) => Promise<HTMLElement>;
 };
 
-export function getInputById(queries: Pick<InputQueries, 'container'>, inputId: string): HTMLInputElement {
-	const input = queries.container.querySelector(`#${inputId}`);
+export function getInputById(page: Pick<PageQueries, 'container'>, inputId: string): HTMLInputElement {
+	const input = page.container.ownerDocument.getElementById(inputId);
 	if (!(input instanceof HTMLInputElement)) {
 		throw new Error(`Expected an input with id "${inputId}".`);
 	}
 	return input;
 }
 
-export function expectInputToBeValid(queries: Pick<InputQueries, 'container'>, inputId: string): void {
-	const input = getInputById(queries, inputId);
-	expect(input).toHaveAttribute('aria-invalid', 'false');
-	expect(queries.container.querySelector(`#${inputId}-error-indicator-popover-trigger`)).not.toBeInTheDocument();
+export function getTextareaById(page: Pick<PageQueries, 'container'>, textareaId: string): HTMLTextAreaElement {
+	const textarea = page.container.ownerDocument.getElementById(textareaId);
+	if (!(textarea instanceof HTMLTextAreaElement)) {
+		throw new Error(`Expected a textarea with id "${textareaId}".`);
+	}
+	return textarea;
 }
 
-export async function expectInputToBeInvalid(queries: InputQueries, inputId: string, expectedError: string): Promise<void> {
-	const input = getInputById(queries, inputId);
-	expect(input).toHaveAttribute('aria-invalid', 'true');
+export function getSelectById(page: Pick<PageQueries, 'container'>, selectId: string): HTMLButtonElement {
+	const select = page.container.ownerDocument.getElementById(selectId);
+	if (!(select instanceof HTMLButtonElement)) {
+		throw new Error(`Expected a select trigger with id "${selectId}".`);
+	}
+	return select;
+}
 
-	const errorIndicator = queries.container.querySelector(`#${inputId}-error-indicator-popover-trigger`)?.closest('button');
+export function expectInputToBeValid(page: Pick<PageQueries, 'container'>, inputId: string): void {
+	const input = getInputById(page, inputId);
+	expect(input).toHaveAttribute('aria-invalid', 'false');
+	expect(page.container.ownerDocument.getElementById(`${inputId}-error-indicator-popover-trigger`)).not.toBeInTheDocument();
+}
+
+export async function expectInputToBeInvalid(page: PageQueries, inputId: string, expectedError: string): Promise<void> {
+	const input = getInputById(page, inputId);
+	await expectControlToBeInvalid(page, input, inputId, expectedError);
+}
+
+export async function expectTextareaToBeInvalid(page: PageQueries, textareaId: string, expectedError: string): Promise<void> {
+	const textarea = getTextareaById(page, textareaId);
+	await expectControlToBeInvalid(page, textarea, textareaId, expectedError);
+}
+
+export async function expectSelectToBeInvalid(page: PageQueries, selectId: string, expectedError: string): Promise<void> {
+	const select = getSelectById(page, selectId);
+	await expectControlToBeInvalid(page, select, selectId, expectedError);
+}
+
+async function expectControlToBeInvalid(
+	page: PageQueries,
+	control: HTMLElement,
+	controlId: string,
+	expectedError: string
+): Promise<void> {
+	expect(control).toHaveAttribute('aria-invalid', 'true');
+
+	const errorIndicator = page.container.ownerDocument
+		.getElementById(`${controlId}-error-indicator-popover-trigger`)
+		?.closest('button');
 	if (!(errorIndicator instanceof HTMLButtonElement)) {
-		throw new Error(`Expected invalid input "${inputId}" to expose an error indicator.`);
+		throw new Error(`Expected invalid control "${controlId}" to expose an error indicator.`);
 	}
 
 	await userEvent.click(errorIndicator);
-	expect(await queries.findByText(expectedError)).toBeInTheDocument();
+	expect(await page.findByText(expectedError)).toBeInTheDocument();
 
 	await userEvent.click(errorIndicator);
-	await waitFor(() => expect(queries.container.ownerDocument.body).not.toHaveTextContent(expectedError));
+	await waitFor(() => expect(page.container.ownerDocument.body).not.toHaveTextContent(expectedError));
 }
 
 export function mockPendingFetch(fetchMock: ReturnType<typeof vi.fn>): (response: Response) => void {
