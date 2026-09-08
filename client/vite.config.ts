@@ -25,7 +25,7 @@ export default defineConfig(({ mode }) => {
 			passWithNoTests: true,
 			coverage: {
 				provider: 'v8',
-				reporter: ['text', 'html'],
+				reporter: ['text-summary', 'html'],
 				reportsDirectory: './coverage',
 				include: ['src/**/*.{ts,svelte}'],
 				exclude: [
