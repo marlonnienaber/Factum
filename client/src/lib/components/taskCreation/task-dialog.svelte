@@ -42,7 +42,7 @@
 		}
 
 		clearValidationErrors();
-		const request = date ? { ...inputParseResult.data, date: date.toString() } : inputParseResult.data;
+		const request = date ? { ...inputParseResult.data, date } : inputParseResult.data;
 		if (task) {
 			await taskService.updateTask({ ...request, id: task.id });
 		} else {

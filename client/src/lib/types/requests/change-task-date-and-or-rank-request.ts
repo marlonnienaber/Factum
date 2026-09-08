@@ -1,5 +1,7 @@
+import type { CalendarDate } from '@internationalized/date';
+
 export type ChangeTaskDateAndOrRankRequest = {
 	id: number;
-	date?: string;
+	date?: CalendarDate;
 	rank: string;
 };

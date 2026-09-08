@@ -25,7 +25,7 @@ import {
 } from '$lib/types/responses/dated-untrashed-open-task-response';
 import type { TrashedTaskResponse } from '$lib/types/responses/trashed-task-response';
 import { UndatedTaskResponseSchema, type UndatedTaskResponse } from '$lib/types/responses/undated-task-response';
-import { getLocalTimeZone, now, parseDate, today, type CalendarDate, type ZonedDateTime } from '@internationalized/date';
+import { getLocalTimeZone, now, today, type CalendarDate, type ZonedDateTime } from '@internationalized/date';
 import { generateKeyBetween } from 'fractional-indexing';
 import { z } from 'zod';
 
@@ -80,7 +80,7 @@ async function createTask(request: CreateTaskRequest): Promise<void> {
 			datedUntrashedOpenTaskStore.addTask({
 				...request,
 				...networkCall.result,
-				date: parseDate(request.date)
+				date: request.date
 			});
 		} else {
 			undatedTaskStore.addTask({ ...request, ...networkCall.result });
@@ -252,7 +252,7 @@ async function changeTaskDateAndOrRank(
 	if (!task) return;
 
 	const rank = generateKeyBetween(previousRank, nextRank);
-	const request: ChangeTaskDateAndOrRankRequest = { id, date: newDate?.toString(), rank };
+	const request: ChangeTaskDateAndOrRankRequest = { id, date: newDate, rank };
 
 	taskMutationLoading = true;
 

@@ -2,6 +2,7 @@ import { browser } from '$app/environment';
 import { toast } from 'svelte-sonner';
 import { z, type ZodType } from 'zod';
 import { ErrorResponseSchema } from '$lib/types/responses/error-response';
+import { CalendarDate } from '@internationalized/date';
 
 export type NetworkCall<T> = { status: 'success'; result: T } | { status: 'failed' };
 
@@ -200,8 +201,12 @@ function configureRequestOptions<B>(method: 'GET' | 'POST' | 'PUT' | 'PATCH' | '
 		method,
 		credentials: 'same-origin',
 		headers,
-		...(requestBody !== undefined && { body: JSON.stringify(requestBody) })
+		...(requestBody !== undefined && { body: serializeRequestBody(requestBody) })
 	};
+}
+
+function serializeRequestBody(requestBody: unknown): string {
+	return JSON.stringify(requestBody, (_, value) => (value instanceof CalendarDate ? value.toString() : value));
 }
 
 async function parseResponse<R>(response: Response, responseSchema: ZodType<R>): Promise<R> {
