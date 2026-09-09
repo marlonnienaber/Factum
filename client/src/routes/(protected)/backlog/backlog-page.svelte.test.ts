@@ -711,6 +711,12 @@ describe('backlog page tests', () => {
 			it.todo('moves a task to the last index');
 		});
 
+		describe('within the today partition', () => {
+			it.todo('moves a task to the first index');
+			it.todo('moves a task to the middle index');
+			it.todo('moves a task to the last index');
+		});
+
 		describe('within the non-today-date partition', () => {
 			it.todo('moves a task to the first index');
 			it.todo('moves a task to the middle index');
@@ -718,12 +724,6 @@ describe('backlog page tests', () => {
 		});
 
 		describe('between different non-today date groups', () => {
-			it.todo('moves a task to the first index');
-			it.todo('moves a task to the middle index');
-			it.todo('moves a task to the last index');
-		});
-
-		describe('within the today partition', () => {
 			it.todo('moves a task to the first index');
 			it.todo('moves a task to the middle index');
 			it.todo('moves a task to the last index');
