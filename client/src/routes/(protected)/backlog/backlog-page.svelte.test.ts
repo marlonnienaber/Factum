@@ -9,6 +9,7 @@ import { datedUntrashedDoneTaskStore } from '$lib/stores/dated-untrashed-done-ta
 import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-task-store.svelte';
 import { trashedTaskStore } from '$lib/stores/trashed-task-store.svelte';
 import { undatedTaskStore } from '$lib/stores/undated-task-store.svelte';
+import type { DatedUntrashedOpenTaskResponse } from '$lib/types/responses/dated-untrashed-open-task-response';
 import type { UndatedTaskResponse } from '$lib/types/responses/undated-task-response';
 import {
 	expectInputToBeInvalid,
@@ -766,9 +767,74 @@ describe('backlog page tests', () => {
 		});
 
 		describe('within the today partition', () => {
-			it.todo('moves a task to the first index');
-			it.todo('moves a task to the middle index');
-			it.todo('moves a task to the last index');
+			it('moves a task to the first index', async () => {
+				addCategory();
+				datedUntrashedOpenTaskStore.addTasks(todayTasks);
+
+				const response = new Response(null, { status: 204 });
+				fetchMock.mockResolvedValue(response);
+
+				const page = render(Page);
+				const todayTaskList = page.getByLabelText('Tasks dated Today');
+				const reorderedTasks = [fourthTodayTask, firstTodayTask, secondTodayTask, thirdTodayTask];
+				await dropTask(todayTaskList, reorderedTasks, fourthTodayTask.id);
+
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+				const expectedRank = generateKeyBetween(undefined, firstTodayTask.rank);
+				const requestBody = JSON.stringify({ id: fourthTodayTask.id, date: todayDate.toString(), rank: expectedRank });
+				expectRequestUrl(fetchMock, '/api/tasks/change-date-and-or-rank');
+				expectRequestMethod(fetchMock, 'PATCH');
+				expectRequestCredentialsMode(fetchMock, 'same-origin');
+				expectRequestBody(fetchMock, requestBody);
+				expectRequestContentType(fetchMock, 'application/json');
+				expectTaskOrder(todayTaskList, reorderedTasks);
+			});
+
+			it('moves a task to the middle index', async () => {
+				addCategory();
+				datedUntrashedOpenTaskStore.addTasks(todayTasks);
+
+				const response = new Response(null, { status: 204 });
+				fetchMock.mockResolvedValue(response);
+
+				const page = render(Page);
+				const todayTaskList = page.getByLabelText('Tasks dated Today');
+				const reorderedTasks = [firstTodayTask, secondTodayTask, fourthTodayTask, thirdTodayTask];
+				await dropTask(todayTaskList, reorderedTasks, fourthTodayTask.id);
+
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+				const expectedRank = generateKeyBetween(secondTodayTask.rank, thirdTodayTask.rank);
+				const requestBody = JSON.stringify({ id: fourthTodayTask.id, date: todayDate.toString(), rank: expectedRank });
+				expectRequestUrl(fetchMock, '/api/tasks/change-date-and-or-rank');
+				expectRequestMethod(fetchMock, 'PATCH');
+				expectRequestCredentialsMode(fetchMock, 'same-origin');
+				expectRequestBody(fetchMock, requestBody);
+				expectRequestContentType(fetchMock, 'application/json');
+				expectTaskOrder(todayTaskList, reorderedTasks);
+			});
+
+			it('moves a task to the last index', async () => {
+				addCategory();
+				datedUntrashedOpenTaskStore.addTasks(todayTasks);
+
+				const response = new Response(null, { status: 204 });
+				fetchMock.mockResolvedValue(response);
+
+				const page = render(Page);
+				const todayTaskList = page.getByLabelText('Tasks dated Today');
+				const reorderedTasks = [secondTodayTask, thirdTodayTask, fourthTodayTask, firstTodayTask];
+				await dropTask(todayTaskList, reorderedTasks, firstTodayTask.id);
+
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+				const expectedRank = generateKeyBetween(fourthTodayTask.rank, undefined);
+				const requestBody = JSON.stringify({ id: firstTodayTask.id, date: todayDate.toString(), rank: expectedRank });
+				expectRequestUrl(fetchMock, '/api/tasks/change-date-and-or-rank');
+				expectRequestMethod(fetchMock, 'PATCH');
+				expectRequestCredentialsMode(fetchMock, 'same-origin');
+				expectRequestBody(fetchMock, requestBody);
+				expectRequestContentType(fetchMock, 'application/json');
+				expectTaskOrder(todayTaskList, reorderedTasks);
+			});
 		});
 
 		describe('within the non-today-date partition', () => {
@@ -890,6 +956,12 @@ const fourthNoDateTask = {
 	rank: noDateTaskRanks[3]
 };
 const noDateTasks = [firstNoDateTask, secondNoDateTask, thirdNoDateTask, fourthNoDateTask];
+const todayTaskRanks = generateNKeysBetween(undefined, undefined, 4);
+const firstTodayTask = { ...firstNoDateTask, id: 201, date: todayDate, rank: todayTaskRanks[0] };
+const secondTodayTask = { ...secondNoDateTask, id: 202, date: todayDate, rank: todayTaskRanks[1] };
+const thirdTodayTask = { ...thirdNoDateTask, id: 203, date: todayDate, rank: todayTaskRanks[2] };
+const fourthTodayTask = { ...fourthNoDateTask, id: 204, date: todayDate, rank: todayTaskRanks[3] };
+const todayTasks = [firstTodayTask, secondTodayTask, thirdTodayTask, fourthTodayTask];
 
 async function openCreateTaskDialog(page: RenderResult<typeof Page>): Promise<void> {
 	const addTaskButton = page.getByRole('button', { name: 'Add Task' });
@@ -1001,8 +1073,8 @@ async function clickOnTask(page: RenderResult<typeof Page>, title: string): Prom
 	await fireEvent.pointerUp(task);
 }
 
-async function dropTask(taskList: HTMLElement, newOrderedTasks: UndatedTaskResponse[], taskId: number): Promise<void> {
-	const event = new CustomEvent<DndEvent<UndatedTaskResponse>>('finalize', {
+async function dropTask(taskList: HTMLElement, newOrderedTasks: (UndatedTaskResponse | DatedUntrashedOpenTaskResponse)[], taskId: number): Promise<void> {
+	const event = new CustomEvent<DndEvent<UndatedTaskResponse | DatedUntrashedOpenTaskResponse>>('finalize', {
 		detail: {
 			items: newOrderedTasks,
 			info: { trigger: TRIGGERS.DROPPED_INTO_ZONE, id: String(taskId), source: SOURCES.POINTER }
@@ -1011,7 +1083,7 @@ async function dropTask(taskList: HTMLElement, newOrderedTasks: UndatedTaskRespo
 	await fireEvent(taskList, event);
 }
 
-function expectTaskOrder(taskList: HTMLElement, tasks: UndatedTaskResponse[]): void {
+function expectTaskOrder(taskList: HTMLElement, tasks: (UndatedTaskResponse | DatedUntrashedOpenTaskResponse)[]): void {
 	const taskListContent = within(taskList);
 	const renderedTasks = taskListContent.getAllByRole('listitem');
 	const renderedTaskTitles = renderedTasks.map((task) => task.getAttribute('aria-label'));
