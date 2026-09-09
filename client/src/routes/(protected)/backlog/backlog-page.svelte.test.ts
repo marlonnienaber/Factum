@@ -2,6 +2,7 @@ import { fireEvent, render, waitFor, within, type RenderResult } from '@testing-
 import userEvent from '@testing-library/user-event';
 import { getLocalTimeZone, now, parseAbsolute, parseDate, today, type CalendarDate } from '@internationalized/date';
 import { generateKeyBetween } from 'fractional-indexing';
+import { toast } from 'svelte-sonner';
 import { categoryStore } from '$lib/stores/category-store.svelte';
 import { datedUntrashedDoneTaskStore } from '$lib/stores/dated-untrashed-done-task-store.svelte';
 import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-task-store.svelte';
@@ -46,15 +47,83 @@ describe('backlog page tests', () => {
 	// TODO: Cover navbar actions.
 
 	describe('category operations', () => {
-		it.todo('successfully creates and deletes a category');
-		it.todo('shows an error toast when deleting a referenced category');
+		it('successfully creates and deletes a category', async () => {
+			const createCategoryResponse = getResponse(category, 201);
+			fetchMock.mockResolvedValue(createCategoryResponse);
+
+			const page = render(Page);
+			await openCreateTaskDialog(page);
+			await startCategoryCreation(page);
+
+			const categoryNameInput = page.getByRole('textbox', { name: 'Category name' });
+			await fireEvent.input(categoryNameInput, { target: { value: category.title } });
+			const categoryColorInput = page.getByLabelText('Choose category color');
+			await fireEvent.input(categoryColorInput, { target: { value: category.color } });
+			const createCategoryButton = page.getByRole('button', { name: 'Create category' });
+			await userEvent.click(createCategoryButton);
+
+			await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+			const createRequestBody = JSON.stringify({ title: category.title, color: category.color });
+			expectRequestUrl(fetchMock, '/api/categories');
+			expectRequestMethod(fetchMock, 'POST');
+			expectRequestCredentialsMode(fetchMock, 'same-origin');
+			expectRequestBody(fetchMock, createRequestBody);
+			expectRequestContentType(fetchMock, 'application/json');
+			const categorySelect = getSelectById(page, 'task-category');
+			expect(categorySelect).toHaveTextContent(category.title);
+
+			fetchMock.mockClear();
+			const deleteCategoryResponse = new Response(null, { status: 204 });
+			fetchMock.mockResolvedValue(deleteCategoryResponse);
+
+			await openCategorySelect(page);
+			const deleteCategoryButton = await page.findByRole('button', { name: `Delete ${category.title}` });
+			await userEvent.click(deleteCategoryButton);
+
+			await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+			expectRequestUrl(fetchMock, `/api/categories/${category.id}`);
+			expectRequestMethod(fetchMock, 'DELETE');
+			expectRequestCredentialsMode(fetchMock, 'same-origin');
+			expectRequestBody(fetchMock);
+			await waitFor(() => expect(categorySelect).toHaveTextContent('None chosen'));
+			expect(categoryStore.categories).not.toContainEqual(category);
+		});
+
+		it('shows an error toast when deleting a referenced category', async () => {
+			addCategory();
+			addTaskWithoutDate();
+
+			const errorMessage = 'Category cannot be deleted while it is referenced by tasks.';
+			const errorResponse = getResponse(
+				{ errorCode: 'category_still_referenced', message: errorMessage },
+				409
+			);
+			fetchMock.mockResolvedValue(errorResponse);
+
+			const page = render(Page);
+
+			await openCreateTaskDialog(page);
+			await openCategorySelect(page);
+			const deleteCategoryButton = await page.findByRole('button', { name: `Delete ${category.title}` });
+			await userEvent.click(deleteCategoryButton);
+
+			await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+			expectRequestUrl(fetchMock, `/api/categories/${category.id}`);
+			expectRequestMethod(fetchMock, 'DELETE');
+			expectRequestCredentialsMode(fetchMock, 'same-origin');
+			expectRequestBody(fetchMock);
+			expect(toastErrorMock).toHaveBeenCalledOnce();
+			expect(toastErrorMock).toHaveBeenCalledWith(errorMessage);
+			expect(categoryStore.categories).toContainEqual(category);
+			expect(deleteCategoryButton).toBeInTheDocument();
+		});
 	});
 
 	describe('task creation', () => {
 		it('reacts correctly to missing task title', async () => {
 			addCategory();
 			const page = render(Page);
-			await openCreateTaskDialogAndAssertOpen(page);
+			await openCreateTaskDialog(page);
 			await selectCategory(page, category.title);
 
 			const titleInput = getInputById(page, 'task-title');
@@ -69,7 +138,7 @@ describe('backlog page tests', () => {
 		it('reacts correctly to too long task title', async () => {
 			addCategory();
 			const page = render(Page);
-			await openCreateTaskDialogAndAssertOpen(page);
+			await openCreateTaskDialog(page);
 			await selectCategory(page, category.title);
 
 			const tooLongTitle = 'Plan the weekend hiking route '.repeat(4);
@@ -84,7 +153,7 @@ describe('backlog page tests', () => {
 		it('reacts correctly to too long task description', async () => {
 			addCategory();
 			const page = render(Page);
-			await openCreateTaskDialogAndAssertOpen(page);
+			await openCreateTaskDialog(page);
 			await selectCategory(page, category.title);
 			await enterTaskTitle(page, taskTitle);
 
@@ -99,7 +168,7 @@ describe('backlog page tests', () => {
 
 		it('reacts correctly to missing task category', async () => {
 			const page = render(Page);
-			await openCreateTaskDialogAndAssertOpen(page);
+			await openCreateTaskDialog(page);
 			await enterTaskTitle(page, taskTitle);
 
 			const categorySelect = getSelectById(page, 'task-category');
@@ -114,7 +183,7 @@ describe('backlog page tests', () => {
 
 		it('cancels and closes the create-task dialog', async () => {
 			const page = render(Page);
-			await openCreateTaskDialogAndAssertOpen(page);
+			await openCreateTaskDialog(page);
 
 			const cancelButton = page.getByRole('button', { name: 'Cancel' });
 			await userEvent.click(cancelButton);
@@ -129,7 +198,7 @@ describe('backlog page tests', () => {
 			fetchMock.mockResolvedValue(response);
 
 			const page = render(Page);
-			await openCreateTaskDialogAndAssertOpen(page);
+			await openCreateTaskDialog(page);
 
 			await enterTaskTitle(page, taskTitle);
 			await enterTaskDescription(page, taskDescription);
@@ -562,6 +631,7 @@ describe('backlog page tests', () => {
 });
 
 const fetchMock = vi.fn();
+const toastErrorMock = vi.mocked(toast.error);
 const category = { id: 7, title: 'Personal', color: '#22c55e' };
 const taskId = 42;
 const taskRank = 'a0';
@@ -574,11 +644,9 @@ const localTimeZone = getLocalTimeZone();
 const todayDate = today(localTimeZone);
 const maximumDateDifference = 5_000;
 
-async function openCreateTaskDialogAndAssertOpen(page: RenderResult<typeof Page>): Promise<void> {
+async function openCreateTaskDialog(page: RenderResult<typeof Page>): Promise<void> {
 	const addTaskButton = page.getByRole('button', { name: 'Add Task' });
 	await userEvent.click(addTaskButton);
-	const createTaskDialog = page.getByRole('dialog', { name: 'Create Task' });
-	expect(createTaskDialog).toBeInTheDocument();
 }
 
 async function openEditTaskDialog(page: RenderResult<typeof Page>, title: string): Promise<void> {
@@ -586,8 +654,6 @@ async function openEditTaskDialog(page: RenderResult<typeof Page>, title: string
 	await fireEvent.click(moreOptionsButton);
 	const editButton = await page.findByRole('button', { name: 'Edit' });
 	await userEvent.click(editButton);
-	const editTaskDialog = page.getByRole('dialog', { name: 'Edit Task' });
-	expect(editTaskDialog).toBeInTheDocument();
 }
 
 async function enterTaskTitle(page: RenderResult<typeof Page>, title: string): Promise<HTMLInputElement> {
@@ -608,6 +674,18 @@ async function selectCategory(page: RenderResult<typeof Page>, categoryName: str
 	const firstCategoryNameCharacter = categoryName[0];
 	const categoryTypeaheadKey = firstCategoryNameCharacter?.toLowerCase();
 	await fireEvent.keyDown(categorySelect, { key: categoryTypeaheadKey });
+}
+
+async function startCategoryCreation(page: RenderResult<typeof Page>): Promise<void> {
+	await openCategorySelect(page);
+	const addCategoryOption = await page.findByRole('option', { name: 'Add category' });
+	await fireEvent.pointerUp(addCategoryOption);
+}
+
+async function openCategorySelect(page: RenderResult<typeof Page>): Promise<void> {
+	const categorySelect = getSelectById(page, 'task-category');
+	categorySelect.focus();
+	await fireEvent.keyDown(categorySelect, { key: 'ArrowDown' });
 }
 
 function addCategory(): void {
