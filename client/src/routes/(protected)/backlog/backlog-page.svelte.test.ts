@@ -567,6 +567,15 @@ describe('backlog page tests', () => {
 		});
 	});
 
+	describe('task batch operations', () => {
+		it.todo('successfully completes all tasks');
+		it.todo('successfully trashes all tasks');
+		it.todo('successfully cancels a batch operation');
+		it.todo('disables batch actions when no tasks are selected');
+		it.todo('disables batch trash when more than 50 tasks are selected');
+		it.todo('disables batch completion when more than 50 tasks are selected');
+	});
+
 	describe('drag and drop', () => {
 		describe('within the no-date partition', () => {
 			it.todo('moves a task to the first index');
@@ -618,15 +627,6 @@ describe('backlog page tests', () => {
 			it.todo('moves a task to the middle index of the non-today-date partition');
 			it.todo('moves a task to the last index of the non-today-date partition');
 		});
-	});
-
-	describe('task batch operations', () => {
-		it.todo('successfully completes all tasks');
-		it.todo('successfully trashes all tasks');
-		it.todo('successfully cancels a batch operation');
-		it.todo('disables batch actions when no tasks are selected');
-		it.todo('disables batch trash when more than 50 tasks are selected');
-		it.todo('disables batch completion when more than 50 tasks are selected');
 	});
 });
 
