@@ -1,9 +1,11 @@
 import { fireEvent, render, waitFor, within, type RenderResult } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
-import { getLocalTimeZone, parseDate, today, type CalendarDate } from '@internationalized/date';
+import { getLocalTimeZone, now, parseAbsolute, parseDate, today, type CalendarDate } from '@internationalized/date';
+import { generateKeyBetween } from 'fractional-indexing';
 import { categoryStore } from '$lib/stores/category-store.svelte';
 import { datedUntrashedDoneTaskStore } from '$lib/stores/dated-untrashed-done-task-store.svelte';
 import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-task-store.svelte';
+import { trashedTaskStore } from '$lib/stores/trashed-task-store.svelte';
 import { undatedTaskStore } from '$lib/stores/undated-task-store.svelte';
 import {
 	expectInputToBeInvalid,
@@ -11,10 +13,12 @@ import {
 	expectRequestContentType,
 	expectRequestCredentialsMode,
 	expectRequestMethod,
+	expectRequestPath,
 	expectRequestUrl,
 	expectSelectToBeInvalid,
 	expectTextareaToBeInvalid,
 	getInputById,
+	getRequestSearchParameter,
 	getResponse,
 	getSelectById,
 	getTextareaById
@@ -30,6 +34,7 @@ beforeEach(() => {
 	undatedTaskStore.reset();
 	datedUntrashedDoneTaskStore.reset();
 	datedUntrashedOpenTaskStore.reset();
+	trashedTaskStore.reset();
 });
 
 afterEach(async () => {
@@ -350,7 +355,8 @@ describe('backlog page tests', () => {
 			await userEvent.click(completeTaskButton);
 
 			await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-			const requestUrl = `/api/tasks/${taskId}/toggle-done?rank=a0`;
+			const expectedRank = generateKeyBetween(undefined, undefined);
+			const requestUrl = `/api/tasks/${taskId}/toggle-done?rank=${expectedRank}`;
 			expectRequestUrl(fetchMock, requestUrl);
 			expectRequestMethod(fetchMock, 'PATCH');
 			expectRequestCredentialsMode(fetchMock, 'same-origin');
@@ -371,7 +377,8 @@ describe('backlog page tests', () => {
 			await userEvent.click(completeTaskButton);
 
 			await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-			const requestUrl = `/api/tasks/${taskId}/toggle-done?rank=a0`;
+			const expectedRank = generateKeyBetween(undefined, undefined);
+			const requestUrl = `/api/tasks/${taskId}/toggle-done?rank=${expectedRank}`;
 			expectRequestUrl(fetchMock, requestUrl);
 			expectRequestMethod(fetchMock, 'PATCH');
 			expectRequestCredentialsMode(fetchMock, 'same-origin');
@@ -392,7 +399,8 @@ describe('backlog page tests', () => {
 			await userEvent.click(completeTaskButton);
 
 			await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-			const requestUrl = `/api/tasks/${taskId}/toggle-done?rank=a0`;
+			const expectedRank = generateKeyBetween(undefined, undefined);
+			const requestUrl = `/api/tasks/${taskId}/toggle-done?rank=${expectedRank}`;
 			expectRequestUrl(fetchMock, requestUrl);
 			expectRequestMethod(fetchMock, 'PATCH');
 			expectRequestCredentialsMode(fetchMock, 'same-origin');
@@ -402,9 +410,92 @@ describe('backlog page tests', () => {
 	});
 
 	describe('task trashing', () => {
-		it.todo('successfully trashes a task without a date');
-		it.todo('successfully trashes a task with a non-today date');
-		it.todo('successfully trashes a task dated today');
+		it('successfully trashes a task without a date', async () => {
+			addCategory();
+			addTaskWithoutDate();
+
+			const response = new Response(null, { status: 204 });
+			fetchMock.mockResolvedValue(response);
+
+			const page = render(Page);
+
+			const moreOptionsButton = page.getByRole('button', { name: `More options for "${taskTitle}"` });
+			await fireEvent.click(moreOptionsButton);
+			const trashButton = await page.findByRole('button', { name: 'Trash' });
+			await userEvent.click(trashButton);
+
+			await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+			expectRequestPath(fetchMock, `/api/tasks/${taskId}/trash`);
+			const trashedDate = getRequestSearchParameter(fetchMock, 'trashedDate');
+			expect(trashedDate).not.toBeNull();
+			if (trashedDate === null) throw new Error('Expected the trash request to contain a trashedDate.');
+			const parsedTrashedDate = parseAbsolute(trashedDate, localTimeZone);
+			const currentDate = now(localTimeZone);
+			const dateDifference = Math.abs(parsedTrashedDate.compare(currentDate));
+			expect(dateDifference).toBeLessThanOrEqual(maximumDateDifference);
+			expectRequestMethod(fetchMock, 'PATCH');
+			expectRequestCredentialsMode(fetchMock, 'same-origin');
+			expectRequestBody(fetchMock);
+			expectTaskNotToBePresent(page, taskTitle);
+		});
+
+		it('successfully trashes a task with a non-today date', async () => {
+			addCategory();
+			addTaskWithDate(nonTodayDate);
+
+			const response = new Response(null, { status: 204 });
+			fetchMock.mockResolvedValue(response);
+
+			const page = render(Page);
+
+			const moreOptionsButton = page.getByRole('button', { name: `More options for "${taskTitle}"` });
+			await fireEvent.click(moreOptionsButton);
+			const trashButton = await page.findByRole('button', { name: 'Trash' });
+			await userEvent.click(trashButton);
+
+			await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+			expectRequestPath(fetchMock, `/api/tasks/${taskId}/trash`);
+			const trashedDate = getRequestSearchParameter(fetchMock, 'trashedDate');
+			expect(trashedDate).not.toBeNull();
+			if (trashedDate === null) throw new Error('Expected the trash request to contain a trashedDate.');
+			const parsedTrashedDate = parseAbsolute(trashedDate, localTimeZone);
+			const currentDate = now(localTimeZone);
+			const dateDifference = Math.abs(parsedTrashedDate.compare(currentDate));
+			expect(dateDifference).toBeLessThanOrEqual(maximumDateDifference);
+			expectRequestMethod(fetchMock, 'PATCH');
+			expectRequestCredentialsMode(fetchMock, 'same-origin');
+			expectRequestBody(fetchMock);
+			expectTaskNotToBePresent(page, taskTitle);
+		});
+
+		it('successfully trashes a task dated today', async () => {
+			addCategory();
+			addTaskWithDate(todayDate);
+
+			const response = new Response(null, { status: 204 });
+			fetchMock.mockResolvedValue(response);
+
+			const page = render(Page);
+
+			const moreOptionsButton = page.getByRole('button', { name: `More options for "${taskTitle}"` });
+			await fireEvent.click(moreOptionsButton);
+			const trashButton = await page.findByRole('button', { name: 'Trash' });
+			await userEvent.click(trashButton);
+
+			await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+			expectRequestPath(fetchMock, `/api/tasks/${taskId}/trash`);
+			const trashedDate = getRequestSearchParameter(fetchMock, 'trashedDate');
+			expect(trashedDate).not.toBeNull();
+			if (trashedDate === null) throw new Error('Expected the trash request to contain a trashedDate.');
+			const parsedTrashedDate = parseAbsolute(trashedDate, localTimeZone);
+			const currentDate = now(localTimeZone);
+			const dateDifference = Math.abs(parsedTrashedDate.compare(currentDate));
+			expect(dateDifference).toBeLessThanOrEqual(maximumDateDifference);
+			expectRequestMethod(fetchMock, 'PATCH');
+			expectRequestCredentialsMode(fetchMock, 'same-origin');
+			expectRequestBody(fetchMock);
+			expectTaskNotToBePresent(page, taskTitle);
+		});
 	});
 
 	describe('drag and drop', () => {
@@ -479,7 +570,9 @@ const taskDescription = 'Compare trails near Munich and choose one suitable for 
 const editedTaskTitle = 'Book the hiking trail transfer';
 const editedTaskDescription = 'Reserve the earliest train and the return connection.';
 const nonTodayDate = parseDate('2030-06-15');
-const todayDate = today(getLocalTimeZone());
+const localTimeZone = getLocalTimeZone();
+const todayDate = today(localTimeZone);
+const maximumDateDifference = 5_000;
 
 async function openCreateTaskDialogAndAssertOpen(page: RenderResult<typeof Page>): Promise<void> {
 	const addTaskButton = page.getByRole('button', { name: 'Add Task' });

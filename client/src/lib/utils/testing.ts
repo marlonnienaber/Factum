@@ -99,6 +99,11 @@ export function expectRequestUrl(fetchMock: ReturnType<typeof vi.fn>, expectedUr
 	expect(requestUrl).toBe(expectedUrl);
 }
 
+export function expectRequestPath(fetchMock: ReturnType<typeof vi.fn>, expectedPath: string): void {
+	const parsedRequestUrl = getParsedRequestUrl(fetchMock);
+	expect(parsedRequestUrl.pathname).toBe(expectedPath);
+}
+
 export function expectRequestMethod(fetchMock: ReturnType<typeof vi.fn>, expectedMethod: string): void {
 	const requestOptions = fetchMock.mock.calls[0]?.[1] as RequestInit;
 	expect(requestOptions.method).toBe(expectedMethod);
@@ -120,4 +125,20 @@ export function expectRequestContentType(fetchMock: ReturnType<typeof vi.fn>, ex
 	expect(requestHeaders).toBeInstanceOf(Headers);
 	const contentType = requestHeaders.get('Content-Type');
 	expect(contentType).toBe(expectedContentType);
+}
+
+export function getRequestSearchParameter(fetchMock: ReturnType<typeof vi.fn>, parameterName: string): string | null {
+	const parsedRequestUrl = getParsedRequestUrl(fetchMock);
+	return parsedRequestUrl.searchParams.get(parameterName);
+}
+
+function getRequestUrl(fetchMock: ReturnType<typeof vi.fn>): string {
+	const requestUrl = fetchMock.mock.calls[0]?.[0];
+	if (typeof requestUrl !== 'string') throw new Error('Expected the request URL to be a string.');
+	return requestUrl;
+}
+
+function getParsedRequestUrl(fetchMock: ReturnType<typeof vi.fn>): URL {
+	const requestUrl = getRequestUrl(fetchMock);
+	return new URL(requestUrl, document.baseURI);
 }
