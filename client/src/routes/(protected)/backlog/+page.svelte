@@ -128,6 +128,8 @@
 			selectedTaskIds = selectedTaskIds.filter((selectedTaskId) => selectedTaskId !== taskId);
 		}
 	}
+
+	// TODO: implement page loading
 </script>
 
 <svelte:head>
