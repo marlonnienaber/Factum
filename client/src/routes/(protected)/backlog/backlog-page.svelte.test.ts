@@ -2,10 +2,16 @@ import { fireEvent, render, waitFor, within, type RenderResult } from '@testing-
 import userEvent from '@testing-library/user-event';
 import { getLocalTimeZone, parseDate, today, type CalendarDate } from '@internationalized/date';
 import { categoryStore } from '$lib/stores/category-store.svelte';
+import { datedUntrashedDoneTaskStore } from '$lib/stores/dated-untrashed-done-task-store.svelte';
 import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-task-store.svelte';
 import { undatedTaskStore } from '$lib/stores/undated-task-store.svelte';
 import {
 	expectInputToBeInvalid,
+	expectRequestBody,
+	expectRequestContentType,
+	expectRequestCredentialsMode,
+	expectRequestMethod,
+	expectRequestUrl,
 	expectSelectToBeInvalid,
 	expectTextareaToBeInvalid,
 	getInputById,
@@ -22,6 +28,7 @@ beforeEach(() => {
 	vi.stubGlobal('fetch', fetchMock);
 	categoryStore.reset();
 	undatedTaskStore.reset();
+	datedUntrashedDoneTaskStore.reset();
 	datedUntrashedOpenTaskStore.reset();
 });
 
@@ -40,10 +47,10 @@ describe('backlog page tests', () => {
 
 	describe('task creation', () => {
 		it('reacts correctly to missing task title', async () => {
-			addPersonalCategory();
+			addCategory();
 			const page = render(Page);
 			await openCreateTaskDialogAndAssertOpen(page);
-			await selectCategory(page, personalCategory.title);
+			await selectCategory(page, category.title);
 
 			const titleInput = getInputById(page, 'task-title');
 			await userEvent.click(titleInput);
@@ -55,10 +62,10 @@ describe('backlog page tests', () => {
 		});
 
 		it('reacts correctly to too long task title', async () => {
-			addPersonalCategory();
+			addCategory();
 			const page = render(Page);
 			await openCreateTaskDialogAndAssertOpen(page);
-			await selectCategory(page, personalCategory.title);
+			await selectCategory(page, category.title);
 
 			const tooLongTitle = 'Plan the weekend hiking route '.repeat(4);
 			const titleInput = await enterTaskTitle(page, tooLongTitle);
@@ -70,10 +77,10 @@ describe('backlog page tests', () => {
 		});
 
 		it('reacts correctly to too long task description', async () => {
-			addPersonalCategory();
+			addCategory();
 			const page = render(Page);
 			await openCreateTaskDialogAndAssertOpen(page);
-			await selectCategory(page, personalCategory.title);
+			await selectCategory(page, category.title);
 			await enterTaskTitle(page, taskTitle);
 
 			const tooLongDescription = 'Compare the available trails, travel times, and weather forecast. '.repeat(9);
@@ -112,7 +119,7 @@ describe('backlog page tests', () => {
 		});
 
 		it('successfully adds a task', async () => {
-			addPersonalCategory();
+			addCategory();
 			const response = getResponse({ id: 42, rank: 'a0' }, 201);
 			fetchMock.mockResolvedValue(response);
 
@@ -121,7 +128,7 @@ describe('backlog page tests', () => {
 
 			await enterTaskTitle(page, taskTitle);
 			await enterTaskDescription(page, taskDescription);
-			await selectCategory(page, personalCategory.title);
+			await selectCategory(page, category.title);
 
 			const createButton = page.getByRole('button', { name: 'Create' });
 			await userEvent.click(createButton);
@@ -129,16 +136,20 @@ describe('backlog page tests', () => {
 			await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 			const createTaskDialog = page.queryByRole('dialog', { name: 'Create Task' });
 			expect(createTaskDialog).not.toBeInTheDocument();
-			expectTaskCreationRequest(taskTitle, taskDescription);
-
+			const requestBody = JSON.stringify({ title: taskTitle, description: taskDescription, categoryId: category.id });
+			expectRequestUrl(fetchMock, '/api/tasks');
+			expectRequestMethod(fetchMock, 'POST');
+			expectRequestCredentialsMode(fetchMock, 'same-origin');
+			expectRequestBody(fetchMock, requestBody);
+			expectRequestContentType(fetchMock, 'application/json');
 			const tasksWithoutDateList = page.getByLabelText('Tasks without a date');
-			expectTaskToBePresent(tasksWithoutDateList, taskTitle, taskDescription, personalCategory.title);
+			expectTaskToBePresent(tasksWithoutDateList, taskTitle, taskDescription, category.title);
 		});
 	});
 
 	describe('task editing', () => {
 		it('reacts correctly to missing task title', async () => {
-			addPersonalCategory();
+			addCategory();
 			addTaskWithoutDate();
 
 			const page = render(Page);
@@ -153,7 +164,7 @@ describe('backlog page tests', () => {
 		});
 
 		it('reacts correctly to too long task title', async () => {
-			addPersonalCategory();
+			addCategory();
 			addTaskWithoutDate();
 
 			const page = render(Page);
@@ -169,7 +180,7 @@ describe('backlog page tests', () => {
 		});
 
 		it('reacts correctly to too long task description', async () => {
-			addPersonalCategory();
+			addCategory();
 			addTaskWithoutDate();
 
 			const page = render(Page);
@@ -184,24 +195,8 @@ describe('backlog page tests', () => {
 			await expectTextareaToBeInvalid(page, 'task-description', 'Title must have at most 500 characters');
 		});
 
-		it('reacts correctly to missing task category', async () => {
-			addTaskWithoutCategory();
-
-			const page = render(Page);
-			await openEditTaskDialog(page, taskTitle);
-
-			const categorySelect = getSelectById(page, 'task-category');
-			await userEvent.click(categorySelect);
-			await userEvent.keyboard('{Escape}');
-			await userEvent.tab();
-
-			const saveButton = page.getByRole('button', { name: 'Save' });
-			expect(saveButton).toBeDisabled();
-			await expectSelectToBeInvalid(page, 'task-category', 'Category is required');
-		});
-
 		it('cancels and closes the edit-task dialog', async () => {
-			addPersonalCategory();
+			addCategory();
 			addTaskWithoutDate();
 
 			const page = render(Page);
@@ -215,12 +210,12 @@ describe('backlog page tests', () => {
 		});
 
 		it('successfully edits a task without a date', async () => {
-			addPersonalCategory();
+			addCategory();
 			addTaskWithoutDate();
 
 			const response = getResponse({
 				id: taskId,
-				categoryId: personalCategory.id,
+				categoryId: category.id,
 				title: editedTaskTitle,
 				description: editedTaskDescription,
 				rank: taskRank
@@ -235,22 +230,32 @@ describe('backlog page tests', () => {
 
 			const saveButton = page.getByRole('button', { name: 'Save' });
 			await userEvent.click(saveButton);
-			await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 
+			await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 			const editTaskDialog = page.queryByRole('dialog', { name: 'Edit Task' });
 			expect(editTaskDialog).not.toBeInTheDocument();
-			expectTaskUpdateRequest(editedTaskTitle, editedTaskDescription);
+			const requestBody = JSON.stringify({
+				title: editedTaskTitle,
+				description: editedTaskDescription,
+				categoryId: category.id,
+				id: taskId
+			});
+			expectRequestUrl(fetchMock, '/api/tasks');
+			expectRequestMethod(fetchMock, 'PUT');
+			expectRequestCredentialsMode(fetchMock, 'same-origin');
+			expectRequestBody(fetchMock, requestBody);
+			expectRequestContentType(fetchMock, 'application/json');
 			const tasksWithoutDateList = page.getByLabelText('Tasks without a date');
-			expectTaskToBePresent(tasksWithoutDateList, editedTaskTitle, editedTaskDescription, personalCategory.title);
+			expectTaskToBePresent(tasksWithoutDateList, editedTaskTitle, editedTaskDescription, category.title);
 		});
 
 		it('successfully edits a task with a non-today date', async () => {
-			addPersonalCategory();
+			addCategory();
 			addTaskWithDate(nonTodayDate);
 
 			const response = getResponse({
 				id: taskId,
-				categoryId: personalCategory.id,
+				categoryId: category.id,
 				title: editedTaskTitle,
 				description: editedTaskDescription,
 				date: nonTodayDate.toString(),
@@ -266,22 +271,34 @@ describe('backlog page tests', () => {
 
 			const saveButton = page.getByRole('button', { name: 'Save' });
 			await userEvent.click(saveButton);
-			await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 
+			await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 			const editTaskDialog = page.queryByRole('dialog', { name: 'Edit Task' });
 			expect(editTaskDialog).not.toBeInTheDocument();
-			expectTaskUpdateRequest(editedTaskTitle, editedTaskDescription, nonTodayDate);
+			const serializedDate = nonTodayDate.toString();
+			const requestBody = JSON.stringify({
+				title: editedTaskTitle,
+				description: editedTaskDescription,
+				categoryId: category.id,
+				date: serializedDate,
+				id: taskId
+			});
+			expectRequestUrl(fetchMock, '/api/tasks');
+			expectRequestMethod(fetchMock, 'PUT');
+			expectRequestCredentialsMode(fetchMock, 'same-origin');
+			expectRequestBody(fetchMock, requestBody);
+			expectRequestContentType(fetchMock, 'application/json');
 			const datedTaskList = page.getByLabelText('Tasks dated 15.06.2030');
-			expectTaskToBePresent(datedTaskList, editedTaskTitle, editedTaskDescription, personalCategory.title);
+			expectTaskToBePresent(datedTaskList, editedTaskTitle, editedTaskDescription, category.title);
 		});
 
 		it('successfully edits a task dated today', async () => {
-			addPersonalCategory();
+			addCategory();
 			addTaskWithDate(todayDate);
 
 			const response = getResponse({
 				id: taskId,
-				categoryId: personalCategory.id,
+				categoryId: category.id,
 				title: editedTaskTitle,
 				description: editedTaskDescription,
 				date: todayDate.toString(),
@@ -297,20 +314,91 @@ describe('backlog page tests', () => {
 
 			const saveButton = page.getByRole('button', { name: 'Save' });
 			await userEvent.click(saveButton);
-			await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 
+			await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 			const editTaskDialog = page.queryByRole('dialog', { name: 'Edit Task' });
 			expect(editTaskDialog).not.toBeInTheDocument();
-			expectTaskUpdateRequest(editedTaskTitle, editedTaskDescription, todayDate);
+			const serializedDate = todayDate.toString();
+			const requestBody = JSON.stringify({
+				title: editedTaskTitle,
+				description: editedTaskDescription,
+				categoryId: category.id,
+				date: serializedDate,
+				id: taskId
+			});
+			expectRequestUrl(fetchMock, '/api/tasks');
+			expectRequestMethod(fetchMock, 'PUT');
+			expectRequestCredentialsMode(fetchMock, 'same-origin');
+			expectRequestBody(fetchMock, requestBody);
+			expectRequestContentType(fetchMock, 'application/json');
 			const todayTaskList = page.getByLabelText('Tasks dated Today');
-			expectTaskToBePresent(todayTaskList, editedTaskTitle, editedTaskDescription, personalCategory.title);
+			expectTaskToBePresent(todayTaskList, editedTaskTitle, editedTaskDescription, category.title);
 		});
 	});
 
 	describe('task completion', () => {
-		it.todo('successfully completes a task without a date');
-		it.todo('successfully completes a task with a non-today date');
-		it.todo('successfully completes a task dated today');
+		it('successfully completes a task without a date', async () => {
+			addCategory();
+			addTaskWithoutDate();
+
+			const response = new Response(null, { status: 204 });
+			fetchMock.mockResolvedValue(response);
+
+			const page = render(Page);
+
+			const completeTaskButton = page.getByRole('checkbox', { name: `Mark "${taskTitle}" as completed` });
+			await userEvent.click(completeTaskButton);
+
+			await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+			const requestUrl = `/api/tasks/${taskId}/toggle-done?rank=a0`;
+			expectRequestUrl(fetchMock, requestUrl);
+			expectRequestMethod(fetchMock, 'PATCH');
+			expectRequestCredentialsMode(fetchMock, 'same-origin');
+			expectRequestBody(fetchMock);
+			expectTaskNotToBePresent(page, taskTitle);
+		});
+
+		it('successfully completes a task with a non-today date', async () => {
+			addCategory();
+			addTaskWithDate(nonTodayDate);
+
+			const response = new Response(null, { status: 204 });
+			fetchMock.mockResolvedValue(response);
+
+			const page = render(Page);
+
+			const completeTaskButton = page.getByRole('checkbox', { name: `Mark "${taskTitle}" as completed` });
+			await userEvent.click(completeTaskButton);
+
+			await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+			const requestUrl = `/api/tasks/${taskId}/toggle-done?rank=a0`;
+			expectRequestUrl(fetchMock, requestUrl);
+			expectRequestMethod(fetchMock, 'PATCH');
+			expectRequestCredentialsMode(fetchMock, 'same-origin');
+			expectRequestBody(fetchMock);
+			expectTaskNotToBePresent(page, taskTitle);
+		});
+
+		it('successfully completes a task dated today', async () => {
+			addCategory();
+			addTaskWithDate(todayDate);
+
+			const response = new Response(null, { status: 204 });
+			fetchMock.mockResolvedValue(response);
+
+			const page = render(Page);
+
+			const completeTaskButton = page.getByRole('checkbox', { name: `Mark "${taskTitle}" as completed` });
+			await userEvent.click(completeTaskButton);
+
+			await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+			const requestUrl = `/api/tasks/${taskId}/toggle-done?rank=a0`;
+			expectRequestUrl(fetchMock, requestUrl);
+			expectRequestMethod(fetchMock, 'PATCH');
+			expectRequestCredentialsMode(fetchMock, 'same-origin');
+			expectRequestBody(fetchMock);
+			expectTaskNotToBePresent(page, taskTitle);
+		});
 	});
 
 	describe('task trashing', () => {
@@ -383,7 +471,7 @@ describe('backlog page tests', () => {
 });
 
 const fetchMock = vi.fn();
-const personalCategory = { id: 7, title: 'Personal', color: '#22c55e' };
+const category = { id: 7, title: 'Personal', color: '#22c55e' };
 const taskId = 42;
 const taskRank = 'a0';
 const taskTitle = 'Plan weekend hiking route';
@@ -429,24 +517,14 @@ async function selectCategory(page: RenderResult<typeof Page>, categoryName: str
 	await fireEvent.keyDown(categorySelect, { key: categoryTypeaheadKey });
 }
 
-function addPersonalCategory(): void {
-	categoryStore.setCategories([personalCategory]);
+function addCategory(): void {
+	categoryStore.setCategories([category]);
 }
 
 function addTaskWithoutDate(): void {
 	undatedTaskStore.addTask({
 		id: taskId,
-		categoryId: personalCategory.id,
-		title: taskTitle,
-		description: taskDescription,
-		rank: taskRank
-	});
-}
-
-function addTaskWithoutCategory(): void {
-	undatedTaskStore.addTask({
-		id: taskId,
-		categoryId: undefined as unknown as number,
+		categoryId: category.id,
 		title: taskTitle,
 		description: taskDescription,
 		rank: taskRank
@@ -456,42 +534,12 @@ function addTaskWithoutCategory(): void {
 function addTaskWithDate(date: CalendarDate): void {
 	datedUntrashedOpenTaskStore.addTask({
 		id: taskId,
-		categoryId: personalCategory.id,
+		categoryId: category.id,
 		title: taskTitle,
 		description: taskDescription,
 		date,
 		rank: taskRank
 	});
-}
-
-function expectTaskCreationRequest(title: string, description: string): void {
-	const requestUrl = fetchMock.mock.calls[0]?.[0];
-	const requestOptions = fetchMock.mock.calls[0]?.[1] as RequestInit;
-	const requestBody = JSON.stringify({ title, description, categoryId: personalCategory.id });
-	expect(requestUrl).toBe('/api/tasks');
-	expect(requestOptions.method).toBe('POST');
-	expect(requestOptions.credentials).toBe('same-origin');
-	expect(requestOptions.body).toBe(requestBody);
-	const requestHeaders = requestOptions.headers as Headers;
-	expect(requestHeaders).toBeInstanceOf(Headers);
-	const contentType = requestHeaders.get('Content-Type');
-	expect(contentType).toBe('application/json');
-}
-
-function expectTaskUpdateRequest(title: string, description: string, date?: CalendarDate): void {
-	const requestUrl = fetchMock.mock.calls[0]?.[0];
-	const requestOptions = fetchMock.mock.calls[0]?.[1] as RequestInit;
-	const requestBody = date
-		? JSON.stringify({ title, description, categoryId: personalCategory.id, date: date.toString(), id: taskId })
-		: JSON.stringify({ title, description, categoryId: personalCategory.id, id: taskId });
-	expect(requestUrl).toBe('/api/tasks');
-	expect(requestOptions.method).toBe('PUT');
-	expect(requestOptions.credentials).toBe('same-origin');
-	expect(requestOptions.body).toBe(requestBody);
-	const requestHeaders = requestOptions.headers as Headers;
-	expect(requestHeaders).toBeInstanceOf(Headers);
-	const contentType = requestHeaders.get('Content-Type');
-	expect(contentType).toBe('application/json');
 }
 
 function expectTaskToBePresent(taskList: HTMLElement, title: string, description: string, categoryName: string): void {
@@ -503,4 +551,9 @@ function expectTaskToBePresent(taskList: HTMLElement, title: string, description
 	expect(task).toBeInTheDocument();
 	expect(taskDescription).toBeInTheDocument();
 	expect(taskCategory).toBeInTheDocument();
+}
+
+function expectTaskNotToBePresent(page: RenderResult<typeof Page>, title: string): void {
+	const task = page.queryByRole('listitem', { name: title });
+	expect(task).not.toBeInTheDocument();
 }

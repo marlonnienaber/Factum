@@ -13,6 +13,10 @@ function addTask(task: DatedUntrashedDoneTaskResponse): void {
 	addTasks([task]);
 }
 
+function reset(): void {
+	datedUntrashedDoneTasks = [];
+}
+
 function compareTasksByDateAndRank(first: DatedUntrashedDoneTaskResponse, second: DatedUntrashedDoneTaskResponse): number {
 	const dateComparison = first.date.compare(second.date);
 	if (dateComparison !== 0) return dateComparison;
@@ -24,5 +28,6 @@ export const datedUntrashedDoneTaskStore = {
 		return datedUntrashedDoneTasks;
 	},
 	addTasks,
-	addTask
+	addTask,
+	reset
 };

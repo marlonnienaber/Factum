@@ -93,3 +93,31 @@ export function getResponse(body: unknown, status = 200): Response {
 		headers: { 'Content-Type': 'application/json' }
 	});
 }
+
+export function expectRequestUrl(fetchMock: ReturnType<typeof vi.fn>, expectedUrl: string): void {
+	const requestUrl = fetchMock.mock.calls[0]?.[0];
+	expect(requestUrl).toBe(expectedUrl);
+}
+
+export function expectRequestMethod(fetchMock: ReturnType<typeof vi.fn>, expectedMethod: string): void {
+	const requestOptions = fetchMock.mock.calls[0]?.[1] as RequestInit;
+	expect(requestOptions.method).toBe(expectedMethod);
+}
+
+export function expectRequestCredentialsMode(fetchMock: ReturnType<typeof vi.fn>, expectedMode: RequestCredentials): void {
+	const requestOptions = fetchMock.mock.calls[0]?.[1] as RequestInit;
+	expect(requestOptions.credentials).toBe(expectedMode);
+}
+
+export function expectRequestBody(fetchMock: ReturnType<typeof vi.fn>, expectedBody?: string): void {
+	const requestOptions = fetchMock.mock.calls[0]?.[1] as RequestInit;
+	expect(requestOptions.body).toBe(expectedBody);
+}
+
+export function expectRequestContentType(fetchMock: ReturnType<typeof vi.fn>, expectedContentType: string): void {
+	const requestOptions = fetchMock.mock.calls[0]?.[1] as RequestInit;
+	const requestHeaders = requestOptions.headers as Headers;
+	expect(requestHeaders).toBeInstanceOf(Headers);
+	const contentType = requestHeaders.get('Content-Type');
+	expect(contentType).toBe(expectedContentType);
+}

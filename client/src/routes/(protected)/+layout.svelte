@@ -6,6 +6,7 @@
 	import { categoryService } from '$lib/services/category-service.svelte';
 	import { taskService } from '$lib/services/task-service.svelte';
 	import { categoryStore } from '$lib/stores/category-store.svelte';
+	import { datedUntrashedDoneTaskStore } from '$lib/stores/dated-untrashed-done-task-store.svelte';
 	import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-task-store.svelte';
 	import { trashedTaskStore } from '$lib/stores/trashed-task-store.svelte';
 	import { themeStore } from '$lib/stores/theme-store.svelte';
@@ -37,6 +38,7 @@
 				}
 			}
 			categoryStore.reset();
+			datedUntrashedDoneTaskStore.reset();
 			datedUntrashedOpenTaskStore.reset();
 			trashedTaskStore.reset();
 			undatedTaskStore.reset();
