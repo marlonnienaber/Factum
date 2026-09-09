@@ -72,14 +72,14 @@ func (store *CategoryStore) InsertCategory(
 	userId int64,
 	title string,
 	color string,
-) (*transport.CategoryResponse, error) {
+) (*transport.CreateCategoryResponse, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("inserting category failed")
 
-	var category transport.CategoryResponse
+	var category transport.CreateCategoryResponse
 	err := store.db.Get(&category, `
 		INSERT INTO categories (user_id, title, color)
 		VALUES ($1, $2, $3)
-		RETURNING id, title, color
+		RETURNING id
 	`, userId, title, color)
 	if err != nil {
 		var postgresError *pq.Error

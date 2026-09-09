@@ -48,7 +48,7 @@ describe('backlog page tests', () => {
 
 	describe('category operations', () => {
 		it('successfully creates and deletes a category', async () => {
-			const createCategoryResponse = getResponse(category, 201);
+			const createCategoryResponse = getResponse({ id: category.id }, 201);
 			fetchMock.mockResolvedValue(createCategoryResponse);
 
 			const page = render(Page);

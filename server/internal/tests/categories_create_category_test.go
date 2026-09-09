@@ -212,12 +212,11 @@ func TestCategoriesCreateCategoryTitleCanBeReusedByDifferentUser(t *testing.T) {
 	secondResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", secondSignUpResp.Result().Cookies()...)
 	require.Equal(t, http.StatusCreated, secondResp.Code)
 
-	var firstCategory categoriesTransport.CategoryResponse
+	var firstCategory categoriesTransport.CreateCategoryResponse
 	require.NoError(t, json.NewDecoder(firstResp.Body).Decode(&firstCategory), "failed to decode first category response")
-	var secondCategory categoriesTransport.CategoryResponse
+	var secondCategory categoriesTransport.CreateCategoryResponse
 	require.NoError(t, json.NewDecoder(secondResp.Body).Decode(&secondCategory), "failed to decode second category response")
 
-	assert.Equal(t, firstCategory.Title, secondCategory.Title, "expected users to share a category title")
 	assert.NotEqual(t, firstCategory.Id, secondCategory.Id, "expected separate categories")
 }
 
@@ -246,12 +245,10 @@ func TestCategoriesCreateCategory(t *testing.T) {
 	)
 	require.Equal(t, http.StatusCreated, resp.Code)
 
-	var respBody categoriesTransport.CategoryResponse
+	var respBody categoriesTransport.CreateCategoryResponse
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode response")
 
 	assert.Equal(t, int64(1), respBody.Id, "unexpected category id")
-	assert.Equal(t, title, respBody.Title, "unexpected category title")
-	assert.Equal(t, color, respBody.Color, "unexpected category color")
 }
 
 const maximumCategoryTitleLength = 50

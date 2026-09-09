@@ -7,6 +7,10 @@ import {
 import { categoryStore } from '$lib/stores/category-store.svelte';
 import type { CreateNewCategoryRequest } from '$lib/types/requests/create-new-category-request';
 import { CategoryResponseSchema, type CategoryResponse } from '$lib/types/responses/category-response';
+import {
+	CreateCategoryResponseSchema,
+	type CreateCategoryResponse
+} from '$lib/types/responses/create-category-response';
 import { z } from 'zod';
 
 let loading = $state(false);
@@ -29,12 +33,12 @@ async function createCategory(request: CreateNewCategoryRequest): Promise<void> 
 	if (loading) return;
 	loading = true;
 	try {
-		const networkCall: NetworkCall<CategoryResponse> = await jsonPostWithBodyWithResponse(
+		const networkCall: NetworkCall<CreateCategoryResponse> = await jsonPostWithBodyWithResponse(
 			'/api/categories',
 			request,
-			CategoryResponseSchema
+			CreateCategoryResponseSchema
 		);
-		if (networkCall.status === 'success') categoryStore.addCategory(networkCall.result);
+		if (networkCall.status === 'success') categoryStore.addCategory({ ...request, id: networkCall.result.id });
 	} finally {
 		loading = false;
 	}
