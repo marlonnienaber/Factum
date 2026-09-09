@@ -1091,12 +1091,63 @@ describe('backlog page tests', () => {
 		});
 
 		describe('from the non-today-date partition', () => {
-			it.todo('moves a task to the first index of the no-date partition');
-			it.todo('moves a task to the middle index of the no-date partition');
-			it.todo('moves a task to the last index of the no-date partition');
-			it.todo('moves a task to the first index of the today partition');
-			it.todo('moves a task to the middle index of the today partition');
-			it.todo('moves a task to the last index of the today partition');
+			it.each([
+				['first', noDateTasks, [sourceNonTodayTask, ...noDateTasks], undefined, firstNoDateTask.rank],
+				['middle', noDateTasks, [firstNoDateTask, sourceNonTodayTask, secondNoDateTask, thirdNoDateTask, fourthNoDateTask], firstNoDateTask.rank, secondNoDateTask.rank],
+				['last', noDateTasks, [...noDateTasks, sourceNonTodayTask], fourthNoDateTask.rank, undefined]
+			])('moves a task to the %s index of the no-date partition', async (_, destinationTasks, reorderedTasks, previousRank, nextRank) => {
+				addCategory();
+				datedUntrashedOpenTaskStore.addTask(sourceNonTodayTask);
+				undatedTaskStore.addTasks(destinationTasks);
+
+				const response = new Response(null, { status: 204 });
+				fetchMock.mockResolvedValue(response);
+
+				const page = render(Page);
+				const sourceTaskList = page.getByLabelText(`Tasks dated ${nonTodayDateLabel}`);
+				const destinationTaskList = page.getByLabelText('Tasks without a date');
+				await dropTask(destinationTaskList, reorderedTasks, sourceNonTodayTask.id);
+
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+				const expectedRank = generateKeyBetween(previousRank, nextRank);
+				const requestBody = JSON.stringify({ id: sourceNonTodayTask.id, rank: expectedRank });
+				expectRequestUrl(fetchMock, '/api/tasks/change-date-and-or-rank');
+				expectRequestMethod(fetchMock, 'PATCH');
+				expectRequestCredentialsMode(fetchMock, 'same-origin');
+				expectRequestBody(fetchMock, requestBody);
+				expectRequestContentType(fetchMock, 'application/json');
+				expectTaskOrder(destinationTaskList, reorderedTasks);
+				expect(within(sourceTaskList).queryByRole('listitem', { name: sourceNonTodayTask.title })).not.toBeInTheDocument();
+			});
+
+			it.each([
+				['first', todayTasks, [sourceNonTodayTask, ...todayTasks], undefined, firstTodayTask.rank],
+				['middle', todayTasks, [firstTodayTask, sourceNonTodayTask, secondTodayTask, thirdTodayTask, fourthTodayTask], firstTodayTask.rank, secondTodayTask.rank],
+				['last', todayTasks, [...todayTasks, sourceNonTodayTask], fourthTodayTask.rank, undefined]
+			])('moves a task to the %s index of the today partition', async (_, destinationTasks, reorderedTasks, previousRank, nextRank) => {
+				addCategory();
+				datedUntrashedOpenTaskStore.addTask(sourceNonTodayTask);
+				datedUntrashedOpenTaskStore.addTasks(destinationTasks);
+
+				const response = new Response(null, { status: 204 });
+				fetchMock.mockResolvedValue(response);
+
+				const page = render(Page);
+				const sourceTaskList = page.getByLabelText(`Tasks dated ${nonTodayDateLabel}`);
+				const destinationTaskList = page.getByLabelText('Tasks dated Today');
+				await dropTask(destinationTaskList, reorderedTasks, sourceNonTodayTask.id);
+
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+				const expectedRank = generateKeyBetween(previousRank, nextRank);
+				const requestBody = JSON.stringify({ id: sourceNonTodayTask.id, date: todayDate.toString(), rank: expectedRank });
+				expectRequestUrl(fetchMock, '/api/tasks/change-date-and-or-rank');
+				expectRequestMethod(fetchMock, 'PATCH');
+				expectRequestCredentialsMode(fetchMock, 'same-origin');
+				expectRequestBody(fetchMock, requestBody);
+				expectRequestContentType(fetchMock, 'application/json');
+				expectTaskOrder(destinationTaskList, reorderedTasks);
+				expect(within(sourceTaskList).queryByRole('listitem', { name: sourceNonTodayTask.title })).not.toBeInTheDocument();
+			});
 		});
 
 		describe('from the today partition', () => {
@@ -1208,6 +1259,13 @@ const secondNonTodayTask = { ...secondNoDateTask, id: 302, date: nonTodayDate, r
 const thirdNonTodayTask = { ...thirdNoDateTask, id: 303, date: nonTodayDate, rank: nonTodayTaskRanks[2] };
 const fourthNonTodayTask = { ...fourthNoDateTask, id: 304, date: nonTodayDate, rank: nonTodayTaskRanks[3] };
 const nonTodayTasks = [firstNonTodayTask, secondNonTodayTask, thirdNonTodayTask, fourthNonTodayTask];
+const sourceNonTodayTask = {
+	...sourceNoDateTask,
+	id: 305,
+	title: 'Review hut reservation details',
+	date: nonTodayDate,
+	rank: generateKeyBetween(fourthNonTodayTask.rank, undefined)
+};
 const secondNonTodayDate = todayDate.add({ days: 2 });
 const secondNonTodayDateLabel = `${String(secondNonTodayDate.day).padStart(2, '0')}.${String(secondNonTodayDate.month).padStart(2, '0')}.${secondNonTodayDate.year}`;
 const secondNonTodayTaskRanks = generateNKeysBetween(undefined, undefined, 3);
