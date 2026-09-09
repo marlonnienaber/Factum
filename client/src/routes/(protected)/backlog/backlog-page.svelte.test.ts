@@ -3,11 +3,13 @@ import userEvent from '@testing-library/user-event';
 import { getLocalTimeZone, now, parseAbsolute, parseDate, today, type CalendarDate } from '@internationalized/date';
 import { generateKeyBetween, generateNKeysBetween } from 'fractional-indexing';
 import { toast } from 'svelte-sonner';
+import { SOURCES, TRIGGERS, type DndEvent } from 'svelte-dnd-action';
 import { categoryStore } from '$lib/stores/category-store.svelte';
 import { datedUntrashedDoneTaskStore } from '$lib/stores/dated-untrashed-done-task-store.svelte';
 import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-task-store.svelte';
 import { trashedTaskStore } from '$lib/stores/trashed-task-store.svelte';
 import { undatedTaskStore } from '$lib/stores/undated-task-store.svelte';
+import type { UndatedTaskResponse } from '$lib/types/responses/undated-task-response';
 import {
 	expectInputToBeInvalid,
 	expectRequestBody,
@@ -101,7 +103,6 @@ describe('backlog page tests', () => {
 			fetchMock.mockResolvedValue(errorResponse);
 
 			const page = render(Page);
-
 			await openCreateTaskDialog(page);
 			await openCategorySelect(page);
 			const deleteCategoryButton = await page.findByRole('button', { name: `Delete ${category.title}` });
@@ -419,7 +420,6 @@ describe('backlog page tests', () => {
 			fetchMock.mockResolvedValue(response);
 
 			const page = render(Page);
-
 			const completeTaskButton = page.getByRole('checkbox', { name: `Mark "${taskTitle}" as completed` });
 			await userEvent.click(completeTaskButton);
 
@@ -441,7 +441,6 @@ describe('backlog page tests', () => {
 			fetchMock.mockResolvedValue(response);
 
 			const page = render(Page);
-
 			const completeTaskButton = page.getByRole('checkbox', { name: `Mark "${taskTitle}" as completed` });
 			await userEvent.click(completeTaskButton);
 
@@ -463,7 +462,6 @@ describe('backlog page tests', () => {
 			fetchMock.mockResolvedValue(response);
 
 			const page = render(Page);
-
 			const completeTaskButton = page.getByRole('checkbox', { name: `Mark "${taskTitle}" as completed` });
 			await userEvent.click(completeTaskButton);
 
@@ -487,7 +485,6 @@ describe('backlog page tests', () => {
 			fetchMock.mockResolvedValue(response);
 
 			const page = render(Page);
-
 			const moreOptionsButton = page.getByRole('button', { name: `More options for "${taskTitle}"` });
 			await fireEvent.click(moreOptionsButton);
 			const trashButton = await page.findByRole('button', { name: 'Trash' });
@@ -516,7 +513,6 @@ describe('backlog page tests', () => {
 			fetchMock.mockResolvedValue(response);
 
 			const page = render(Page);
-
 			const moreOptionsButton = page.getByRole('button', { name: `More options for "${taskTitle}"` });
 			await fireEvent.click(moreOptionsButton);
 			const trashButton = await page.findByRole('button', { name: 'Trash' });
@@ -545,7 +541,6 @@ describe('backlog page tests', () => {
 			fetchMock.mockResolvedValue(response);
 
 			const page = render(Page);
-
 			const moreOptionsButton = page.getByRole('button', { name: `More options for "${taskTitle}"` });
 			await fireEvent.click(moreOptionsButton);
 			const trashButton = await page.findByRole('button', { name: 'Trash' });
@@ -576,7 +571,6 @@ describe('backlog page tests', () => {
 			fetchMock.mockResolvedValue(response);
 
 			const page = render(Page);
-
 			await clickOnSelectTasksButton(page);
 			await clickOnTask(page, taskTitle);
 			await clickOnTask(page, datedTaskTitle);
@@ -608,7 +602,6 @@ describe('backlog page tests', () => {
 			fetchMock.mockResolvedValue(response);
 
 			const page = render(Page);
-
 			await clickOnSelectTasksButton(page);
 			await clickOnTask(page, taskTitle);
 			await clickOnTask(page, datedTaskTitle);
@@ -644,7 +637,6 @@ describe('backlog page tests', () => {
 			addTaskWithoutDate();
 
 			const page = render(Page);
-
 			await clickOnSelectTasksButton(page);
 			await clickOnTask(page, taskTitle);
 
@@ -663,7 +655,6 @@ describe('backlog page tests', () => {
 			addTaskWithoutDate();
 
 			const page = render(Page);
-
 			await clickOnSelectTasksButton(page);
 
 			const completeAllButton = page.getByRole('button', { name: 'Complete All' });
@@ -678,7 +669,6 @@ describe('backlog page tests', () => {
 			const taskTitles = addTasksExceedingMaximumBatchSize();
 
 			const page = render(Page);
-
 			await clickOnSelectTasksButton(page);
 			for (const title of taskTitles) await clickOnTask(page, title);
 
@@ -693,7 +683,6 @@ describe('backlog page tests', () => {
 			const taskTitles = addTasksExceedingMaximumBatchSize();
 
 			const page = render(Page);
-
 			await clickOnSelectTasksButton(page);
 			for (const title of taskTitles) await clickOnTask(page, title);
 
@@ -706,9 +695,74 @@ describe('backlog page tests', () => {
 
 	describe('drag and drop', () => {
 		describe('within the no-date partition', () => {
-			it.todo('moves a task to the first index');
-			it.todo('moves a task to the middle index');
-			it.todo('moves a task to the last index');
+			it('moves a task to the first index', async () => {
+				addCategory();
+				undatedTaskStore.addTasks(noDateTasks);
+
+				const response = new Response(null, { status: 204 });
+				fetchMock.mockResolvedValue(response);
+
+				const page = render(Page);
+				const tasksWithoutDateList = page.getByLabelText('Tasks without a date');
+				const reorderedTasks = [fourthNoDateTask, firstNoDateTask, secondNoDateTask, thirdNoDateTask];
+				await dropTask(tasksWithoutDateList, reorderedTasks, fourthNoDateTask.id);
+
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+				const expectedRank = generateKeyBetween(undefined, firstNoDateTask.rank);
+				const requestBody = JSON.stringify({ id: fourthNoDateTask.id, rank: expectedRank });
+				expectRequestUrl(fetchMock, '/api/tasks/change-date-and-or-rank');
+				expectRequestMethod(fetchMock, 'PATCH');
+				expectRequestCredentialsMode(fetchMock, 'same-origin');
+				expectRequestBody(fetchMock, requestBody);
+				expectRequestContentType(fetchMock, 'application/json');
+				expectTaskOrder(tasksWithoutDateList, reorderedTasks);
+			});
+
+			it('moves a task to the middle index', async () => {
+				addCategory();
+				undatedTaskStore.addTasks(noDateTasks);
+
+				const response = new Response(null, { status: 204 });
+				fetchMock.mockResolvedValue(response);
+
+				const page = render(Page);
+				const tasksWithoutDateList = page.getByLabelText('Tasks without a date');
+				const reorderedTasks = [firstNoDateTask, secondNoDateTask, fourthNoDateTask, thirdNoDateTask];
+				await dropTask(tasksWithoutDateList, reorderedTasks, fourthNoDateTask.id);
+
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+				const expectedRank = generateKeyBetween(secondNoDateTask.rank, thirdNoDateTask.rank);
+				const requestBody = JSON.stringify({ id: fourthNoDateTask.id, rank: expectedRank });
+				expectRequestUrl(fetchMock, '/api/tasks/change-date-and-or-rank');
+				expectRequestMethod(fetchMock, 'PATCH');
+				expectRequestCredentialsMode(fetchMock, 'same-origin');
+				expectRequestBody(fetchMock, requestBody);
+				expectRequestContentType(fetchMock, 'application/json');
+				expectTaskOrder(tasksWithoutDateList, reorderedTasks);
+			});
+
+			it('moves a task to the last index', async () => {
+				addCategory();
+				undatedTaskStore.addTasks(noDateTasks);
+
+				const response = new Response(null, { status: 204 });
+				fetchMock.mockResolvedValue(response);
+
+				const page = render(Page);
+				const tasksWithoutDateList = page.getByLabelText('Tasks without a date');
+				const reorderedTasks = [secondNoDateTask, thirdNoDateTask, fourthNoDateTask, firstNoDateTask];
+				await dropTask(tasksWithoutDateList, reorderedTasks, firstNoDateTask.id);
+
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+				const expectedRank = generateKeyBetween(fourthNoDateTask.rank, undefined);
+				const requestBody = JSON.stringify({ id: firstNoDateTask.id, rank: expectedRank });
+				expectRequestUrl(fetchMock, '/api/tasks/change-date-and-or-rank');
+				expectRequestMethod(fetchMock, 'PATCH');
+				expectRequestCredentialsMode(fetchMock, 'same-origin');
+				expectRequestBody(fetchMock, requestBody);
+				expectRequestContentType(fetchMock, 'application/json');
+				expectTaskOrder(tasksWithoutDateList, reorderedTasks);
+			});
 		});
 
 		describe('within the today partition', () => {
@@ -806,6 +860,36 @@ const completedBatchTasks = [
 		rank: completedBatchTaskRanks[2]
 	}
 ];
+const noDateTaskRanks = generateNKeysBetween(undefined, undefined, 4);
+const firstNoDateTask = {
+	id: 101,
+	categoryId: category.id,
+	title: 'Compare hiking routes',
+	description: 'Compare the distance and elevation of nearby routes.',
+	rank: noDateTaskRanks[0]
+};
+const secondNoDateTask = {
+	id: 102,
+	categoryId: category.id,
+	title: 'Check the weather forecast',
+	description: 'Review the hourly forecast for the planned hiking day.',
+	rank: noDateTaskRanks[1]
+};
+const thirdNoDateTask = {
+	id: 103,
+	categoryId: category.id,
+	title: 'Prepare hiking equipment',
+	description: 'Inspect boots, rainwear, and the first-aid kit.',
+	rank: noDateTaskRanks[2]
+};
+const fourthNoDateTask = {
+	id: 104,
+	categoryId: category.id,
+	title: 'Buy trail provisions',
+	description: 'Buy water and food for the day on the trail.',
+	rank: noDateTaskRanks[3]
+};
+const noDateTasks = [firstNoDateTask, secondNoDateTask, thirdNoDateTask, fourthNoDateTask];
 
 async function openCreateTaskDialog(page: RenderResult<typeof Page>): Promise<void> {
 	const addTaskButton = page.getByRole('button', { name: 'Add Task' });
@@ -915,6 +999,24 @@ async function clickOnSelectTasksButton(page: RenderResult<typeof Page>): Promis
 async function clickOnTask(page: RenderResult<typeof Page>, title: string): Promise<void> {
 	const task = page.getByRole('listitem', { name: title });
 	await fireEvent.pointerUp(task);
+}
+
+async function dropTask(taskList: HTMLElement, newOrderedTasks: UndatedTaskResponse[], taskId: number): Promise<void> {
+	const event = new CustomEvent<DndEvent<UndatedTaskResponse>>('finalize', {
+		detail: {
+			items: newOrderedTasks,
+			info: { trigger: TRIGGERS.DROPPED_INTO_ZONE, id: String(taskId), source: SOURCES.POINTER }
+		}
+	});
+	await fireEvent(taskList, event);
+}
+
+function expectTaskOrder(taskList: HTMLElement, tasks: UndatedTaskResponse[]): void {
+	const taskListContent = within(taskList);
+	const renderedTasks = taskListContent.getAllByRole('listitem');
+	const renderedTaskTitles = renderedTasks.map((task) => task.getAttribute('aria-label'));
+	const expectedTaskTitles = tasks.map((task) => task.title);
+	expect(renderedTaskTitles).toEqual(expectedTaskTitles);
 }
 
 function expectTaskToBePresent(taskList: HTMLElement, title: string, description: string, categoryName: string): void {
