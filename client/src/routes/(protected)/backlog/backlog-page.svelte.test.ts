@@ -1,7 +1,7 @@
 import { fireEvent, render, waitFor, within, type RenderResult } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import { getLocalTimeZone, now, parseAbsolute, parseDate, today, type CalendarDate } from '@internationalized/date';
-import { generateKeyBetween } from 'fractional-indexing';
+import { generateKeyBetween, generateNKeysBetween } from 'fractional-indexing';
 import { toast } from 'svelte-sonner';
 import { categoryStore } from '$lib/stores/category-store.svelte';
 import { datedUntrashedDoneTaskStore } from '$lib/stores/dated-untrashed-done-task-store.svelte';
@@ -568,12 +568,140 @@ describe('backlog page tests', () => {
 	});
 
 	describe('task batch operations', () => {
-		it.todo('successfully completes all tasks');
-		it.todo('successfully trashes all tasks');
-		it.todo('successfully cancels a batch operation');
-		it.todo('disables batch actions when no tasks are selected');
-		it.todo('disables batch trash when more than 50 tasks are selected');
-		it.todo('disables batch completion when more than 50 tasks are selected');
+		it('successfully completes all tasks', async () => {
+			addCategory();
+			addTasksForBatchOperation();
+
+			const response = getResponse({ datedUntrashedDoneTasks: completedBatchTasks, trashedTasks: [] });
+			fetchMock.mockResolvedValue(response);
+
+			const page = render(Page);
+
+			await clickOnSelectTasksButton(page);
+			await clickOnTask(page, taskTitle);
+			await clickOnTask(page, datedTaskTitle);
+			await clickOnTask(page, todayTaskTitle);
+
+			const completeAllButton = page.getByRole('button', { name: 'Complete All' });
+			await userEvent.click(completeAllButton);
+
+			await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+			const requestBody = JSON.stringify({ taskIds: batchTaskIds });
+			expectRequestUrl(fetchMock, '/api/tasks/batch-complete');
+			expectRequestMethod(fetchMock, 'PATCH');
+			expectRequestCredentialsMode(fetchMock, 'same-origin');
+			expectRequestBody(fetchMock, requestBody);
+			expectRequestContentType(fetchMock, 'application/json');
+			expectTaskNotToBePresent(page, taskTitle);
+			expectTaskNotToBePresent(page, datedTaskTitle);
+			expectTaskNotToBePresent(page, todayTaskTitle);
+			expect(datedUntrashedDoneTaskStore.datedUntrashedDoneTasks).toHaveLength(3);
+			const selectTasksButton = page.getByRole('button', { name: 'Select Tasks' });
+			expect(selectTasksButton).toBeInTheDocument();
+		});
+
+		it('successfully trashes all tasks', async () => {
+			addCategory();
+			addTasksForBatchOperation();
+
+			const response = new Response(null, { status: 204 });
+			fetchMock.mockResolvedValue(response);
+
+			const page = render(Page);
+
+			await clickOnSelectTasksButton(page);
+			await clickOnTask(page, taskTitle);
+			await clickOnTask(page, datedTaskTitle);
+			await clickOnTask(page, todayTaskTitle);
+
+			const trashAllButton = page.getByRole('button', { name: 'Trash All' });
+			await userEvent.click(trashAllButton);
+
+			await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+			expectRequestPath(fetchMock, '/api/tasks/batch-trash');
+			const trashedDate = getRequestSearchParameter(fetchMock, 'trashedDate');
+			expect(trashedDate).not.toBeNull();
+			if (trashedDate === null) throw new Error('Expected the batch trash request to contain a trashedDate.');
+			const parsedTrashedDate = parseAbsolute(trashedDate, localTimeZone);
+			const currentDate = now(localTimeZone);
+			const dateDifference = Math.abs(parsedTrashedDate.compare(currentDate));
+			expect(dateDifference).toBeLessThanOrEqual(maximumDateDifference);
+			const requestBody = JSON.stringify({ taskIds: batchTaskIds });
+			expectRequestMethod(fetchMock, 'PATCH');
+			expectRequestCredentialsMode(fetchMock, 'same-origin');
+			expectRequestBody(fetchMock, requestBody);
+			expectRequestContentType(fetchMock, 'application/json');
+			expectTaskNotToBePresent(page, taskTitle);
+			expectTaskNotToBePresent(page, datedTaskTitle);
+			expectTaskNotToBePresent(page, todayTaskTitle);
+			expect(trashedTaskStore.trashedTasks).toHaveLength(3);
+			const selectTasksButton = page.getByRole('button', { name: 'Select Tasks' });
+			expect(selectTasksButton).toBeInTheDocument();
+		});
+
+		it('successfully cancels a batch operation', async () => {
+			addCategory();
+			addTaskWithoutDate();
+
+			const page = render(Page);
+
+			await clickOnSelectTasksButton(page);
+			await clickOnTask(page, taskTitle);
+
+			const cancelSelectionButton = page.getByRole('button', { name: 'Cancel Selection' });
+			await userEvent.click(cancelSelectionButton);
+
+			const selectTasksButton = page.getByRole('button', { name: 'Select Tasks' });
+			expect(selectTasksButton).toBeInTheDocument();
+			const completeTaskButton = page.getByRole('checkbox', { name: `Mark "${taskTitle}" as completed` });
+			expect(completeTaskButton).toBeInTheDocument();
+			expect(fetchMock).not.toHaveBeenCalled();
+		});
+
+		it('disables batch actions when no tasks are selected', async () => {
+			addCategory();
+			addTaskWithoutDate();
+
+			const page = render(Page);
+
+			await clickOnSelectTasksButton(page);
+
+			const completeAllButton = page.getByRole('button', { name: 'Complete All' });
+			const trashAllButton = page.getByRole('button', { name: 'Trash All' });
+			expect(completeAllButton).toBeDisabled();
+			expect(trashAllButton).toBeDisabled();
+			expect(page.getByText('0 / 50')).toBeInTheDocument();
+		});
+
+		it('disables batch trash when more than 50 tasks are selected', async () => {
+			addCategory();
+			const taskTitles = addTasksExceedingMaximumBatchSize();
+
+			const page = render(Page);
+
+			await clickOnSelectTasksButton(page);
+			for (const title of taskTitles) await clickOnTask(page, title);
+
+			const trashAllButton = page.getByRole('button', { name: 'Trash All' });
+			expect(trashAllButton).toBeDisabled();
+			expect(page.getByText('51 / 50')).toBeInTheDocument();
+			expect(fetchMock).not.toHaveBeenCalled();
+		});
+
+		it('disables batch completion when more than 50 tasks are selected', async () => {
+			addCategory();
+			const taskTitles = addTasksExceedingMaximumBatchSize();
+
+			const page = render(Page);
+
+			await clickOnSelectTasksButton(page);
+			for (const title of taskTitles) await clickOnTask(page, title);
+
+			const completeAllButton = page.getByRole('button', { name: 'Complete All' });
+			expect(completeAllButton).toBeDisabled();
+			expect(page.getByText('51 / 50')).toBeInTheDocument();
+			expect(fetchMock).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('drag and drop', () => {
@@ -637,12 +765,47 @@ const taskId = 42;
 const taskRank = 'a0';
 const taskTitle = 'Plan weekend hiking route';
 const taskDescription = 'Compare trails near Munich and choose one suitable for Saturday.';
+const datedTaskId = 43;
+const datedTaskTitle = 'Prepare the trip packing list';
+const datedTaskDescription = 'List the equipment needed for the overnight stay.';
+const todayTaskId = 44;
+const todayTaskTitle = 'Buy food for the hike';
+const todayTaskDescription = 'Pick up water, fruit, and trail snacks before departure.';
 const editedTaskTitle = 'Book the hiking trail transfer';
 const editedTaskDescription = 'Reserve the earliest train and the return connection.';
 const nonTodayDate = parseDate('2030-06-15');
 const localTimeZone = getLocalTimeZone();
 const todayDate = today(localTimeZone);
 const maximumDateDifference = 5_000;
+const batchTaskIds = [taskId, datedTaskId, todayTaskId];
+const batchTaskRanks = generateNKeysBetween(undefined, undefined, batchTaskIds.length);
+const completedBatchTaskRanks = generateNKeysBetween(undefined, undefined, batchTaskIds.length);
+const completedBatchTasks = [
+	{
+		id: taskId,
+		categoryId: category.id,
+		title: taskTitle,
+		description: taskDescription,
+		date: todayDate.toString(),
+		rank: completedBatchTaskRanks[0]
+	},
+	{
+		id: datedTaskId,
+		categoryId: category.id,
+		title: datedTaskTitle,
+		description: datedTaskDescription,
+		date: nonTodayDate.toString(),
+		rank: completedBatchTaskRanks[1]
+	},
+	{
+		id: todayTaskId,
+		categoryId: category.id,
+		title: todayTaskTitle,
+		description: todayTaskDescription,
+		date: todayDate.toString(),
+		rank: completedBatchTaskRanks[2]
+	}
+];
 
 async function openCreateTaskDialog(page: RenderResult<typeof Page>): Promise<void> {
 	const addTaskButton = page.getByRole('button', { name: 'Add Task' });
@@ -692,25 +855,66 @@ function addCategory(): void {
 	categoryStore.setCategories([category]);
 }
 
-function addTaskWithoutDate(): void {
+function addTaskWithoutDate(
+	id = taskId,
+	title = taskTitle,
+	description = taskDescription,
+	rank = taskRank
+): void {
 	undatedTaskStore.addTask({
-		id: taskId,
+		id,
 		categoryId: category.id,
-		title: taskTitle,
-		description: taskDescription,
-		rank: taskRank
+		title,
+		description,
+		rank
 	});
 }
 
-function addTaskWithDate(date: CalendarDate): void {
+function addTaskWithDate(
+	date: CalendarDate,
+	id = taskId,
+	title = taskTitle,
+	description = taskDescription,
+	rank = taskRank
+): void {
 	datedUntrashedOpenTaskStore.addTask({
-		id: taskId,
+		id,
 		categoryId: category.id,
-		title: taskTitle,
-		description: taskDescription,
+		title,
+		description,
 		date,
-		rank: taskRank
+		rank
 	});
+}
+
+function addTasksForBatchOperation(): void {
+	addTaskWithoutDate(taskId, taskTitle, taskDescription, batchTaskRanks[0]);
+	addTaskWithDate(nonTodayDate, datedTaskId, datedTaskTitle, datedTaskDescription, batchTaskRanks[1]);
+	addTaskWithDate(todayDate, todayTaskId, todayTaskTitle, todayTaskDescription, batchTaskRanks[2]);
+}
+
+function addTasksExceedingMaximumBatchSize(): string[] {
+	const taskCount = 51;
+	const ranks = generateNKeysBetween(undefined, undefined, taskCount);
+	const tasks = ranks.map((rank, index) => ({
+		id: index + 1,
+		categoryId: category.id,
+		title: `Review project note ${index + 1}`,
+		description: `Review and organize project note ${index + 1}.`,
+		rank
+	}));
+	undatedTaskStore.addTasks(tasks);
+	return tasks.map((task) => task.title);
+}
+
+async function clickOnSelectTasksButton(page: RenderResult<typeof Page>): Promise<void> {
+	const selectTasksButton = page.getByRole('button', { name: 'Select Tasks' });
+	await userEvent.click(selectTasksButton);
+}
+
+async function clickOnTask(page: RenderResult<typeof Page>, title: string): Promise<void> {
+	const task = page.getByRole('listitem', { name: title });
+	await fireEvent.pointerUp(task);
 }
 
 function expectTaskToBePresent(taskList: HTMLElement, title: string, description: string, categoryName: string): void {
