@@ -1,6 +1,6 @@
 import {fireEvent, render, type RenderResult, waitFor, within} from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
-import {type CalendarDate, getLocalTimeZone, now, parseAbsolute, today} from '@internationalized/date';
+import {getLocalTimeZone, now, parseAbsolute, today} from '@internationalized/date';
 import {generateKeyBetween, generateNKeysBetween} from 'fractional-indexing';
 import {toast} from 'svelte-sonner';
 import {type DndEvent, SOURCES, TRIGGERS} from 'svelte-dnd-action';
