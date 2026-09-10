@@ -119,10 +119,10 @@ describe('backlog page tests', () => {
 	describe('task creation', () => {
 		it('reacts correctly to missing task title', async () => {
 			categoryStore.setCategories([category]);
+
 			const page = render(Page);
 			await openCreateTaskDialog(page);
 			await selectCategory(page, category.title);
-
 			const titleInput = getInputById(page, 'task-title');
 			await userEvent.click(titleInput);
 			await userEvent.tab();
@@ -134,10 +134,10 @@ describe('backlog page tests', () => {
 
 		it('reacts correctly to too long task title', async () => {
 			categoryStore.setCategories([category]);
+
 			const page = render(Page);
 			await openCreateTaskDialog(page);
 			await selectCategory(page, category.title);
-
 			const tooLongTitle = 'Plan the weekend hiking route '.repeat(4);
 			const titleInput = await enterTaskTitle(page, tooLongTitle);
 			await fireEvent.blur(titleInput);
@@ -149,11 +149,11 @@ describe('backlog page tests', () => {
 
 		it('reacts correctly to too long task description', async () => {
 			categoryStore.setCategories([category]);
+
 			const page = render(Page);
 			await openCreateTaskDialog(page);
 			await selectCategory(page, category.title);
 			await enterTaskTitle(page, testData.noDatePartition.firstTask.title);
-
 			const tooLongDescription = 'Compare the available trails, travel times, and weather forecast. '.repeat(9);
 			const descriptionInput = await enterTaskDescription(page, tooLongDescription);
 			await fireEvent.blur(descriptionInput);
@@ -167,7 +167,6 @@ describe('backlog page tests', () => {
 			const page = render(Page);
 			await openCreateTaskDialog(page);
 			await enterTaskTitle(page, testData.noDatePartition.firstTask.title);
-
 			const categorySelect = getSelectById(page, 'task-category');
 			await userEvent.click(categorySelect);
 			await userEvent.keyboard('{Escape}');
@@ -180,8 +179,8 @@ describe('backlog page tests', () => {
 
 		it('cancels and closes the create-task dialog', async () => {
 			const page = render(Page);
-			await openCreateTaskDialog(page);
 
+			await openCreateTaskDialog(page);
 			const cancelButton = page.getByRole('button', { name: 'Cancel' });
 			await userEvent.click(cancelButton);
 
@@ -191,16 +190,15 @@ describe('backlog page tests', () => {
 
 		it('successfully adds a task', async () => {
 			categoryStore.setCategories([category]);
+
 			const response = getResponse({ id: 42, rank: 'a0' }, 201);
 			fetchMock.mockResolvedValue(response);
 
 			const page = render(Page);
 			await openCreateTaskDialog(page);
-
 			await enterTaskTitle(page, testData.noDatePartition.firstTask.title);
 			await enterTaskDescription(page, testData.noDatePartition.firstTask.description);
 			await selectCategory(page, category.title);
-
 			const createButton = page.getByRole('button', { name: 'Create' });
 			await userEvent.click(createButton);
 
