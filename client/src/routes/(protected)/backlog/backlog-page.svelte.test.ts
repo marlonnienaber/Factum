@@ -227,11 +227,12 @@ describe('backlog page tests', () => {
 
 	describe('task editing', () => {
 		it('reacts correctly to missing task title', async () => {
+			const task = testData.noDatePartition.firstTask;
 			categoryStore.setCategories([category]);
-			undatedTaskStore.addTask(testData.noDatePartition.firstTask);
+			undatedTaskStore.addTask(task);
 
 			const page = render(Page);
-			await openEditTaskDialog(page, testData.noDatePartition.firstTask.title);
+			await openEditTaskDialog(page, task.title);
 			const titleInput = await enterTaskTitle(page, '');
 			await fireEvent.blur(titleInput);
 
@@ -241,11 +242,12 @@ describe('backlog page tests', () => {
 		});
 
 		it('reacts correctly to too long task title', async () => {
+			const task = testData.noDatePartition.firstTask;
 			categoryStore.setCategories([category]);
-			undatedTaskStore.addTask(testData.noDatePartition.firstTask);
+			undatedTaskStore.addTask(task);
 
 			const page = render(Page);
-			await openEditTaskDialog(page, testData.noDatePartition.firstTask.title);
+			await openEditTaskDialog(page, task.title);
 			const tooLongTitle = 'Plan the weekend hiking route '.repeat(4);
 			const titleInput = await enterTaskTitle(page, tooLongTitle);
 			await fireEvent.blur(titleInput);
@@ -256,11 +258,12 @@ describe('backlog page tests', () => {
 		});
 
 		it('reacts correctly to too long task description', async () => {
+			const task = testData.noDatePartition.firstTask;
 			categoryStore.setCategories([category]);
-			undatedTaskStore.addTask(testData.noDatePartition.firstTask);
+			undatedTaskStore.addTask(task);
 
 			const page = render(Page);
-			await openEditTaskDialog(page, testData.noDatePartition.firstTask.title);
+			await openEditTaskDialog(page, task.title);
 			const tooLongDescription = 'Compare the available trails, travel times, and weather forecast. '.repeat(9);
 			const descriptionInput = await enterTaskDescription(page, tooLongDescription);
 			await fireEvent.blur(descriptionInput);
@@ -271,11 +274,12 @@ describe('backlog page tests', () => {
 		});
 
 		it('cancels and closes the edit-task dialog', async () => {
+			const task = testData.noDatePartition.firstTask;
 			categoryStore.setCategories([category]);
-			undatedTaskStore.addTask(testData.noDatePartition.firstTask);
+			undatedTaskStore.addTask(task);
 
 			const page = render(Page);
-			await openEditTaskDialog(page, testData.noDatePartition.firstTask.title);
+			await openEditTaskDialog(page, task.title);
 			const cancelButton = page.getByRole('button', { name: 'Cancel' });
 			await userEvent.click(cancelButton);
 
@@ -420,31 +424,32 @@ describe('backlog page tests', () => {
 
 	describe('task completion', () => {
 		it('successfully completes a task without a date', async () => {
+			const task = testData.noDatePartition.firstTask;
 			categoryStore.setCategories([category]);
-			undatedTaskStore.addTask(testData.noDatePartition.firstTask);
+			undatedTaskStore.addTask(task);
 
 			const response = new Response(null, { status: 204 });
 			fetchMock.mockResolvedValue(response);
 
 			const page = render(Page);
 			const completeTaskButton = page.getByRole('checkbox', {
-				name: `Mark "${testData.noDatePartition.firstTask.title}" as completed`
+				name: `Mark "${task.title}" as completed`
 			});
 			await userEvent.click(completeTaskButton);
 
 			await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 			const expectedRank = generateKeyBetween(undefined, undefined);
-			const requestUrl = `/api/tasks/${testData.noDatePartition.firstTask.id}/toggle-done?rank=${expectedRank}`;
+			const requestUrl = `/api/tasks/${task.id}/toggle-done?rank=${expectedRank}`;
 			expectRequestUrl(fetchMock, requestUrl);
 			expectRequestMethod(fetchMock, 'PATCH');
 			expectRequestCredentialsMode(fetchMock, 'same-origin');
 			expectRequestBody(fetchMock, undefined);
-			expectTaskNotToBePresent(page, testData.noDatePartition.firstTask.title);
+			expectTaskNotToBePresent(page, task.title);
 		});
 
 		it('successfully completes a task with a non-today date', async () => {
-			categoryStore.setCategories([category]);
 			const task = testData.nonTodayPastPartition.firstTask;
+			categoryStore.setCategories([category]);
 			datedUntrashedOpenTaskStore.addTask(task);
 
 			const response = new Response(null, { status: 204 });
@@ -467,8 +472,8 @@ describe('backlog page tests', () => {
 		});
 
 		it('successfully completes a task dated today', async () => {
-			categoryStore.setCategories([category]);
 			const task = testData.todayPartition.firstTask;
+			categoryStore.setCategories([category]);
 			datedUntrashedOpenTaskStore.addTask(task);
 
 			const response = new Response(null, { status: 204 });
@@ -493,22 +498,23 @@ describe('backlog page tests', () => {
 
 	describe('task trashing', () => {
 		it('successfully trashes a task without a date', async () => {
+			const task = testData.noDatePartition.firstTask;
 			categoryStore.setCategories([category]);
-			undatedTaskStore.addTask(testData.noDatePartition.firstTask);
+			undatedTaskStore.addTask(task);
 
 			const response = new Response(null, { status: 204 });
 			fetchMock.mockResolvedValue(response);
 
 			const page = render(Page);
 			const moreOptionsButton = page.getByRole('button', {
-				name: `More options for "${testData.noDatePartition.firstTask.title}"`
+				name: `More options for "${task.title}"`
 			});
 			await fireEvent.click(moreOptionsButton);
 			const trashButton = await page.findByRole('button', { name: 'Trash' });
 			await userEvent.click(trashButton);
 
 			await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-			expectRequestPath(fetchMock, `/api/tasks/${testData.noDatePartition.firstTask.id}/trash`);
+			expectRequestPath(fetchMock, `/api/tasks/${task.id}/trash`);
 			const trashedDate = getRequestSearchParameter(fetchMock, 'trashedDate');
 			expect(trashedDate).not.toBeNull();
 			if (trashedDate === null) throw new Error('Expected the trash request to contain a trashedDate.');
@@ -519,12 +525,12 @@ describe('backlog page tests', () => {
 			expectRequestMethod(fetchMock, 'PATCH');
 			expectRequestCredentialsMode(fetchMock, 'same-origin');
 			expectRequestBody(fetchMock, undefined);
-			expectTaskNotToBePresent(page, testData.noDatePartition.firstTask.title);
+			expectTaskNotToBePresent(page, task.title);
 		});
 
 		it('successfully trashes a task with a non-today date', async () => {
-			categoryStore.setCategories([category]);
 			const task = testData.nonTodayPastPartition.firstTask;
+			categoryStore.setCategories([category]);
 			datedUntrashedOpenTaskStore.addTask(task);
 
 			const response = new Response(null, { status: 204 });
@@ -554,8 +560,8 @@ describe('backlog page tests', () => {
 		});
 
 		it('successfully trashes a task dated today', async () => {
-			categoryStore.setCategories([category]);
 			const task = testData.todayPartition.firstTask;
+			categoryStore.setCategories([category]);
 			datedUntrashedOpenTaskStore.addTask(task);
 
 			const response = new Response(null, { status: 204 });
@@ -587,12 +593,12 @@ describe('backlog page tests', () => {
 
 	describe('task batch operations', () => {
 		it('successfully completes all tasks', async () => {
-			categoryStore.setCategories([category]);
 			const tasks = [
 				testData.noDatePartition.firstTask,
 				testData.nonTodayPastPartition.secondTask,
 				testData.todayPartition.thirdTask
 			] as const;
+			categoryStore.setCategories([category]);
 			undatedTaskStore.addTask(tasks[0]);
 			datedUntrashedOpenTaskStore.addTask(tasks[1]);
 			datedUntrashedOpenTaskStore.addTask(tasks[2]);
@@ -628,12 +634,12 @@ describe('backlog page tests', () => {
 		});
 
 		it('successfully trashes all tasks', async () => {
-			categoryStore.setCategories([category]);
 			const tasks = [
 				testData.noDatePartition.firstTask,
 				testData.nonTodayPastPartition.secondTask,
 				testData.todayPartition.thirdTask
 			] as const;
+			categoryStore.setCategories([category]);
 			undatedTaskStore.addTask(tasks[0]);
 			datedUntrashedOpenTaskStore.addTask(tasks[1]);
 			datedUntrashedOpenTaskStore.addTask(tasks[2]);
@@ -670,12 +676,13 @@ describe('backlog page tests', () => {
 		});
 
 		it('successfully cancels a batch operation', async () => {
+			const task = testData.noDatePartition.firstTask;
 			categoryStore.setCategories([category]);
-			undatedTaskStore.addTask(testData.noDatePartition.firstTask);
+			undatedTaskStore.addTask(task);
 
 			const page = render(Page);
 			await clickOnSelectTasksButton(page);
-			await clickOnTask(page, testData.noDatePartition.firstTask.title);
+			await clickOnTask(page, task.title);
 
 			const cancelSelectionButton = page.getByRole('button', { name: 'Cancel Selection' });
 			await userEvent.click(cancelSelectionButton);
@@ -683,15 +690,16 @@ describe('backlog page tests', () => {
 			const selectTasksButton = page.getByRole('button', { name: 'Select Tasks' });
 			expect(selectTasksButton).toBeInTheDocument();
 			const completeTaskButton = page.getByRole('checkbox', {
-				name: `Mark "${testData.noDatePartition.firstTask.title}" as completed`
+				name: `Mark "${task.title}" as completed`
 			});
 			expect(completeTaskButton).toBeInTheDocument();
 			expect(fetchMock).not.toHaveBeenCalled();
 		});
 
 		it('disables batch actions when no tasks are selected', async () => {
+			const task = testData.noDatePartition.firstTask;
 			categoryStore.setCategories([category]);
-			undatedTaskStore.addTask(testData.noDatePartition.firstTask);
+			undatedTaskStore.addTask(task);
 
 			const page = render(Page);
 			await clickOnSelectTasksButton(page);
