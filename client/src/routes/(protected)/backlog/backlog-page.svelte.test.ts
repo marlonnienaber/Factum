@@ -232,7 +232,6 @@ describe('backlog page tests', () => {
 
 			const page = render(Page);
 			await openEditTaskDialog(page, testData.noDatePartition.firstTask.title);
-
 			const titleInput = await enterTaskTitle(page, '');
 			await fireEvent.blur(titleInput);
 
@@ -247,7 +246,6 @@ describe('backlog page tests', () => {
 
 			const page = render(Page);
 			await openEditTaskDialog(page, testData.noDatePartition.firstTask.title);
-
 			const tooLongTitle = 'Plan the weekend hiking route '.repeat(4);
 			const titleInput = await enterTaskTitle(page, tooLongTitle);
 			await fireEvent.blur(titleInput);
@@ -263,7 +261,6 @@ describe('backlog page tests', () => {
 
 			const page = render(Page);
 			await openEditTaskDialog(page, testData.noDatePartition.firstTask.title);
-
 			const tooLongDescription = 'Compare the available trails, travel times, and weather forecast. '.repeat(9);
 			const descriptionInput = await enterTaskDescription(page, tooLongDescription);
 			await fireEvent.blur(descriptionInput);
@@ -279,7 +276,6 @@ describe('backlog page tests', () => {
 
 			const page = render(Page);
 			await openEditTaskDialog(page, testData.noDatePartition.firstTask.title);
-
 			const cancelButton = page.getByRole('button', { name: 'Cancel' });
 			await userEvent.click(cancelButton);
 
@@ -288,26 +284,26 @@ describe('backlog page tests', () => {
 		});
 
 		it('successfully edits a task without a date', async () => {
+			const task = testData.noDatePartition.firstTask;
 			categoryStore.setCategories([category]);
-			undatedTaskStore.addTask(testData.noDatePartition.firstTask);
+			undatedTaskStore.addTask(task);
+
 			const newTitle = 'Book the hiking trail transfer';
 			const newDescription = 'Reserve the earliest train and the return connection.';
 
 			const response = getResponse({
-				id: testData.noDatePartition.firstTask.id,
+				id: task.id,
 				categoryId: category.id,
 				title: newTitle,
 				description: newDescription,
-				rank: testData.noDatePartition.firstTask.rank
+				rank: task.rank
 			});
 			fetchMock.mockResolvedValue(response);
 
 			const page = render(Page);
-			await openEditTaskDialog(page, testData.noDatePartition.firstTask.title);
-
+			await openEditTaskDialog(page, task.title);
 			await enterTaskTitle(page, newTitle);
 			await enterTaskDescription(page, newDescription);
-
 			const saveButton = page.getByRole('button', { name: 'Save' });
 			await userEvent.click(saveButton);
 
@@ -318,7 +314,7 @@ describe('backlog page tests', () => {
 				title: newTitle,
 				description: newDescription,
 				categoryId: category.id,
-				id: testData.noDatePartition.firstTask.id
+				id: task.id
 			});
 			expectRequestUrl(fetchMock, '/api/tasks');
 			expectRequestMethod(fetchMock, 'PUT');
@@ -330,40 +326,41 @@ describe('backlog page tests', () => {
 		});
 
 		it('successfully edits a task with a non-today date', async () => {
+			const task = testData.nonTodayPastPartition.firstTask;
+			const taskDate = testData.nonTodayPastPartitionDate;
 			categoryStore.setCategories([category]);
-			addTaskWithDate(testData.nonTodayPastPartitionDate);
+			datedUntrashedOpenTaskStore.addTask(task);
+
 			const newTitle = 'Book the hiking trail transfer';
 			const newDescription = 'Reserve the earliest train and the return connection.';
 
 			const response = getResponse({
-				id: testData.noDatePartition.firstTask.id,
+				id: task.id,
 				categoryId: category.id,
 				title: newTitle,
 				description: newDescription,
-				date: testData.nonTodayPastPartitionDate.toString(),
-				rank: testData.noDatePartition.firstTask.rank
+				date: taskDate.toString(),
+				rank: task.rank
 			});
 			fetchMock.mockResolvedValue(response);
 
 			const page = render(Page);
-			await openEditTaskDialog(page, testData.noDatePartition.firstTask.title);
-
+			await openEditTaskDialog(page, task.title);
 			await enterTaskTitle(page, newTitle);
 			await enterTaskDescription(page, newDescription);
-
 			const saveButton = page.getByRole('button', { name: 'Save' });
 			await userEvent.click(saveButton);
 
 			await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 			const editTaskDialog = page.queryByRole('dialog', { name: 'Edit Task' });
 			expect(editTaskDialog).not.toBeInTheDocument();
-			const serializedDate = testData.nonTodayPastPartitionDate.toString();
+			const serializedDate = taskDate.toString();
 			const requestBody = JSON.stringify({
 				title: newTitle,
 				description: newDescription,
 				categoryId: category.id,
 				date: serializedDate,
-				id: testData.noDatePartition.firstTask.id
+				id: task.id
 			});
 			expectRequestUrl(fetchMock, '/api/tasks');
 			expectRequestMethod(fetchMock, 'PUT');
@@ -375,40 +372,41 @@ describe('backlog page tests', () => {
 		});
 
 		it('successfully edits a task dated today', async () => {
+			const task = testData.todayPartition.firstTask;
+			const taskDate = testData.todayPartitionDate;
 			categoryStore.setCategories([category]);
-			addTaskWithDate(testData.todayPartitionDate);
+			datedUntrashedOpenTaskStore.addTask(task);
+
 			const newTitle = 'Book the hiking trail transfer';
 			const newDescription = 'Reserve the earliest train and the return connection.';
 
 			const response = getResponse({
-				id: testData.noDatePartition.firstTask.id,
+				id: task.id,
 				categoryId: category.id,
 				title: newTitle,
 				description: newDescription,
-				date: testData.todayPartitionDate.toString(),
-				rank: testData.noDatePartition.firstTask.rank
+				date: taskDate.toString(),
+				rank: task.rank
 			});
 			fetchMock.mockResolvedValue(response);
 
 			const page = render(Page);
-			await openEditTaskDialog(page, testData.noDatePartition.firstTask.title);
-
+			await openEditTaskDialog(page, task.title);
 			await enterTaskTitle(page, newTitle);
 			await enterTaskDescription(page, newDescription);
-
 			const saveButton = page.getByRole('button', { name: 'Save' });
 			await userEvent.click(saveButton);
 
 			await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 			const editTaskDialog = page.queryByRole('dialog', { name: 'Edit Task' });
 			expect(editTaskDialog).not.toBeInTheDocument();
-			const serializedDate = testData.todayPartitionDate.toString();
+			const serializedDate = taskDate.toString();
 			const requestBody = JSON.stringify({
 				title: newTitle,
 				description: newDescription,
 				categoryId: category.id,
 				date: serializedDate,
-				id: testData.noDatePartition.firstTask.id
+				id: task.id
 			});
 			expectRequestUrl(fetchMock, '/api/tasks');
 			expectRequestMethod(fetchMock, 'PUT');
@@ -446,48 +444,50 @@ describe('backlog page tests', () => {
 
 		it('successfully completes a task with a non-today date', async () => {
 			categoryStore.setCategories([category]);
-			addTaskWithDate(testData.nonTodayPastPartitionDate);
+			const task = testData.nonTodayPastPartition.firstTask;
+			datedUntrashedOpenTaskStore.addTask(task);
 
 			const response = new Response(null, { status: 204 });
 			fetchMock.mockResolvedValue(response);
 
 			const page = render(Page);
 			const completeTaskButton = page.getByRole('checkbox', {
-				name: `Mark "${testData.noDatePartition.firstTask.title}" as completed`
+				name: `Mark "${task.title}" as completed`
 			});
 			await userEvent.click(completeTaskButton);
 
 			await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 			const expectedRank = generateKeyBetween(undefined, undefined);
-			const requestUrl = `/api/tasks/${testData.noDatePartition.firstTask.id}/toggle-done?rank=${expectedRank}`;
+			const requestUrl = `/api/tasks/${task.id}/toggle-done?rank=${expectedRank}`;
 			expectRequestUrl(fetchMock, requestUrl);
 			expectRequestMethod(fetchMock, 'PATCH');
 			expectRequestCredentialsMode(fetchMock, 'same-origin');
 			expectRequestBody(fetchMock, undefined);
-			expectTaskNotToBePresent(page, testData.noDatePartition.firstTask.title);
+			expectTaskNotToBePresent(page, task.title);
 		});
 
 		it('successfully completes a task dated today', async () => {
 			categoryStore.setCategories([category]);
-			addTaskWithDate(testData.todayPartitionDate);
+			const task = testData.todayPartition.firstTask;
+			datedUntrashedOpenTaskStore.addTask(task);
 
 			const response = new Response(null, { status: 204 });
 			fetchMock.mockResolvedValue(response);
 
 			const page = render(Page);
 			const completeTaskButton = page.getByRole('checkbox', {
-				name: `Mark "${testData.noDatePartition.firstTask.title}" as completed`
+				name: `Mark "${task.title}" as completed`
 			});
 			await userEvent.click(completeTaskButton);
 
 			await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 			const expectedRank = generateKeyBetween(undefined, undefined);
-			const requestUrl = `/api/tasks/${testData.noDatePartition.firstTask.id}/toggle-done?rank=${expectedRank}`;
+			const requestUrl = `/api/tasks/${task.id}/toggle-done?rank=${expectedRank}`;
 			expectRequestUrl(fetchMock, requestUrl);
 			expectRequestMethod(fetchMock, 'PATCH');
 			expectRequestCredentialsMode(fetchMock, 'same-origin');
 			expectRequestBody(fetchMock, undefined);
-			expectTaskNotToBePresent(page, testData.noDatePartition.firstTask.title);
+			expectTaskNotToBePresent(page, task.title);
 		});
 	});
 
@@ -524,21 +524,22 @@ describe('backlog page tests', () => {
 
 		it('successfully trashes a task with a non-today date', async () => {
 			categoryStore.setCategories([category]);
-			addTaskWithDate(testData.nonTodayPastPartitionDate);
+			const task = testData.nonTodayPastPartition.firstTask;
+			datedUntrashedOpenTaskStore.addTask(task);
 
 			const response = new Response(null, { status: 204 });
 			fetchMock.mockResolvedValue(response);
 
 			const page = render(Page);
 			const moreOptionsButton = page.getByRole('button', {
-				name: `More options for "${testData.noDatePartition.firstTask.title}"`
+				name: `More options for "${task.title}"`
 			});
 			await fireEvent.click(moreOptionsButton);
 			const trashButton = await page.findByRole('button', { name: 'Trash' });
 			await userEvent.click(trashButton);
 
 			await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-			expectRequestPath(fetchMock, `/api/tasks/${testData.noDatePartition.firstTask.id}/trash`);
+			expectRequestPath(fetchMock, `/api/tasks/${task.id}/trash`);
 			const trashedDate = getRequestSearchParameter(fetchMock, 'trashedDate');
 			expect(trashedDate).not.toBeNull();
 			if (trashedDate === null) throw new Error('Expected the trash request to contain a trashedDate.');
@@ -549,26 +550,27 @@ describe('backlog page tests', () => {
 			expectRequestMethod(fetchMock, 'PATCH');
 			expectRequestCredentialsMode(fetchMock, 'same-origin');
 			expectRequestBody(fetchMock, undefined);
-			expectTaskNotToBePresent(page, testData.noDatePartition.firstTask.title);
+			expectTaskNotToBePresent(page, task.title);
 		});
 
 		it('successfully trashes a task dated today', async () => {
 			categoryStore.setCategories([category]);
-			addTaskWithDate(testData.todayPartitionDate);
+			const task = testData.todayPartition.firstTask;
+			datedUntrashedOpenTaskStore.addTask(task);
 
 			const response = new Response(null, { status: 204 });
 			fetchMock.mockResolvedValue(response);
 
 			const page = render(Page);
 			const moreOptionsButton = page.getByRole('button', {
-				name: `More options for "${testData.noDatePartition.firstTask.title}"`
+				name: `More options for "${task.title}"`
 			});
 			await fireEvent.click(moreOptionsButton);
 			const trashButton = await page.findByRole('button', { name: 'Trash' });
 			await userEvent.click(trashButton);
 
 			await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-			expectRequestPath(fetchMock, `/api/tasks/${testData.noDatePartition.firstTask.id}/trash`);
+			expectRequestPath(fetchMock, `/api/tasks/${task.id}/trash`);
 			const trashedDate = getRequestSearchParameter(fetchMock, 'trashedDate');
 			expect(trashedDate).not.toBeNull();
 			if (trashedDate === null) throw new Error('Expected the trash request to contain a trashedDate.');
@@ -579,7 +581,7 @@ describe('backlog page tests', () => {
 			expectRequestMethod(fetchMock, 'PATCH');
 			expectRequestCredentialsMode(fetchMock, 'same-origin');
 			expectRequestBody(fetchMock, undefined);
-			expectTaskNotToBePresent(page, testData.noDatePartition.firstTask.title);
+			expectTaskNotToBePresent(page, task.title);
 		});
 	});
 
@@ -1663,23 +1665,6 @@ async function openCategorySelect(page: RenderResult<typeof Page>): Promise<void
 	const categorySelect = getSelectById(page, 'task-category');
 	categorySelect.focus();
 	await fireEvent.keyDown(categorySelect, { key: 'ArrowDown' });
-}
-
-function addTaskWithDate(
-	date: CalendarDate,
-	id = testData.noDatePartition.firstTask.id,
-	title = testData.noDatePartition.firstTask.title,
-	description = testData.noDatePartition.firstTask.description,
-	rank = testData.noDatePartition.firstTask.rank
-): void {
-	datedUntrashedOpenTaskStore.addTask({
-		id,
-		categoryId: category.id,
-		title,
-		description,
-		date,
-		rank
-	});
 }
 
 function addTasksExceedingMaximumBatchSize(): string[] {
