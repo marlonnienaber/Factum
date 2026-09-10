@@ -1,16 +1,16 @@
-import { fireEvent, render, waitFor, within, type RenderResult } from '@testing-library/svelte';
+import {fireEvent, render, type RenderResult, waitFor, within} from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
-import { getLocalTimeZone, now, parseAbsolute, today, type CalendarDate } from '@internationalized/date';
-import { generateKeyBetween, generateNKeysBetween } from 'fractional-indexing';
-import { toast } from 'svelte-sonner';
-import { SOURCES, TRIGGERS, type DndEvent } from 'svelte-dnd-action';
-import { categoryStore } from '$lib/stores/category-store.svelte';
-import { datedUntrashedDoneTaskStore } from '$lib/stores/dated-untrashed-done-task-store.svelte';
-import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-task-store.svelte';
-import { trashedTaskStore } from '$lib/stores/trashed-task-store.svelte';
-import { undatedTaskStore } from '$lib/stores/undated-task-store.svelte';
-import type { DatedUntrashedOpenTaskResponse } from '$lib/types/responses/dated-untrashed-open-task-response';
-import type { UndatedTaskResponse } from '$lib/types/responses/undated-task-response';
+import {type CalendarDate, getLocalTimeZone, now, parseAbsolute, today} from '@internationalized/date';
+import {generateKeyBetween, generateNKeysBetween} from 'fractional-indexing';
+import {toast} from 'svelte-sonner';
+import {type DndEvent, SOURCES, TRIGGERS} from 'svelte-dnd-action';
+import {categoryStore} from '$lib/stores/category-store.svelte';
+import {datedUntrashedDoneTaskStore} from '$lib/stores/dated-untrashed-done-task-store.svelte';
+import {datedUntrashedOpenTaskStore} from '$lib/stores/dated-untrashed-open-task-store.svelte';
+import {trashedTaskStore} from '$lib/stores/trashed-task-store.svelte';
+import {undatedTaskStore} from '$lib/stores/undated-task-store.svelte';
+import type {DatedUntrashedOpenTaskResponse} from '$lib/types/responses/dated-untrashed-open-task-response';
+import type {UndatedTaskResponse} from '$lib/types/responses/undated-task-response';
 import {
 	expectInputToBeInvalid,
 	expectRequestBody,
@@ -27,7 +27,7 @@ import {
 	getSelectById,
 	getTextareaById
 } from '$lib/utils/testing';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import Page from './+page.svelte';
 
 describe('backlog page tests', () => {
@@ -85,14 +85,14 @@ describe('backlog page tests', () => {
 			expectRequestUrl(fetchMock, `/api/categories/${category.id}`);
 			expectRequestMethod(fetchMock, 'DELETE');
 			expectRequestCredentialsMode(fetchMock, 'same-origin');
-			expectRequestBody(fetchMock);
+			expectRequestBody(fetchMock, undefined);
 			await waitFor(() => expect(categorySelect).toHaveTextContent('None chosen'));
 			expect(categoryStore.categories).not.toContainEqual(category);
 		});
 
 		it('shows an error toast when deleting a referenced category', async () => {
-			addCategory();
-			addTaskWithoutDate();
+			categoryStore.setCategories([category]);
+			undatedTaskStore.addTask(testData.noDatePartition.firstTask);
 
 			const errorMessage = 'Category cannot be deleted while it is referenced by tasks.';
 			const errorResponse = getResponse({ errorCode: 'category_still_referenced', message: errorMessage }, 409);
@@ -108,7 +108,7 @@ describe('backlog page tests', () => {
 			expectRequestUrl(fetchMock, `/api/categories/${category.id}`);
 			expectRequestMethod(fetchMock, 'DELETE');
 			expectRequestCredentialsMode(fetchMock, 'same-origin');
-			expectRequestBody(fetchMock);
+			expectRequestBody(fetchMock, undefined);
 			expect(toastErrorMock).toHaveBeenCalledOnce();
 			expect(toastErrorMock).toHaveBeenCalledWith(errorMessage);
 			expect(categoryStore.categories).toContainEqual(category);
@@ -118,7 +118,7 @@ describe('backlog page tests', () => {
 
 	describe('task creation', () => {
 		it('reacts correctly to missing task title', async () => {
-			addCategory();
+			categoryStore.setCategories([category]);
 			const page = render(Page);
 			await openCreateTaskDialog(page);
 			await selectCategory(page, category.title);
@@ -133,7 +133,7 @@ describe('backlog page tests', () => {
 		});
 
 		it('reacts correctly to too long task title', async () => {
-			addCategory();
+			categoryStore.setCategories([category]);
 			const page = render(Page);
 			await openCreateTaskDialog(page);
 			await selectCategory(page, category.title);
@@ -148,7 +148,7 @@ describe('backlog page tests', () => {
 		});
 
 		it('reacts correctly to too long task description', async () => {
-			addCategory();
+			categoryStore.setCategories([category]);
 			const page = render(Page);
 			await openCreateTaskDialog(page);
 			await selectCategory(page, category.title);
@@ -190,7 +190,7 @@ describe('backlog page tests', () => {
 		});
 
 		it('successfully adds a task', async () => {
-			addCategory();
+			categoryStore.setCategories([category]);
 			const response = getResponse({ id: 42, rank: 'a0' }, 201);
 			fetchMock.mockResolvedValue(response);
 
@@ -229,8 +229,8 @@ describe('backlog page tests', () => {
 
 	describe('task editing', () => {
 		it('reacts correctly to missing task title', async () => {
-			addCategory();
-			addTaskWithoutDate();
+			categoryStore.setCategories([category]);
+			undatedTaskStore.addTask(testData.noDatePartition.firstTask);
 
 			const page = render(Page);
 			await openEditTaskDialog(page, testData.noDatePartition.firstTask.title);
@@ -244,8 +244,8 @@ describe('backlog page tests', () => {
 		});
 
 		it('reacts correctly to too long task title', async () => {
-			addCategory();
-			addTaskWithoutDate();
+			categoryStore.setCategories([category]);
+			undatedTaskStore.addTask(testData.noDatePartition.firstTask);
 
 			const page = render(Page);
 			await openEditTaskDialog(page, testData.noDatePartition.firstTask.title);
@@ -260,8 +260,8 @@ describe('backlog page tests', () => {
 		});
 
 		it('reacts correctly to too long task description', async () => {
-			addCategory();
-			addTaskWithoutDate();
+			categoryStore.setCategories([category]);
+			undatedTaskStore.addTask(testData.noDatePartition.firstTask);
 
 			const page = render(Page);
 			await openEditTaskDialog(page, testData.noDatePartition.firstTask.title);
@@ -276,8 +276,8 @@ describe('backlog page tests', () => {
 		});
 
 		it('cancels and closes the edit-task dialog', async () => {
-			addCategory();
-			addTaskWithoutDate();
+			categoryStore.setCategories([category]);
+			undatedTaskStore.addTask(testData.noDatePartition.firstTask);
 
 			const page = render(Page);
 			await openEditTaskDialog(page, testData.noDatePartition.firstTask.title);
@@ -290,8 +290,8 @@ describe('backlog page tests', () => {
 		});
 
 		it('successfully edits a task without a date', async () => {
-			addCategory();
-			addTaskWithoutDate();
+			categoryStore.setCategories([category]);
+			undatedTaskStore.addTask(testData.noDatePartition.firstTask);
 			const newTitle = 'Book the hiking trail transfer';
 			const newDescription = 'Reserve the earliest train and the return connection.';
 
@@ -332,7 +332,7 @@ describe('backlog page tests', () => {
 		});
 
 		it('successfully edits a task with a non-today date', async () => {
-			addCategory();
+			categoryStore.setCategories([category]);
 			addTaskWithDate(testData.nonTodayPastPartitionDate);
 			const newTitle = 'Book the hiking trail transfer';
 			const newDescription = 'Reserve the earliest train and the return connection.';
@@ -377,7 +377,7 @@ describe('backlog page tests', () => {
 		});
 
 		it('successfully edits a task dated today', async () => {
-			addCategory();
+			categoryStore.setCategories([category]);
 			addTaskWithDate(testData.todayPartitionDate);
 			const newTitle = 'Book the hiking trail transfer';
 			const newDescription = 'Reserve the earliest train and the return connection.';
@@ -424,8 +424,8 @@ describe('backlog page tests', () => {
 
 	describe('task completion', () => {
 		it('successfully completes a task without a date', async () => {
-			addCategory();
-			addTaskWithoutDate();
+			categoryStore.setCategories([category]);
+			undatedTaskStore.addTask(testData.noDatePartition.firstTask);
 
 			const response = new Response(null, { status: 204 });
 			fetchMock.mockResolvedValue(response);
@@ -442,12 +442,12 @@ describe('backlog page tests', () => {
 			expectRequestUrl(fetchMock, requestUrl);
 			expectRequestMethod(fetchMock, 'PATCH');
 			expectRequestCredentialsMode(fetchMock, 'same-origin');
-			expectRequestBody(fetchMock);
+			expectRequestBody(fetchMock, undefined);
 			expectTaskNotToBePresent(page, testData.noDatePartition.firstTask.title);
 		});
 
 		it('successfully completes a task with a non-today date', async () => {
-			addCategory();
+			categoryStore.setCategories([category]);
 			addTaskWithDate(testData.nonTodayPastPartitionDate);
 
 			const response = new Response(null, { status: 204 });
@@ -465,12 +465,12 @@ describe('backlog page tests', () => {
 			expectRequestUrl(fetchMock, requestUrl);
 			expectRequestMethod(fetchMock, 'PATCH');
 			expectRequestCredentialsMode(fetchMock, 'same-origin');
-			expectRequestBody(fetchMock);
+			expectRequestBody(fetchMock, undefined);
 			expectTaskNotToBePresent(page, testData.noDatePartition.firstTask.title);
 		});
 
 		it('successfully completes a task dated today', async () => {
-			addCategory();
+			categoryStore.setCategories([category]);
 			addTaskWithDate(testData.todayPartitionDate);
 
 			const response = new Response(null, { status: 204 });
@@ -488,15 +488,15 @@ describe('backlog page tests', () => {
 			expectRequestUrl(fetchMock, requestUrl);
 			expectRequestMethod(fetchMock, 'PATCH');
 			expectRequestCredentialsMode(fetchMock, 'same-origin');
-			expectRequestBody(fetchMock);
+			expectRequestBody(fetchMock, undefined);
 			expectTaskNotToBePresent(page, testData.noDatePartition.firstTask.title);
 		});
 	});
 
 	describe('task trashing', () => {
 		it('successfully trashes a task without a date', async () => {
-			addCategory();
-			addTaskWithoutDate();
+			categoryStore.setCategories([category]);
+			undatedTaskStore.addTask(testData.noDatePartition.firstTask);
 
 			const response = new Response(null, { status: 204 });
 			fetchMock.mockResolvedValue(response);
@@ -520,12 +520,12 @@ describe('backlog page tests', () => {
 			expect(dateDifference).toBeLessThanOrEqual(maximumTrashTimestampDifferenceMilliseconds);
 			expectRequestMethod(fetchMock, 'PATCH');
 			expectRequestCredentialsMode(fetchMock, 'same-origin');
-			expectRequestBody(fetchMock);
+			expectRequestBody(fetchMock, undefined);
 			expectTaskNotToBePresent(page, testData.noDatePartition.firstTask.title);
 		});
 
 		it('successfully trashes a task with a non-today date', async () => {
-			addCategory();
+			categoryStore.setCategories([category]);
 			addTaskWithDate(testData.nonTodayPastPartitionDate);
 
 			const response = new Response(null, { status: 204 });
@@ -550,12 +550,12 @@ describe('backlog page tests', () => {
 			expect(dateDifference).toBeLessThanOrEqual(maximumTrashTimestampDifferenceMilliseconds);
 			expectRequestMethod(fetchMock, 'PATCH');
 			expectRequestCredentialsMode(fetchMock, 'same-origin');
-			expectRequestBody(fetchMock);
+			expectRequestBody(fetchMock, undefined);
 			expectTaskNotToBePresent(page, testData.noDatePartition.firstTask.title);
 		});
 
 		it('successfully trashes a task dated today', async () => {
-			addCategory();
+			categoryStore.setCategories([category]);
 			addTaskWithDate(testData.todayPartitionDate);
 
 			const response = new Response(null, { status: 204 });
@@ -580,14 +580,14 @@ describe('backlog page tests', () => {
 			expect(dateDifference).toBeLessThanOrEqual(maximumTrashTimestampDifferenceMilliseconds);
 			expectRequestMethod(fetchMock, 'PATCH');
 			expectRequestCredentialsMode(fetchMock, 'same-origin');
-			expectRequestBody(fetchMock);
+			expectRequestBody(fetchMock, undefined);
 			expectTaskNotToBePresent(page, testData.noDatePartition.firstTask.title);
 		});
 	});
 
 	describe('task batch operations', () => {
 		it('successfully completes all tasks', async () => {
-			addCategory();
+			categoryStore.setCategories([category]);
 			const tasks = [
 				testData.noDatePartition.firstTask,
 				testData.nonTodayPastPartition.secondTask,
@@ -628,7 +628,7 @@ describe('backlog page tests', () => {
 		});
 
 		it('successfully trashes all tasks', async () => {
-			addCategory();
+			categoryStore.setCategories([category]);
 			const tasks = [
 				testData.noDatePartition.firstTask,
 				testData.nonTodayPastPartition.secondTask,
@@ -670,8 +670,8 @@ describe('backlog page tests', () => {
 		});
 
 		it('successfully cancels a batch operation', async () => {
-			addCategory();
-			addTaskWithoutDate();
+			categoryStore.setCategories([category]);
+			undatedTaskStore.addTask(testData.noDatePartition.firstTask);
 
 			const page = render(Page);
 			await clickOnSelectTasksButton(page);
@@ -690,8 +690,8 @@ describe('backlog page tests', () => {
 		});
 
 		it('disables batch actions when no tasks are selected', async () => {
-			addCategory();
-			addTaskWithoutDate();
+			categoryStore.setCategories([category]);
+			undatedTaskStore.addTask(testData.noDatePartition.firstTask);
 
 			const page = render(Page);
 			await clickOnSelectTasksButton(page);
@@ -704,7 +704,7 @@ describe('backlog page tests', () => {
 		});
 
 		it('disables batch trash when more than 50 tasks are selected', async () => {
-			addCategory();
+			categoryStore.setCategories([category]);
 			const taskTitles = addTasksExceedingMaximumBatchSize();
 
 			const page = render(Page);
@@ -718,7 +718,7 @@ describe('backlog page tests', () => {
 		});
 
 		it('disables batch completion when more than 50 tasks are selected', async () => {
-			addCategory();
+			categoryStore.setCategories([category]);
 			const taskTitles = addTasksExceedingMaximumBatchSize();
 
 			const page = render(Page);
@@ -735,7 +735,7 @@ describe('backlog page tests', () => {
 	describe('drag and drop', () => {
 		describe('within the no-date partition', () => {
 			it('moves a task to the first index', async () => {
-				addCategory();
+				categoryStore.setCategories([category]);
 				undatedTaskStore.addTasks(testData.noDatePartition.tasks);
 
 				const response = new Response(null, { status: 204 });
@@ -762,7 +762,7 @@ describe('backlog page tests', () => {
 			});
 
 			it('moves a task to the middle index', async () => {
-				addCategory();
+				categoryStore.setCategories([category]);
 				undatedTaskStore.addTasks(testData.noDatePartition.tasks);
 
 				const response = new Response(null, { status: 204 });
@@ -792,7 +792,7 @@ describe('backlog page tests', () => {
 			});
 
 			it('moves a task to the last index', async () => {
-				addCategory();
+				categoryStore.setCategories([category]);
 				undatedTaskStore.addTasks(testData.noDatePartition.tasks);
 
 				const response = new Response(null, { status: 204 });
@@ -821,7 +821,7 @@ describe('backlog page tests', () => {
 
 		describe('within the today partition', () => {
 			it('moves a task to the first index', async () => {
-				addCategory();
+				categoryStore.setCategories([category]);
 				datedUntrashedOpenTaskStore.addTasks(testData.todayPartition.tasks);
 
 				const response = new Response(null, { status: 204 });
@@ -852,7 +852,7 @@ describe('backlog page tests', () => {
 			});
 
 			it('moves a task to the middle index', async () => {
-				addCategory();
+				categoryStore.setCategories([category]);
 				datedUntrashedOpenTaskStore.addTasks(testData.todayPartition.tasks);
 
 				const response = new Response(null, { status: 204 });
@@ -886,7 +886,7 @@ describe('backlog page tests', () => {
 			});
 
 			it('moves a task to the last index', async () => {
-				addCategory();
+				categoryStore.setCategories([category]);
 				datedUntrashedOpenTaskStore.addTasks(testData.todayPartition.tasks);
 
 				const response = new Response(null, { status: 204 });
@@ -919,7 +919,7 @@ describe('backlog page tests', () => {
 
 		describe('within the non-today-date partition', () => {
 			it('moves a task to the first index', async () => {
-				addCategory();
+				categoryStore.setCategories([category]);
 				datedUntrashedOpenTaskStore.addTasks(testData.nonTodayPastPartition.tasks);
 
 				const response = new Response(null, { status: 204 });
@@ -950,7 +950,7 @@ describe('backlog page tests', () => {
 			});
 
 			it('moves a task to the middle index', async () => {
-				addCategory();
+				categoryStore.setCategories([category]);
 				datedUntrashedOpenTaskStore.addTasks(testData.nonTodayPastPartition.tasks);
 
 				const response = new Response(null, { status: 204 });
@@ -984,7 +984,7 @@ describe('backlog page tests', () => {
 			});
 
 			it('moves a task to the last index', async () => {
-				addCategory();
+				categoryStore.setCategories([category]);
 				datedUntrashedOpenTaskStore.addTasks(testData.nonTodayPastPartition.tasks);
 
 				const response = new Response(null, { status: 204 });
@@ -1017,7 +1017,7 @@ describe('backlog page tests', () => {
 
 		describe('between different non-today date groups', () => {
 			it('moves a task to the first index', async () => {
-				addCategory();
+				categoryStore.setCategories([category]);
 				datedUntrashedOpenTaskStore.addTasks(testData.nonTodayPastPartition.tasks);
 				datedUntrashedOpenTaskStore.addTasks(testData.nonTodayFuturePartition.tasks);
 
@@ -1054,7 +1054,7 @@ describe('backlog page tests', () => {
 			});
 
 			it('moves a task to the middle index', async () => {
-				addCategory();
+				categoryStore.setCategories([category]);
 				datedUntrashedOpenTaskStore.addTasks(testData.nonTodayPastPartition.tasks);
 				datedUntrashedOpenTaskStore.addTasks(testData.nonTodayFuturePartition.tasks);
 
@@ -1094,7 +1094,7 @@ describe('backlog page tests', () => {
 			});
 
 			it('moves a task to the last index', async () => {
-				addCategory();
+				categoryStore.setCategories([category]);
 				datedUntrashedOpenTaskStore.addTasks(testData.nonTodayPastPartition.tasks);
 				datedUntrashedOpenTaskStore.addTasks(testData.nonTodayFuturePartition.tasks);
 
@@ -1168,7 +1168,7 @@ describe('backlog page tests', () => {
 			])(
 				'moves a task to the %s index of the non-today-date partition',
 				async (_, destinationDate, destinationDateLabel, destinationTasks, reorderedTasks, previousRank, nextRank) => {
-					addCategory();
+					categoryStore.setCategories([category]);
 					undatedTaskStore.addTask(testData.noDatePartition.thirdTask);
 					datedUntrashedOpenTaskStore.addTasks(destinationTasks);
 
@@ -1229,7 +1229,7 @@ describe('backlog page tests', () => {
 			])(
 				'moves a task to the %s index of the today partition',
 				async (_, destinationTasks, reorderedTasks, previousRank, nextRank) => {
-					addCategory();
+					categoryStore.setCategories([category]);
 					undatedTaskStore.addTask(testData.noDatePartition.thirdTask);
 					datedUntrashedOpenTaskStore.addTasks(destinationTasks);
 
@@ -1292,7 +1292,7 @@ describe('backlog page tests', () => {
 			])(
 				'moves a task to the %s index of the no-date partition',
 				async (_, destinationTasks, reorderedTasks, previousRank, nextRank) => {
-					addCategory();
+					categoryStore.setCategories([category]);
 					datedUntrashedOpenTaskStore.addTask(testData.nonTodayPastPartition.thirdTask);
 					undatedTaskStore.addTasks(destinationTasks);
 
@@ -1349,7 +1349,7 @@ describe('backlog page tests', () => {
 			])(
 				'moves a task to the %s index of the today partition',
 				async (_, destinationTasks, reorderedTasks, previousRank, nextRank) => {
-					addCategory();
+					categoryStore.setCategories([category]);
 					datedUntrashedOpenTaskStore.addTask(testData.nonTodayPastPartition.thirdTask);
 					datedUntrashedOpenTaskStore.addTasks(destinationTasks);
 
@@ -1412,7 +1412,7 @@ describe('backlog page tests', () => {
 			])(
 				'moves a task to the %s index of the no-date partition',
 				async (_, destinationTasks, reorderedTasks, previousRank, nextRank) => {
-					addCategory();
+					categoryStore.setCategories([category]);
 					datedUntrashedOpenTaskStore.addTask(testData.todayPartition.thirdTask);
 					undatedTaskStore.addTasks(destinationTasks);
 
@@ -1469,7 +1469,7 @@ describe('backlog page tests', () => {
 			])(
 				'moves a task to the %s index of the non-today-date partition',
 				async (_, destinationTasks, reorderedTasks, previousRank, nextRank) => {
-					addCategory();
+					categoryStore.setCategories([category]);
 					datedUntrashedOpenTaskStore.addTask(testData.todayPartition.thirdTask);
 					datedUntrashedOpenTaskStore.addTasks(destinationTasks);
 
@@ -1665,25 +1665,6 @@ async function openCategorySelect(page: RenderResult<typeof Page>): Promise<void
 	const categorySelect = getSelectById(page, 'task-category');
 	categorySelect.focus();
 	await fireEvent.keyDown(categorySelect, { key: 'ArrowDown' });
-}
-
-function addCategory(): void {
-	categoryStore.setCategories([category]);
-}
-
-function addTaskWithoutDate(
-	id = testData.noDatePartition.firstTask.id,
-	title = testData.noDatePartition.firstTask.title,
-	description = testData.noDatePartition.firstTask.description,
-	rank = testData.noDatePartition.firstTask.rank
-): void {
-	undatedTaskStore.addTask({
-		id,
-		categoryId: category.id,
-		title,
-		description,
-		rank
-	});
 }
 
 function addTaskWithDate(

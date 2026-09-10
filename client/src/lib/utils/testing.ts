@@ -114,7 +114,7 @@ export function expectRequestCredentialsMode(fetchMock: ReturnType<typeof vi.fn>
 	expect(requestOptions.credentials).toBe(expectedMode);
 }
 
-export function expectRequestBody(fetchMock: ReturnType<typeof vi.fn>, expectedBody?: string): void {
+export function expectRequestBody(fetchMock: ReturnType<typeof vi.fn>, expectedBody: string | undefined): void {
 	const requestOptions = fetchMock.mock.calls[0]?.[1] as RequestInit;
 	expect(requestOptions.body).toBe(expectedBody);
 }
