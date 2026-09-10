@@ -13,9 +13,9 @@ import { trashedTaskStore } from '$lib/stores/trashed-task-store.svelte';
 import { undatedTaskStore } from '$lib/stores/undated-task-store.svelte';
 import type { BatchTrashTasksRequest } from '$lib/types/requests/batch-trash-tasks-request';
 import type { BatchUpdateDoneRequest } from '$lib/types/requests/batch-update-done-request';
-import type { ChangeTaskDateAndOrRankRequest } from '$lib/types/requests/change-task-date-and-or-rank-request';
 import type { CreateTaskRequest } from '$lib/types/requests/create-task-request';
 import type { DatedUntrashedOpenTasksCursor } from '$lib/types/requests/dated-untrashed-open-tasks-cursor';
+import type { TaskDragAndDropRequest } from '$lib/types/requests/task-drag-and-drop-request';
 import type { UpdateTaskRequest } from '$lib/types/requests/update-task-request';
 import { BatchCompleteResponseSchema, type BatchCompleteResponse } from '$lib/types/responses/batch-complete-response';
 import { CreateTaskResponseSchema, type CreateTaskResponse } from '$lib/types/responses/create-task-response';
@@ -24,8 +24,9 @@ import {
 	type DatedUntrashedOpenTaskResponse
 } from '$lib/types/responses/dated-untrashed-open-task-response';
 import type { TrashedTaskResponse } from '$lib/types/responses/trashed-task-response';
+import { TaskDragAndDropResponseSchema, type TaskDragAndDropResponse } from '$lib/types/responses/task-drag-and-drop-response';
 import { UndatedTaskResponseSchema, type UndatedTaskResponse } from '$lib/types/responses/undated-task-response';
-import { getLocalTimeZone, now, today, type CalendarDate, type ZonedDateTime } from '@internationalized/date';
+import { getLocalTimeZone, now, today, type ZonedDateTime } from '@internationalized/date';
 import { generateKeyBetween } from 'fractional-indexing';
 import { z } from 'zod';
 
@@ -238,12 +239,7 @@ async function trashTasks(taskIds: number[]): Promise<boolean> {
 	}
 }
 
-async function changeTaskDateAndOrRank(
-	id: number,
-	newDate: CalendarDate | undefined,
-	previousRank: string | undefined,
-	nextRank: string | undefined
-): Promise<void> {
+async function dragAndDropTask(id: number, request: TaskDragAndDropRequest): Promise<void> {
 	if (taskMutationBlocked) return;
 
 	const undatedTask = undatedTaskStore.undatedTasks.find((task) => task.id === id);
@@ -251,33 +247,22 @@ async function changeTaskDateAndOrRank(
 	const task = undatedTask ?? datedTask;
 	if (!task) return;
 
-	const rank = generateKeyBetween(previousRank, nextRank);
-	const request: ChangeTaskDateAndOrRankRequest = { id, date: newDate, rank };
-
 	taskMutationLoading = true;
 
-	undatedTaskStore.removeTask(id);
-	datedUntrashedOpenTaskStore.removeTask(id);
-	if (newDate) {
-		datedUntrashedOpenTaskStore.addTask({ ...task, date: newDate, rank });
-	} else {
-		undatedTaskStore.addTask({
-			id: task.id,
-			categoryId: task.categoryId,
-			title: task.title,
-			description: task.description,
-			rank
-		});
-	}
-
 	try {
-		const networkCall = await jsonPatchWithBodyWithoutResponse('/api/tasks/change-date-and-or-rank', request);
+		const networkCall: NetworkCall<TaskDragAndDropResponse> = await jsonPatchWithBodyWithResponse(
+			`/api/tasks/${id}/drag-and-drop`,
+			request,
+			TaskDragAndDropResponseSchema
+		);
+		if (networkCall.status === 'failed') return;
 
-		if (networkCall.status === 'failed') {
-			datedUntrashedOpenTaskStore.removeTask(id);
-			undatedTaskStore.removeTask(id);
-			if (datedTask) datedUntrashedOpenTaskStore.addTask(datedTask);
-			if (undatedTask) undatedTaskStore.addTask(undatedTask);
+		undatedTaskStore.removeTask(id);
+		datedUntrashedOpenTaskStore.removeTask(id);
+		if (request.date) {
+			datedUntrashedOpenTaskStore.addTask({ ...task, date: request.date, rank: networkCall.result.rank });
+		} else {
+			undatedTaskStore.addTask({ ...task, rank: networkCall.result.rank });
 		}
 	} finally {
 		taskMutationLoading = false;
@@ -299,5 +284,5 @@ export const taskService = {
 	completeTasks,
 	trashTask,
 	trashTasks,
-	changeTaskDateAndOrRank
+	dragAndDropTask
 };

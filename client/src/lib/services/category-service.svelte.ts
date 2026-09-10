@@ -7,10 +7,7 @@ import {
 import { categoryStore } from '$lib/stores/category-store.svelte';
 import type { CreateNewCategoryRequest } from '$lib/types/requests/create-new-category-request';
 import { CategoryResponseSchema, type CategoryResponse } from '$lib/types/responses/category-response';
-import {
-	CreateCategoryResponseSchema,
-	type CreateCategoryResponse
-} from '$lib/types/responses/create-category-response';
+import { CreateCategoryResponseSchema, type CreateCategoryResponse } from '$lib/types/responses/create-category-response';
 import { z } from 'zod';
 
 let loading = $state(false);

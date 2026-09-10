@@ -13,13 +13,15 @@ import (
 	"github.com/marlonnienaber/Factum/server/internal/validation"
 )
 
-func NewChangeTaskDateAndOrRankHandler(taskService *services.TaskService) shared.AuthenticatedHandlerFunc {
+func NewTaskDragAndDropHandler(taskService *services.TaskService) shared.AuthenticatedHandlerFunc {
 	return func(c *shared.AuthenticatedContext) {
-		slog.Info("/tasks/change-date-and-or-rank [PATCH]")
+		taskId, taskIdErr := shared.GetRequiredInt64PathVariable(c, "id")
+		if taskIdErr != nil {
+			c.JSON(http.StatusBadRequest, invalidTaskIdErrorResponse)
+			return
+		}
 
-		unexpectedErrorLogMessage := "handling change task date and/or rank failed"
-
-		var request transport.ChangeTaskDateAndOrRankRequest
+		var request transport.TaskDragAndDropRequest
 		if err := c.ShouldBindJSON(&request); err != nil {
 			var validationErrors validator.ValidationErrors
 			if errors.As(err, &validationErrors) {
@@ -30,26 +32,23 @@ func NewChangeTaskDateAndOrRankHandler(taskService *services.TaskService) shared
 			return
 		}
 
-		err := taskService.ChangeTaskDateAndOrRank(c.UserId, request)
+		response, err := taskService.DragAndDropTask(c.UserId, taskId, request)
 		if err != nil {
 			switch {
+			case errors.Is(err, services.ErrPreviousTaskNotFound):
+				c.JSON(http.StatusNotFound, previousTaskNotFoundErrorResponse)
 			case errors.Is(err, stores.ErrTaskNotFound):
 				c.JSON(http.StatusNotFound, taskNotFoundErrorResponse)
-				return
-			case errors.Is(err, services.ErrTaskDateAndOrRankChangeNotAllowed):
-				c.JSON(http.StatusBadRequest, taskDateAndOrRankChangeNotAllowedErrorResponse)
-				return
-			case errors.Is(err, stores.ErrTaskRankAlreadyExists):
-				c.JSON(http.StatusConflict, taskRankAlreadyExistsErrorResponse)
-				return
+			case errors.Is(err, services.ErrRequestDataRepresentInvalidDragAndDropGesture):
+				c.JSON(http.StatusBadRequest, invalidDateAndPreviousTaskIdCombinationErrorResponse)
 			default:
-				slog.Error(unexpectedErrorLogMessage, "error", err)
+				slog.Error("handling task drag and drop failed", "error", err)
 				c.JSON(http.StatusInternalServerError, shared.UnexpectedErrorResponse)
-				return
 			}
+			return
 		}
 
-		c.Status(http.StatusNoContent)
+		c.JSON(http.StatusOK, response)
 	}
 }
 
@@ -58,9 +57,14 @@ var taskNotFoundErrorResponse = shared.ErrorResponse{
 	Message:   "No task exists for the provided id.",
 }
 
-var taskDateAndOrRankChangeNotAllowedErrorResponse = shared.ErrorResponse{
-	ErrorCode: "task_date_and_or_rank_change_not_allowed",
-	Message:   "This date and/or rank transition is not allowed.",
+var previousTaskNotFoundErrorResponse = shared.ErrorResponse{
+	ErrorCode: "previous_task_not_found",
+	Message:   "No previous task exists for the provided previousTaskId.",
+}
+
+var invalidDateAndPreviousTaskIdCombinationErrorResponse = shared.ErrorResponse{
+	ErrorCode: "invalid_date_and_previous_task_id_combination",
+	Message:   "The provided date and previousTaskId do not represent an allowed drag and drop gesture.",
 }
 
 var taskRankAlreadyExistsErrorResponse = shared.ErrorResponse{

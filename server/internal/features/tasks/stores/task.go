@@ -251,6 +251,38 @@ func (store *TaskStore) UpdateTaskDateAndRank(transaction *sqlx.Tx, task *domain
 	return nil
 }
 
+func (store *TaskStore) GetRankOfSuccessorTaskForTaskDragAndDrop(
+	transaction *sqlx.Tx,
+	userId int64,
+	taskId int64,
+	taskDate *shared.Date,
+	taskDone bool,
+	previousTaskRank string,
+) (string, error) {
+	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("retrieving next task rank failed")
+
+	var rank string
+	err := transaction.Get(&rank, `
+		SELECT rank
+		FROM tasks
+		WHERE user_id = $1
+		  AND id <> $2
+		  AND date IS NOT DISTINCT FROM $3
+		  AND done = $4
+		  AND trashed_date IS NULL
+		  AND rank > $5
+		ORDER BY rank
+		LIMIT 1
+	`, userId, taskId, taskDate, taskDone, previousTaskRank)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	if err != nil {
+		return "", wrapUnexpectedError(err)
+	}
+	return rank, nil
+}
+
 func (store *TaskStore) UpdateTaskTrashedState(transaction *sqlx.Tx, task *domain.Task) error {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("updating task trash state failed")
 

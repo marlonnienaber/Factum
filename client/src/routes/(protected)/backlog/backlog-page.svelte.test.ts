@@ -1,16 +1,16 @@
-import {fireEvent, render, type RenderResult, waitFor, within} from '@testing-library/svelte';
+import { fireEvent, render, type RenderResult, waitFor, within } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
-import {getLocalTimeZone, now, parseAbsolute, today} from '@internationalized/date';
-import {generateKeyBetween, generateNKeysBetween} from 'fractional-indexing';
-import {toast} from 'svelte-sonner';
-import {type DndEvent, SOURCES, TRIGGERS} from 'svelte-dnd-action';
-import {categoryStore} from '$lib/stores/category-store.svelte';
-import {datedUntrashedDoneTaskStore} from '$lib/stores/dated-untrashed-done-task-store.svelte';
-import {datedUntrashedOpenTaskStore} from '$lib/stores/dated-untrashed-open-task-store.svelte';
-import {trashedTaskStore} from '$lib/stores/trashed-task-store.svelte';
-import {undatedTaskStore} from '$lib/stores/undated-task-store.svelte';
-import type {DatedUntrashedOpenTaskResponse} from '$lib/types/responses/dated-untrashed-open-task-response';
-import type {UndatedTaskResponse} from '$lib/types/responses/undated-task-response';
+import { getLocalTimeZone, now, parseAbsolute, today } from '@internationalized/date';
+import { generateKeyBetween, generateNKeysBetween } from 'fractional-indexing';
+import { toast } from 'svelte-sonner';
+import { type DndEvent, SOURCES, TRIGGERS } from 'svelte-dnd-action';
+import { categoryStore } from '$lib/stores/category-store.svelte';
+import { datedUntrashedDoneTaskStore } from '$lib/stores/dated-untrashed-done-task-store.svelte';
+import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-task-store.svelte';
+import { trashedTaskStore } from '$lib/stores/trashed-task-store.svelte';
+import { undatedTaskStore } from '$lib/stores/undated-task-store.svelte';
+import type { DatedUntrashedOpenTaskResponse } from '$lib/types/responses/dated-untrashed-open-task-response';
+import type { UndatedTaskResponse } from '$lib/types/responses/undated-task-response';
 import {
 	expectInputToBeInvalid,
 	expectRequestBody,
@@ -27,7 +27,7 @@ import {
 	getSelectById,
 	getTextareaById
 } from '$lib/utils/testing';
-import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import Page from './+page.svelte';
 
 describe('backlog page tests', () => {
@@ -97,7 +97,11 @@ describe('backlog page tests', () => {
 			expectRequestCredentialsMode(fetchMock, 'same-origin');
 			expectRequestBody(fetchMock, undefined);
 			await waitFor(() => expect(categorySelect).toHaveTextContent('None chosen'));
-			expect(categoryStore.categories).not.toContainEqual({ id: newCategoryId, title: newCategoryTitle, color: newCategoryColor });
+			expect(categoryStore.categories).not.toContainEqual({
+				id: newCategoryId,
+				title: newCategoryTitle,
+				color: newCategoryColor
+			});
 		});
 
 		it('shows an error toast when deleting a referenced category', async () => {
@@ -693,7 +697,8 @@ describe('backlog page tests', () => {
 	describe('drag and drop', () => {
 		describe('within the no-date partition', () => {
 			it('moves a task to the first index', async () => {
-				const response = new Response(null, { status: 204 });
+				const expectedRank = generateKeyBetween(undefined, testData.noDatePartition.firstTask.rank);
+				const response = getResponse({ rank: expectedRank });
 				fetchMock.mockResolvedValue(response);
 
 				const page = render(Page);
@@ -706,9 +711,8 @@ describe('backlog page tests', () => {
 				await dropTask(tasksWithoutDateList, reorderedTasks, testData.noDatePartition.thirdTask.id);
 
 				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-				const expectedRank = generateKeyBetween(undefined, testData.noDatePartition.firstTask.rank);
-				const requestBody = JSON.stringify({ id: testData.noDatePartition.thirdTask.id, rank: expectedRank });
-				expectRequestUrl(fetchMock, '/api/tasks/change-date-and-or-rank');
+				const requestBody = JSON.stringify({});
+				expectRequestUrl(fetchMock, `/api/tasks/${testData.noDatePartition.thirdTask.id}/drag-and-drop`);
 				expectRequestMethod(fetchMock, 'PATCH');
 				expectRequestCredentialsMode(fetchMock, 'same-origin');
 				expectRequestBody(fetchMock, requestBody);
@@ -717,7 +721,11 @@ describe('backlog page tests', () => {
 			});
 
 			it('moves a task to the middle index', async () => {
-				const response = new Response(null, { status: 204 });
+				const expectedRank = generateKeyBetween(
+					testData.noDatePartition.firstTask.rank,
+					testData.noDatePartition.secondTask.rank
+				);
+				const response = getResponse({ rank: expectedRank });
 				fetchMock.mockResolvedValue(response);
 
 				const page = render(Page);
@@ -730,12 +738,8 @@ describe('backlog page tests', () => {
 				await dropTask(tasksWithoutDateList, reorderedTasks, testData.noDatePartition.thirdTask.id);
 
 				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-				const expectedRank = generateKeyBetween(
-					testData.noDatePartition.firstTask.rank,
-					testData.noDatePartition.secondTask.rank
-				);
-				const requestBody = JSON.stringify({ id: testData.noDatePartition.thirdTask.id, rank: expectedRank });
-				expectRequestUrl(fetchMock, '/api/tasks/change-date-and-or-rank');
+				const requestBody = JSON.stringify({ previousTaskId: testData.noDatePartition.firstTask.id });
+				expectRequestUrl(fetchMock, `/api/tasks/${testData.noDatePartition.thirdTask.id}/drag-and-drop`);
 				expectRequestMethod(fetchMock, 'PATCH');
 				expectRequestCredentialsMode(fetchMock, 'same-origin');
 				expectRequestBody(fetchMock, requestBody);
@@ -744,7 +748,8 @@ describe('backlog page tests', () => {
 			});
 
 			it('moves a task to the last index', async () => {
-				const response = new Response(null, { status: 204 });
+				const expectedRank = generateKeyBetween(testData.noDatePartition.thirdTask.rank, undefined);
+				const response = getResponse({ rank: expectedRank });
 				fetchMock.mockResolvedValue(response);
 
 				const page = render(Page);
@@ -757,9 +762,8 @@ describe('backlog page tests', () => {
 				await dropTask(tasksWithoutDateList, reorderedTasks, testData.noDatePartition.firstTask.id);
 
 				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-				const expectedRank = generateKeyBetween(testData.noDatePartition.thirdTask.rank, undefined);
-				const requestBody = JSON.stringify({ id: testData.noDatePartition.firstTask.id, rank: expectedRank });
-				expectRequestUrl(fetchMock, '/api/tasks/change-date-and-or-rank');
+				const requestBody = JSON.stringify({ previousTaskId: testData.noDatePartition.thirdTask.id });
+				expectRequestUrl(fetchMock, `/api/tasks/${testData.noDatePartition.firstTask.id}/drag-and-drop`);
 				expectRequestMethod(fetchMock, 'PATCH');
 				expectRequestCredentialsMode(fetchMock, 'same-origin');
 				expectRequestBody(fetchMock, requestBody);
@@ -770,7 +774,8 @@ describe('backlog page tests', () => {
 
 		describe('within the today partition', () => {
 			it('moves a task to the first index', async () => {
-				const response = new Response(null, { status: 204 });
+				const expectedRank = generateKeyBetween(undefined, testData.todayPartition.firstTask.rank);
+				const response = getResponse({ rank: expectedRank });
 				fetchMock.mockResolvedValue(response);
 
 				const page = render(Page);
@@ -783,13 +788,10 @@ describe('backlog page tests', () => {
 				await dropTask(todayTaskList, reorderedTasks, testData.todayPartition.thirdTask.id);
 
 				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-				const expectedRank = generateKeyBetween(undefined, testData.todayPartition.firstTask.rank);
 				const requestBody = JSON.stringify({
-					id: testData.todayPartition.thirdTask.id,
-					date: testData.todayPartitionDate.toString(),
-					rank: expectedRank
+					date: testData.todayPartitionDate.toString()
 				});
-				expectRequestUrl(fetchMock, '/api/tasks/change-date-and-or-rank');
+				expectRequestUrl(fetchMock, `/api/tasks/${testData.todayPartition.thirdTask.id}/drag-and-drop`);
 				expectRequestMethod(fetchMock, 'PATCH');
 				expectRequestCredentialsMode(fetchMock, 'same-origin');
 				expectRequestBody(fetchMock, requestBody);
@@ -798,7 +800,8 @@ describe('backlog page tests', () => {
 			});
 
 			it('moves a task to the middle index', async () => {
-				const response = new Response(null, { status: 204 });
+				const expectedRank = generateKeyBetween(testData.todayPartition.firstTask.rank, testData.todayPartition.secondTask.rank);
+				const response = getResponse({ rank: expectedRank });
 				fetchMock.mockResolvedValue(response);
 
 				const page = render(Page);
@@ -811,16 +814,11 @@ describe('backlog page tests', () => {
 				await dropTask(todayTaskList, reorderedTasks, testData.todayPartition.thirdTask.id);
 
 				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-				const expectedRank = generateKeyBetween(
-					testData.todayPartition.firstTask.rank,
-					testData.todayPartition.secondTask.rank
-				);
 				const requestBody = JSON.stringify({
-					id: testData.todayPartition.thirdTask.id,
 					date: testData.todayPartitionDate.toString(),
-					rank: expectedRank
+					previousTaskId: testData.todayPartition.firstTask.id
 				});
-				expectRequestUrl(fetchMock, '/api/tasks/change-date-and-or-rank');
+				expectRequestUrl(fetchMock, `/api/tasks/${testData.todayPartition.thirdTask.id}/drag-and-drop`);
 				expectRequestMethod(fetchMock, 'PATCH');
 				expectRequestCredentialsMode(fetchMock, 'same-origin');
 				expectRequestBody(fetchMock, requestBody);
@@ -829,7 +827,8 @@ describe('backlog page tests', () => {
 			});
 
 			it('moves a task to the last index', async () => {
-				const response = new Response(null, { status: 204 });
+				const expectedRank = generateKeyBetween(testData.todayPartition.thirdTask.rank, undefined);
+				const response = getResponse({ rank: expectedRank });
 				fetchMock.mockResolvedValue(response);
 
 				const page = render(Page);
@@ -842,13 +841,11 @@ describe('backlog page tests', () => {
 				await dropTask(todayTaskList, reorderedTasks, testData.todayPartition.firstTask.id);
 
 				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-				const expectedRank = generateKeyBetween(testData.todayPartition.thirdTask.rank, undefined);
 				const requestBody = JSON.stringify({
-					id: testData.todayPartition.firstTask.id,
 					date: testData.todayPartitionDate.toString(),
-					rank: expectedRank
+					previousTaskId: testData.todayPartition.thirdTask.id
 				});
-				expectRequestUrl(fetchMock, '/api/tasks/change-date-and-or-rank');
+				expectRequestUrl(fetchMock, `/api/tasks/${testData.todayPartition.firstTask.id}/drag-and-drop`);
 				expectRequestMethod(fetchMock, 'PATCH');
 				expectRequestCredentialsMode(fetchMock, 'same-origin');
 				expectRequestBody(fetchMock, requestBody);
@@ -859,7 +856,8 @@ describe('backlog page tests', () => {
 
 		describe('within the non-today-date partition', () => {
 			it('moves a task to the first index', async () => {
-				const response = new Response(null, { status: 204 });
+				const expectedRank = generateKeyBetween(undefined, testData.nonTodayPastPartition.firstTask.rank);
+				const response = getResponse({ rank: expectedRank });
 				fetchMock.mockResolvedValue(response);
 
 				const page = render(Page);
@@ -872,13 +870,10 @@ describe('backlog page tests', () => {
 				await dropTask(nonTodayTaskList, reorderedTasks, testData.nonTodayPastPartition.thirdTask.id);
 
 				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-				const expectedRank = generateKeyBetween(undefined, testData.nonTodayPastPartition.firstTask.rank);
 				const requestBody = JSON.stringify({
-					id: testData.nonTodayPastPartition.thirdTask.id,
-					date: testData.nonTodayPastPartitionDate.toString(),
-					rank: expectedRank
+					date: testData.nonTodayPastPartitionDate.toString()
 				});
-				expectRequestUrl(fetchMock, '/api/tasks/change-date-and-or-rank');
+				expectRequestUrl(fetchMock, `/api/tasks/${testData.nonTodayPastPartition.thirdTask.id}/drag-and-drop`);
 				expectRequestMethod(fetchMock, 'PATCH');
 				expectRequestCredentialsMode(fetchMock, 'same-origin');
 				expectRequestBody(fetchMock, requestBody);
@@ -887,7 +882,11 @@ describe('backlog page tests', () => {
 			});
 
 			it('moves a task to the middle index', async () => {
-				const response = new Response(null, { status: 204 });
+				const expectedRank = generateKeyBetween(
+					testData.nonTodayPastPartition.firstTask.rank,
+					testData.nonTodayPastPartition.secondTask.rank
+				);
+				const response = getResponse({ rank: expectedRank });
 				fetchMock.mockResolvedValue(response);
 
 				const page = render(Page);
@@ -900,16 +899,11 @@ describe('backlog page tests', () => {
 				await dropTask(nonTodayTaskList, reorderedTasks, testData.nonTodayPastPartition.thirdTask.id);
 
 				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-				const expectedRank = generateKeyBetween(
-					testData.nonTodayPastPartition.firstTask.rank,
-					testData.nonTodayPastPartition.secondTask.rank
-				);
 				const requestBody = JSON.stringify({
-					id: testData.nonTodayPastPartition.thirdTask.id,
 					date: testData.nonTodayPastPartitionDate.toString(),
-					rank: expectedRank
+					previousTaskId: testData.nonTodayPastPartition.firstTask.id
 				});
-				expectRequestUrl(fetchMock, '/api/tasks/change-date-and-or-rank');
+				expectRequestUrl(fetchMock, `/api/tasks/${testData.nonTodayPastPartition.thirdTask.id}/drag-and-drop`);
 				expectRequestMethod(fetchMock, 'PATCH');
 				expectRequestCredentialsMode(fetchMock, 'same-origin');
 				expectRequestBody(fetchMock, requestBody);
@@ -918,7 +912,8 @@ describe('backlog page tests', () => {
 			});
 
 			it('moves a task to the last index', async () => {
-				const response = new Response(null, { status: 204 });
+				const expectedRank = generateKeyBetween(testData.nonTodayPastPartition.thirdTask.rank, undefined);
+				const response = getResponse({ rank: expectedRank });
 				fetchMock.mockResolvedValue(response);
 
 				const page = render(Page);
@@ -931,13 +926,11 @@ describe('backlog page tests', () => {
 				await dropTask(nonTodayTaskList, reorderedTasks, testData.nonTodayPastPartition.firstTask.id);
 
 				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-				const expectedRank = generateKeyBetween(testData.nonTodayPastPartition.thirdTask.rank, undefined);
 				const requestBody = JSON.stringify({
-					id: testData.nonTodayPastPartition.firstTask.id,
 					date: testData.nonTodayPastPartitionDate.toString(),
-					rank: expectedRank
+					previousTaskId: testData.nonTodayPastPartition.thirdTask.id
 				});
-				expectRequestUrl(fetchMock, '/api/tasks/change-date-and-or-rank');
+				expectRequestUrl(fetchMock, `/api/tasks/${testData.nonTodayPastPartition.firstTask.id}/drag-and-drop`);
 				expectRequestMethod(fetchMock, 'PATCH');
 				expectRequestCredentialsMode(fetchMock, 'same-origin');
 				expectRequestBody(fetchMock, requestBody);
@@ -948,7 +941,8 @@ describe('backlog page tests', () => {
 
 		describe('between different non-today-date partitions', () => {
 			it('moves a task to the first index', async () => {
-				const response = new Response(null, { status: 204 });
+				const expectedRank = generateKeyBetween(undefined, testData.nonTodayFuturePartition.firstTask.rank);
+				const response = getResponse({ rank: expectedRank });
 				fetchMock.mockResolvedValue(response);
 
 				const page = render(Page);
@@ -963,13 +957,10 @@ describe('backlog page tests', () => {
 				await dropTask(destinationTaskList, reorderedTasks, testData.nonTodayPastPartition.firstTask.id);
 
 				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-				const expectedRank = generateKeyBetween(undefined, testData.nonTodayFuturePartition.firstTask.rank);
 				const requestBody = JSON.stringify({
-					id: testData.nonTodayPastPartition.firstTask.id,
-					date: testData.nonTodayFuturePartitionDate.toString(),
-					rank: expectedRank
+					date: testData.nonTodayFuturePartitionDate.toString()
 				});
-				expectRequestUrl(fetchMock, '/api/tasks/change-date-and-or-rank');
+				expectRequestUrl(fetchMock, `/api/tasks/${testData.nonTodayPastPartition.firstTask.id}/drag-and-drop`);
 				expectRequestMethod(fetchMock, 'PATCH');
 				expectRequestCredentialsMode(fetchMock, 'same-origin');
 				expectRequestBody(fetchMock, requestBody);
@@ -981,7 +972,11 @@ describe('backlog page tests', () => {
 			});
 
 			it('moves a task to the middle index', async () => {
-				const response = new Response(null, { status: 204 });
+				const expectedRank = generateKeyBetween(
+					testData.nonTodayFuturePartition.firstTask.rank,
+					testData.nonTodayFuturePartition.secondTask.rank
+				);
+				const response = getResponse({ rank: expectedRank });
 				fetchMock.mockResolvedValue(response);
 
 				const page = render(Page);
@@ -996,16 +991,11 @@ describe('backlog page tests', () => {
 				await dropTask(destinationTaskList, reorderedTasks, testData.nonTodayPastPartition.firstTask.id);
 
 				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-				const expectedRank = generateKeyBetween(
-					testData.nonTodayFuturePartition.firstTask.rank,
-					testData.nonTodayFuturePartition.secondTask.rank
-				);
 				const requestBody = JSON.stringify({
-					id: testData.nonTodayPastPartition.firstTask.id,
 					date: testData.nonTodayFuturePartitionDate.toString(),
-					rank: expectedRank
+					previousTaskId: testData.nonTodayFuturePartition.firstTask.id
 				});
-				expectRequestUrl(fetchMock, '/api/tasks/change-date-and-or-rank');
+				expectRequestUrl(fetchMock, `/api/tasks/${testData.nonTodayPastPartition.firstTask.id}/drag-and-drop`);
 				expectRequestMethod(fetchMock, 'PATCH');
 				expectRequestCredentialsMode(fetchMock, 'same-origin');
 				expectRequestBody(fetchMock, requestBody);
@@ -1017,7 +1007,8 @@ describe('backlog page tests', () => {
 			});
 
 			it('moves a task to the last index', async () => {
-				const response = new Response(null, { status: 204 });
+				const expectedRank = generateKeyBetween(testData.nonTodayFuturePartition.thirdTask.rank, undefined);
+				const response = getResponse({ rank: expectedRank });
 				fetchMock.mockResolvedValue(response);
 
 				const page = render(Page);
@@ -1032,13 +1023,11 @@ describe('backlog page tests', () => {
 				await dropTask(destinationTaskList, reorderedTasks, testData.nonTodayPastPartition.firstTask.id);
 
 				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-				const expectedRank = generateKeyBetween(testData.nonTodayFuturePartition.thirdTask.rank, undefined);
 				const requestBody = JSON.stringify({
-					id: testData.nonTodayPastPartition.firstTask.id,
 					date: testData.nonTodayFuturePartitionDate.toString(),
-					rank: expectedRank
+					previousTaskId: testData.nonTodayFuturePartition.thirdTask.id
 				});
-				expectRequestUrl(fetchMock, '/api/tasks/change-date-and-or-rank');
+				expectRequestUrl(fetchMock, `/api/tasks/${testData.nonTodayPastPartition.firstTask.id}/drag-and-drop`);
 				expectRequestMethod(fetchMock, 'PATCH');
 				expectRequestCredentialsMode(fetchMock, 'same-origin');
 				expectRequestBody(fetchMock, requestBody);
@@ -1084,7 +1073,7 @@ describe('backlog page tests', () => {
 			])(
 				'moves a task to the %s index of the non-today-date partition',
 				async (_, destinationDate, destinationDateLabel, reorderedTasks, previousRank, nextRank) => {
-					const response = new Response(null, { status: 204 });
+					const response = getResponse({ rank: generateKeyBetween(previousRank, nextRank) });
 					fetchMock.mockResolvedValue(response);
 
 					const page = render(Page);
@@ -1093,13 +1082,12 @@ describe('backlog page tests', () => {
 					await dropTask(destinationTaskList, reorderedTasks, testData.noDatePartition.thirdTask.id);
 
 					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-					const expectedRank = generateKeyBetween(previousRank, nextRank);
+					const draggedTaskIndex = reorderedTasks.findIndex((task) => task.id === testData.noDatePartition.thirdTask.id);
 					const requestBody = JSON.stringify({
-						id: testData.noDatePartition.thirdTask.id,
 						date: destinationDate.toString(),
-						rank: expectedRank
+						previousTaskId: reorderedTasks[draggedTaskIndex - 1]?.id
 					});
-					expectRequestUrl(fetchMock, '/api/tasks/change-date-and-or-rank');
+					expectRequestUrl(fetchMock, `/api/tasks/${testData.noDatePartition.thirdTask.id}/drag-and-drop`);
 					expectRequestMethod(fetchMock, 'PATCH');
 					expectRequestCredentialsMode(fetchMock, 'same-origin');
 					expectRequestBody(fetchMock, requestBody);
@@ -1135,35 +1123,31 @@ describe('backlog page tests', () => {
 					testData.todayPartition.thirdTask.rank,
 					undefined
 				]
-			])(
-				'moves a task to the %s index of the today partition',
-				async (_, reorderedTasks, previousRank, nextRank) => {
-					const response = new Response(null, { status: 204 });
-					fetchMock.mockResolvedValue(response);
+			])('moves a task to the %s index of the today partition', async (_, reorderedTasks, previousRank, nextRank) => {
+				const response = getResponse({ rank: generateKeyBetween(previousRank, nextRank) });
+				fetchMock.mockResolvedValue(response);
 
-					const page = render(Page);
-					const sourceTaskList = page.getByLabelText('Tasks without a date');
-					const destinationTaskList = page.getByLabelText(`Tasks dated ${testData.todayPartitionLabel}`);
-					await dropTask(destinationTaskList, reorderedTasks, testData.noDatePartition.thirdTask.id);
+				const page = render(Page);
+				const sourceTaskList = page.getByLabelText('Tasks without a date');
+				const destinationTaskList = page.getByLabelText(`Tasks dated ${testData.todayPartitionLabel}`);
+				await dropTask(destinationTaskList, reorderedTasks, testData.noDatePartition.thirdTask.id);
 
-					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-					const expectedRank = generateKeyBetween(previousRank, nextRank);
-					const requestBody = JSON.stringify({
-						id: testData.noDatePartition.thirdTask.id,
-						date: testData.todayPartitionDate.toString(),
-						rank: expectedRank
-					});
-					expectRequestUrl(fetchMock, '/api/tasks/change-date-and-or-rank');
-					expectRequestMethod(fetchMock, 'PATCH');
-					expectRequestCredentialsMode(fetchMock, 'same-origin');
-					expectRequestBody(fetchMock, requestBody);
-					expectRequestContentType(fetchMock, 'application/json');
-					expectTaskOrder(destinationTaskList, reorderedTasks);
-					expect(
-						within(sourceTaskList).queryByRole('listitem', { name: testData.noDatePartition.thirdTask.title })
-					).not.toBeInTheDocument();
-				}
-			);
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+				const draggedTaskIndex = reorderedTasks.findIndex((task) => task.id === testData.noDatePartition.thirdTask.id);
+				const requestBody = JSON.stringify({
+					date: testData.todayPartitionDate.toString(),
+					previousTaskId: reorderedTasks[draggedTaskIndex - 1]?.id
+				});
+				expectRequestUrl(fetchMock, `/api/tasks/${testData.noDatePartition.thirdTask.id}/drag-and-drop`);
+				expectRequestMethod(fetchMock, 'PATCH');
+				expectRequestCredentialsMode(fetchMock, 'same-origin');
+				expectRequestBody(fetchMock, requestBody);
+				expectRequestContentType(fetchMock, 'application/json');
+				expectTaskOrder(destinationTaskList, reorderedTasks);
+				expect(
+					within(sourceTaskList).queryByRole('listitem', { name: testData.noDatePartition.thirdTask.title })
+				).not.toBeInTheDocument();
+			});
 		});
 
 		describe('from the non-today-date partition', () => {
@@ -1191,31 +1175,28 @@ describe('backlog page tests', () => {
 					testData.noDatePartition.thirdTask.rank,
 					undefined
 				]
-			])(
-				'moves a task to the %s index of the no-date partition',
-				async (_, reorderedTasks, previousRank, nextRank) => {
-					const response = new Response(null, { status: 204 });
-					fetchMock.mockResolvedValue(response);
+			])('moves a task to the %s index of the no-date partition', async (_, reorderedTasks, previousRank, nextRank) => {
+				const response = getResponse({ rank: generateKeyBetween(previousRank, nextRank) });
+				fetchMock.mockResolvedValue(response);
 
-					const page = render(Page);
-					const sourceTaskList = page.getByLabelText(`Tasks dated ${testData.nonTodayPastPartitionLabel}`);
-					const destinationTaskList = page.getByLabelText('Tasks without a date');
-					await dropTask(destinationTaskList, reorderedTasks, testData.nonTodayPastPartition.thirdTask.id);
+				const page = render(Page);
+				const sourceTaskList = page.getByLabelText(`Tasks dated ${testData.nonTodayPastPartitionLabel}`);
+				const destinationTaskList = page.getByLabelText('Tasks without a date');
+				await dropTask(destinationTaskList, reorderedTasks, testData.nonTodayPastPartition.thirdTask.id);
 
-					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-					const expectedRank = generateKeyBetween(previousRank, nextRank);
-					const requestBody = JSON.stringify({ id: testData.nonTodayPastPartition.thirdTask.id, rank: expectedRank });
-					expectRequestUrl(fetchMock, '/api/tasks/change-date-and-or-rank');
-					expectRequestMethod(fetchMock, 'PATCH');
-					expectRequestCredentialsMode(fetchMock, 'same-origin');
-					expectRequestBody(fetchMock, requestBody);
-					expectRequestContentType(fetchMock, 'application/json');
-					expectTaskOrder(destinationTaskList, reorderedTasks);
-					expect(
-						within(sourceTaskList).queryByRole('listitem', { name: testData.nonTodayPastPartition.thirdTask.title })
-					).not.toBeInTheDocument();
-				}
-			);
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+				const draggedTaskIndex = reorderedTasks.findIndex((task) => task.id === testData.nonTodayPastPartition.thirdTask.id);
+				const requestBody = JSON.stringify({ previousTaskId: reorderedTasks[draggedTaskIndex - 1]?.id });
+				expectRequestUrl(fetchMock, `/api/tasks/${testData.nonTodayPastPartition.thirdTask.id}/drag-and-drop`);
+				expectRequestMethod(fetchMock, 'PATCH');
+				expectRequestCredentialsMode(fetchMock, 'same-origin');
+				expectRequestBody(fetchMock, requestBody);
+				expectRequestContentType(fetchMock, 'application/json');
+				expectTaskOrder(destinationTaskList, reorderedTasks);
+				expect(
+					within(sourceTaskList).queryByRole('listitem', { name: testData.nonTodayPastPartition.thirdTask.title })
+				).not.toBeInTheDocument();
+			});
 
 			it.each([
 				[
@@ -1241,35 +1222,31 @@ describe('backlog page tests', () => {
 					testData.todayPartition.thirdTask.rank,
 					undefined
 				]
-			])(
-				'moves a task to the %s index of the today partition',
-				async (_, reorderedTasks, previousRank, nextRank) => {
-					const response = new Response(null, { status: 204 });
-					fetchMock.mockResolvedValue(response);
+			])('moves a task to the %s index of the today partition', async (_, reorderedTasks, previousRank, nextRank) => {
+				const response = getResponse({ rank: generateKeyBetween(previousRank, nextRank) });
+				fetchMock.mockResolvedValue(response);
 
-					const page = render(Page);
-					const sourceTaskList = page.getByLabelText(`Tasks dated ${testData.nonTodayPastPartitionLabel}`);
-					const destinationTaskList = page.getByLabelText(`Tasks dated ${testData.todayPartitionLabel}`);
-					await dropTask(destinationTaskList, reorderedTasks, testData.nonTodayPastPartition.thirdTask.id);
+				const page = render(Page);
+				const sourceTaskList = page.getByLabelText(`Tasks dated ${testData.nonTodayPastPartitionLabel}`);
+				const destinationTaskList = page.getByLabelText(`Tasks dated ${testData.todayPartitionLabel}`);
+				await dropTask(destinationTaskList, reorderedTasks, testData.nonTodayPastPartition.thirdTask.id);
 
-					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-					const expectedRank = generateKeyBetween(previousRank, nextRank);
-					const requestBody = JSON.stringify({
-						id: testData.nonTodayPastPartition.thirdTask.id,
-						date: testData.todayPartitionDate.toString(),
-						rank: expectedRank
-					});
-					expectRequestUrl(fetchMock, '/api/tasks/change-date-and-or-rank');
-					expectRequestMethod(fetchMock, 'PATCH');
-					expectRequestCredentialsMode(fetchMock, 'same-origin');
-					expectRequestBody(fetchMock, requestBody);
-					expectRequestContentType(fetchMock, 'application/json');
-					expectTaskOrder(destinationTaskList, reorderedTasks);
-					expect(
-						within(sourceTaskList).queryByRole('listitem', { name: testData.nonTodayPastPartition.thirdTask.title })
-					).not.toBeInTheDocument();
-				}
-			);
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+				const draggedTaskIndex = reorderedTasks.findIndex((task) => task.id === testData.nonTodayPastPartition.thirdTask.id);
+				const requestBody = JSON.stringify({
+					date: testData.todayPartitionDate.toString(),
+					previousTaskId: reorderedTasks[draggedTaskIndex - 1]?.id
+				});
+				expectRequestUrl(fetchMock, `/api/tasks/${testData.nonTodayPastPartition.thirdTask.id}/drag-and-drop`);
+				expectRequestMethod(fetchMock, 'PATCH');
+				expectRequestCredentialsMode(fetchMock, 'same-origin');
+				expectRequestBody(fetchMock, requestBody);
+				expectRequestContentType(fetchMock, 'application/json');
+				expectTaskOrder(destinationTaskList, reorderedTasks);
+				expect(
+					within(sourceTaskList).queryByRole('listitem', { name: testData.nonTodayPastPartition.thirdTask.title })
+				).not.toBeInTheDocument();
+			});
 		});
 
 		describe('from the today partition', () => {
@@ -1297,31 +1274,28 @@ describe('backlog page tests', () => {
 					testData.noDatePartition.thirdTask.rank,
 					undefined
 				]
-			])(
-				'moves a task to the %s index of the no-date partition',
-				async (_, reorderedTasks, previousRank, nextRank) => {
-					const response = new Response(null, { status: 204 });
-					fetchMock.mockResolvedValue(response);
+			])('moves a task to the %s index of the no-date partition', async (_, reorderedTasks, previousRank, nextRank) => {
+				const response = getResponse({ rank: generateKeyBetween(previousRank, nextRank) });
+				fetchMock.mockResolvedValue(response);
 
-					const page = render(Page);
-					const sourceTaskList = page.getByLabelText(`Tasks dated ${testData.todayPartitionLabel}`);
-					const destinationTaskList = page.getByLabelText('Tasks without a date');
-					await dropTask(destinationTaskList, reorderedTasks, testData.todayPartition.thirdTask.id);
+				const page = render(Page);
+				const sourceTaskList = page.getByLabelText(`Tasks dated ${testData.todayPartitionLabel}`);
+				const destinationTaskList = page.getByLabelText('Tasks without a date');
+				await dropTask(destinationTaskList, reorderedTasks, testData.todayPartition.thirdTask.id);
 
-					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-					const expectedRank = generateKeyBetween(previousRank, nextRank);
-					const requestBody = JSON.stringify({ id: testData.todayPartition.thirdTask.id, rank: expectedRank });
-					expectRequestUrl(fetchMock, '/api/tasks/change-date-and-or-rank');
-					expectRequestMethod(fetchMock, 'PATCH');
-					expectRequestCredentialsMode(fetchMock, 'same-origin');
-					expectRequestBody(fetchMock, requestBody);
-					expectRequestContentType(fetchMock, 'application/json');
-					expectTaskOrder(destinationTaskList, reorderedTasks);
-					expect(
-						within(sourceTaskList).queryByRole('listitem', { name: testData.todayPartition.thirdTask.title })
-					).not.toBeInTheDocument();
-				}
-			);
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+				const draggedTaskIndex = reorderedTasks.findIndex((task) => task.id === testData.todayPartition.thirdTask.id);
+				const requestBody = JSON.stringify({ previousTaskId: reorderedTasks[draggedTaskIndex - 1]?.id });
+				expectRequestUrl(fetchMock, `/api/tasks/${testData.todayPartition.thirdTask.id}/drag-and-drop`);
+				expectRequestMethod(fetchMock, 'PATCH');
+				expectRequestCredentialsMode(fetchMock, 'same-origin');
+				expectRequestBody(fetchMock, requestBody);
+				expectRequestContentType(fetchMock, 'application/json');
+				expectTaskOrder(destinationTaskList, reorderedTasks);
+				expect(
+					within(sourceTaskList).queryByRole('listitem', { name: testData.todayPartition.thirdTask.title })
+				).not.toBeInTheDocument();
+			});
 
 			it.each([
 				[
@@ -1347,35 +1321,31 @@ describe('backlog page tests', () => {
 					testData.nonTodayPastPartition.thirdTask.rank,
 					undefined
 				]
-			])(
-				'moves a task to the %s index of the non-today-date partition',
-				async (_, reorderedTasks, previousRank, nextRank) => {
-					const response = new Response(null, { status: 204 });
-					fetchMock.mockResolvedValue(response);
+			])('moves a task to the %s index of the non-today-date partition', async (_, reorderedTasks, previousRank, nextRank) => {
+				const response = getResponse({ rank: generateKeyBetween(previousRank, nextRank) });
+				fetchMock.mockResolvedValue(response);
 
-					const page = render(Page);
-					const sourceTaskList = page.getByLabelText(`Tasks dated ${testData.todayPartitionLabel}`);
-					const destinationTaskList = page.getByLabelText(`Tasks dated ${testData.nonTodayPastPartitionLabel}`);
-					await dropTask(destinationTaskList, reorderedTasks, testData.todayPartition.thirdTask.id);
+				const page = render(Page);
+				const sourceTaskList = page.getByLabelText(`Tasks dated ${testData.todayPartitionLabel}`);
+				const destinationTaskList = page.getByLabelText(`Tasks dated ${testData.nonTodayPastPartitionLabel}`);
+				await dropTask(destinationTaskList, reorderedTasks, testData.todayPartition.thirdTask.id);
 
-					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-					const expectedRank = generateKeyBetween(previousRank, nextRank);
-					const requestBody = JSON.stringify({
-						id: testData.todayPartition.thirdTask.id,
-						date: testData.nonTodayPastPartitionDate.toString(),
-						rank: expectedRank
-					});
-					expectRequestUrl(fetchMock, '/api/tasks/change-date-and-or-rank');
-					expectRequestMethod(fetchMock, 'PATCH');
-					expectRequestCredentialsMode(fetchMock, 'same-origin');
-					expectRequestBody(fetchMock, requestBody);
-					expectRequestContentType(fetchMock, 'application/json');
-					expectTaskOrder(destinationTaskList, reorderedTasks);
-					expect(
-						within(sourceTaskList).queryByRole('listitem', { name: testData.todayPartition.thirdTask.title })
-					).not.toBeInTheDocument();
-				}
-			);
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+				const draggedTaskIndex = reorderedTasks.findIndex((task) => task.id === testData.todayPartition.thirdTask.id);
+				const requestBody = JSON.stringify({
+					date: testData.nonTodayPastPartitionDate.toString(),
+					previousTaskId: reorderedTasks[draggedTaskIndex - 1]?.id
+				});
+				expectRequestUrl(fetchMock, `/api/tasks/${testData.todayPartition.thirdTask.id}/drag-and-drop`);
+				expectRequestMethod(fetchMock, 'PATCH');
+				expectRequestCredentialsMode(fetchMock, 'same-origin');
+				expectRequestBody(fetchMock, requestBody);
+				expectRequestContentType(fetchMock, 'application/json');
+				expectTaskOrder(destinationTaskList, reorderedTasks);
+				expect(
+					within(sourceTaskList).queryByRole('listitem', { name: testData.todayPartition.thirdTask.title })
+				).not.toBeInTheDocument();
+			});
 		});
 	});
 });

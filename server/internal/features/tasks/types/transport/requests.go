@@ -17,10 +17,9 @@ type UpdateTaskRequest struct {
 	CategoryId  int64        `json:"categoryId" binding:"gt=0"`
 }
 
-type ChangeTaskDateAndOrRankRequest struct {
-	Id   int64        `json:"id" binding:"gt=0"`
-	Date *shared.Date `json:"date"`
-	Rank string       `json:"rank" binding:"rank"`
+type TaskDragAndDropRequest struct {
+	Date           *shared.Date `json:"date"`
+	PreviousTaskId *int64       `json:"previousTaskId" binding:"omitempty,gt=0"`
 }
 
 type BatchUpdateDoneRequest struct {

@@ -14,12 +14,13 @@ import (
 )
 
 var (
-	ErrTaskDateAndOrRankChangeNotAllowed = errors.New("requested date and/or rank change not allowed")
-	ErrTaskAlreadyTrashed                = errors.New("task is already trashed")
-	ErrTaskAlreadyRestored               = errors.New("task is already restored")
-	ErrTaskAlreadyCompleted              = errors.New("task is already completed")
-	ErrTaskAlreadyOpen                   = errors.New("task is already open")
-	ErrTaskRankRequired                  = errors.New("task rank is required for an untrashed task")
+	ErrRequestDataRepresentInvalidDragAndDropGesture = errors.New("provided request data do not match a valid drag and drop gesture for the given task id")
+	ErrPreviousTaskNotFound                          = errors.New("previous task not found")
+	ErrTaskAlreadyTrashed                            = errors.New("task is already trashed")
+	ErrTaskAlreadyRestored                           = errors.New("task is already restored")
+	ErrTaskAlreadyCompleted                          = errors.New("task is already completed")
+	ErrTaskAlreadyOpen                               = errors.New("task is already open")
+	ErrTaskRankRequired                              = errors.New("task rank is required for an untrashed task")
 )
 
 type TaskService struct {
@@ -157,27 +158,27 @@ func (service *TaskService) UpdateTask(userId int64, request transport.UpdateTas
 	return taskResponse, nil
 }
 
-func (service *TaskService) ChangeTaskDateAndOrRank(userId int64, request transport.ChangeTaskDateAndOrRankRequest) error {
-	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("changing task date and/or rank failed")
+func (service *TaskService) DragAndDropTask(userId int64, taskId int64, request transport.TaskDragAndDropRequest) (*transport.TaskDragAndDropResponse, error) {
+	// TODO: extend to support backlog and workbench cases
+	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("dragging and dropping task failed")
 
-	err := shared.ExecuteAsSerializableTransactionWithoutResult(service.db, func(transaction *sqlx.Tx) error {
-		task, err := service.taskStore.GetTaskByIdForUser(transaction, request.Id, userId)
+	response, err := shared.ExecuteAsSerializableTransaction(service.db, func(transaction *sqlx.Tx) (*transport.TaskDragAndDropResponse, error) {
+		task, err := service.taskStore.GetTaskByIdForUser(transaction, taskId, userId)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
-		// TODO: check once more whether the endpoint really only allows allowed transitions (map out transitions that UI allows and compare to logic)
 		isMovingFromDateToDate := task.Date != nil && request.Date != nil && !datesAreEqual(task.Date, request.Date)
-		isAllowedToMoveFromDateToDate := task.TrashedDate == nil && task.Date != nil
+		isAllowedToMoveFromDateToDate := task.TrashedDate == nil && !task.Done && task.Date != nil
 
 		isMovingFromDateToNoDate := task.Date != nil && request.Date == nil
-		isAllowedToMoveFromDateToNoDate := task.TrashedDate == nil && task.Date != nil && !task.Done
+		isAllowedToMoveFromDateToNoDate := task.TrashedDate == nil && !task.Done && task.Date != nil
 
 		isMovingFromNoDateToDate := task.Date == nil && request.Date != nil
-		isAllowedToMoveFromNoDateToDate := task.TrashedDate == nil && task.Date == nil && !task.Done
+		isAllowedToMoveFromNoDateToDate := task.TrashedDate == nil && !task.Done && task.Date == nil
 
 		isOnlyChangingRank := datesAreEqual(task.Date, request.Date)
-		isAllowedToOnlyChangeRank := task.TrashedDate == nil
+		isAllowedToOnlyChangeRank := task.TrashedDate == nil && !task.Done
 
 		isAllowedToChangeDateAndOrRank := isMovingFromDateToDate && isAllowedToMoveFromDateToDate ||
 			isMovingFromDateToNoDate && isAllowedToMoveFromDateToNoDate ||
@@ -185,29 +186,53 @@ func (service *TaskService) ChangeTaskDateAndOrRank(userId int64, request transp
 			isOnlyChangingRank && isAllowedToOnlyChangeRank
 
 		if !isAllowedToChangeDateAndOrRank {
-			return ErrTaskDateAndOrRankChangeNotAllowed
+			return nil, ErrRequestDataRepresentInvalidDragAndDropGesture
 		}
 
+		previousTaskRank := ""
+		if request.PreviousTaskId != nil {
+			if *request.PreviousTaskId == taskId {
+				return nil, ErrRequestDataRepresentInvalidDragAndDropGesture
+			}
+			previousTask, err := service.taskStore.GetTaskByIdForUser(transaction, *request.PreviousTaskId, userId)
+			if err != nil {
+				if errors.Is(err, stores.ErrTaskNotFound) {
+					return nil, ErrPreviousTaskNotFound
+				}
+				return nil, err
+			}
+			if !datesAreEqual(previousTask.Date, request.Date) || previousTask.Done != task.Done || previousTask.TrashedDate != nil || previousTask.Rank == nil {
+				return nil, ErrRequestDataRepresentInvalidDragAndDropGesture
+			}
+			previousTaskRank = *previousTask.Rank
+		}
+
+		successorTaskRank, err := service.taskStore.GetRankOfSuccessorTaskForTaskDragAndDrop(transaction, userId, taskId, request.Date, task.Done, previousTaskRank)
+		if err != nil {
+			return nil, err
+		}
+		rank, err := fracdex.KeyBetween(previousTaskRank, successorTaskRank)
+		if err != nil {
+			return nil, err
+		}
 		task.Date = request.Date
-		task.Rank = &request.Rank
+		task.Rank = &rank
 		if err := service.taskStore.UpdateTaskDateAndRank(transaction, task); err != nil {
-			return err
+			return nil, err
 		}
-
-		return nil
+		return &transport.TaskDragAndDropResponse{Rank: rank}, nil
 	})
 	if err != nil {
 		switch {
 		case errors.Is(err, stores.ErrTaskNotFound),
-			errors.Is(err, stores.ErrTaskRankAlreadyExists),
-			errors.Is(err, ErrTaskDateAndOrRankChangeNotAllowed):
-			return err
+			errors.Is(err, ErrRequestDataRepresentInvalidDragAndDropGesture),
+			errors.Is(err, ErrPreviousTaskNotFound):
+			return nil, err
 		default:
-			return wrapUnexpectedError(err)
+			return nil, wrapUnexpectedError(err)
 		}
 	}
-
-	return nil
+	return response, nil
 }
 
 func (service *TaskService) TrashTask(userId int64, taskId int64, trashedDate time.Time) error {

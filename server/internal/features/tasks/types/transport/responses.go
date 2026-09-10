@@ -22,6 +22,10 @@ type CreateTaskResponse struct {
 	Rank string `db:"rank" json:"rank"`
 }
 
+type TaskDragAndDropResponse struct {
+	Rank string `json:"rank"`
+}
+
 type UndatedTaskResponse struct {
 	Id          int64   `db:"id" json:"id"`
 	CategoryId  int64   `db:"category_id" json:"categoryId"`

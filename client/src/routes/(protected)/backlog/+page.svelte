@@ -6,6 +6,7 @@
 	import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-task-store.svelte';
 	import { undatedTaskStore } from '$lib/stores/undated-task-store.svelte';
 	import { taskService } from '$lib/services/task-service.svelte';
+	import type { TaskDragAndDropRequest } from '$lib/types/requests/task-drag-and-drop-request';
 	import { getLocalTimeZone, parseDate, today, type CalendarDate } from '@internationalized/date';
 	import type { DatedUntrashedOpenTaskResponse } from '$lib/types/responses/dated-untrashed-open-task-response';
 	import type { UndatedTaskResponse } from '$lib/types/responses/undated-task-response';
@@ -61,12 +62,11 @@
 			datedUntrashedOpenTaskStore.datedUntrashedOpenTasks.some((task) => task.id === taskDragItemId);
 		if (wasTaskDragItemDroppedIntoZoneOfHandler && doesTaskForTaskDragItemIdExist) {
 			const taskDragItemIndex = taskDragItems.findIndex((task) => task.id === taskDragItemId);
-			await taskService.changeTaskDateAndOrRank(
-				taskDragItemId,
-				dateKey ? parseDate(dateKey) : undefined,
-				taskDragItems[taskDragItemIndex - 1]?.rank,
-				taskDragItems[taskDragItemIndex + 1]?.rank
-			);
+			const request: TaskDragAndDropRequest = {
+				date: dateKey ? parseDate(dateKey) : undefined,
+				previousTaskId: taskDragItems[taskDragItemIndex - 1]?.id
+			};
+			await taskService.dragAndDropTask(taskDragItemId, request);
 		}
 
 		dragging = false;

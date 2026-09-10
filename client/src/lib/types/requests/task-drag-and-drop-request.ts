@@ -1,7 +1,6 @@
 import type { CalendarDate } from '@internationalized/date';
 
-export type ChangeTaskDateAndOrRankRequest = {
-	id: number;
+export type TaskDragAndDropRequest = {
 	date?: CalendarDate;
-	rank: string;
+	previousTaskId?: number;
 };

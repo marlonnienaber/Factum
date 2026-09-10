@@ -72,9 +72,13 @@ func TestCategoriesGetCategories(t *testing.T) {
 		createResp := support.MakeCreateCategoryRequest(t, app, category.title, category.color, cookies...)
 		require.Equal(t, http.StatusCreated, createResp.Code)
 
-		var category categoriesTransport.CategoryResponse
-		require.NoError(t, json.NewDecoder(createResp.Body).Decode(&category), "failed to decode category response")
-		expectedCategories = append(expectedCategories, category)
+		var createCategoryResponse categoriesTransport.CreateCategoryResponse
+		require.NoError(t, json.NewDecoder(createResp.Body).Decode(&createCategoryResponse), "failed to decode category response")
+		expectedCategories = append(expectedCategories, categoriesTransport.CategoryResponse{
+			Id:    createCategoryResponse.Id,
+			Title: category.title,
+			Color: category.color,
+		})
 	}
 
 	otherSignUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
