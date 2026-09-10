@@ -616,7 +616,6 @@ describe('backlog page tests', () => {
 			const page = render(Page);
 			await clickOnSelectTasksButton(page);
 			for (const task of tasks) await clickOnTask(page, task.title);
-
 			const completeAllButton = page.getByRole('button', { name: 'Complete All' });
 			await userEvent.click(completeAllButton);
 
@@ -651,7 +650,6 @@ describe('backlog page tests', () => {
 			const page = render(Page);
 			await clickOnSelectTasksButton(page);
 			for (const task of tasks) await clickOnTask(page, task.title);
-
 			const trashAllButton = page.getByRole('button', { name: 'Trash All' });
 			await userEvent.click(trashAllButton);
 
@@ -683,7 +681,6 @@ describe('backlog page tests', () => {
 			const page = render(Page);
 			await clickOnSelectTasksButton(page);
 			await clickOnTask(page, task.title);
-
 			const cancelSelectionButton = page.getByRole('button', { name: 'Cancel Selection' });
 			await userEvent.click(cancelSelectionButton);
 
@@ -1023,7 +1020,7 @@ describe('backlog page tests', () => {
 			});
 		});
 
-		describe('between different non-today date groups', () => {
+		describe('between different non-today-date partitions', () => {
 			it('moves a task to the first index', async () => {
 				categoryStore.setCategories([category]);
 				datedUntrashedOpenTaskStore.addTasks(testData.nonTodayPastPartition.tasks);
