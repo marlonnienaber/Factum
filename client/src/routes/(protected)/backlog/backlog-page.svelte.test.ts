@@ -40,6 +40,13 @@ describe('backlog page tests', () => {
 		datedUntrashedDoneTaskStore.reset();
 		datedUntrashedOpenTaskStore.reset();
 		trashedTaskStore.reset();
+		categoryStore.setCategories([category]);
+		undatedTaskStore.addTasks(testData.noDatePartition.tasks);
+		datedUntrashedOpenTaskStore.addTasks([
+			...testData.todayPartition.tasks,
+			...testData.nonTodayPastPartition.tasks,
+			...testData.nonTodayFuturePartition.tasks
+		]);
 	});
 
 	afterEach(async () => {
@@ -49,53 +56,54 @@ describe('backlog page tests', () => {
 
 	describe('category operations', () => {
 		it('successfully creates and deletes a category', async () => {
-			const createCategoryResponse = getResponse({ id: category.id }, 201);
+			const newCategoryId = 8;
+			const newCategoryTitle = 'Work';
+			const newCategoryColor = '#3b82f6';
+
+			const createCategoryResponse = getResponse({ id: newCategoryId }, 201);
 			fetchMock.mockResolvedValue(createCategoryResponse);
 
 			const page = render(Page);
 			await openCreateTaskDialog(page);
 			await startCategoryCreation(page);
-
 			const categoryNameInput = page.getByRole('textbox', { name: 'Category name' });
-			await fireEvent.input(categoryNameInput, { target: { value: category.title } });
+			await fireEvent.input(categoryNameInput, { target: { value: newCategoryTitle } });
 			const categoryColorInput = page.getByLabelText('Choose category color');
-			await fireEvent.input(categoryColorInput, { target: { value: category.color } });
+			await fireEvent.input(categoryColorInput, { target: { value: newCategoryColor } });
 			const createCategoryButton = page.getByRole('button', { name: 'Create category' });
 			await userEvent.click(createCategoryButton);
 
 			await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-			const createRequestBody = JSON.stringify({ title: category.title, color: category.color });
+			const createRequestBody = JSON.stringify({ title: newCategoryTitle, color: newCategoryColor });
 			expectRequestUrl(fetchMock, '/api/categories');
 			expectRequestMethod(fetchMock, 'POST');
 			expectRequestCredentialsMode(fetchMock, 'same-origin');
 			expectRequestBody(fetchMock, createRequestBody);
 			expectRequestContentType(fetchMock, 'application/json');
 			const categorySelect = getSelectById(page, 'task-category');
-			expect(categorySelect).toHaveTextContent(category.title);
+			expect(categorySelect).toHaveTextContent(newCategoryTitle);
 
 			fetchMock.mockClear();
 			const deleteCategoryResponse = new Response(null, { status: 204 });
 			fetchMock.mockResolvedValue(deleteCategoryResponse);
 
 			await openCategorySelect(page);
-			const deleteCategoryButton = await page.findByRole('button', { name: `Delete ${category.title}` });
+			const deleteCategoryButton = await page.findByRole('button', { name: `Delete ${newCategoryTitle}` });
 			await userEvent.click(deleteCategoryButton);
 
 			await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-			expectRequestUrl(fetchMock, `/api/categories/${category.id}`);
+			expectRequestUrl(fetchMock, `/api/categories/${newCategoryId}`);
 			expectRequestMethod(fetchMock, 'DELETE');
 			expectRequestCredentialsMode(fetchMock, 'same-origin');
 			expectRequestBody(fetchMock, undefined);
 			await waitFor(() => expect(categorySelect).toHaveTextContent('None chosen'));
-			expect(categoryStore.categories).not.toContainEqual(category);
+			expect(categoryStore.categories).not.toContainEqual({ id: newCategoryId, title: newCategoryTitle, color: newCategoryColor });
 		});
 
 		it('shows an error toast when deleting a referenced category', async () => {
-			categoryStore.setCategories([category]);
-			undatedTaskStore.addTask(testData.noDatePartition.firstTask);
-
 			const errorMessage = 'Category cannot be deleted while it is referenced by tasks.';
 			const errorResponse = getResponse({ errorCode: 'category_still_referenced', message: errorMessage }, 409);
+
 			fetchMock.mockResolvedValue(errorResponse);
 
 			const page = render(Page);
@@ -118,8 +126,6 @@ describe('backlog page tests', () => {
 
 	describe('task creation', () => {
 		it('reacts correctly to missing task title', async () => {
-			categoryStore.setCategories([category]);
-
 			const page = render(Page);
 			await openCreateTaskDialog(page);
 			await selectCategory(page, category.title);
@@ -133,8 +139,6 @@ describe('backlog page tests', () => {
 		});
 
 		it('reacts correctly to too long task title', async () => {
-			categoryStore.setCategories([category]);
-
 			const page = render(Page);
 			await openCreateTaskDialog(page);
 			await selectCategory(page, category.title);
@@ -148,12 +152,10 @@ describe('backlog page tests', () => {
 		});
 
 		it('reacts correctly to too long task description', async () => {
-			categoryStore.setCategories([category]);
-
 			const page = render(Page);
 			await openCreateTaskDialog(page);
 			await selectCategory(page, category.title);
-			await enterTaskTitle(page, testData.noDatePartition.firstTask.title);
+			await enterTaskTitle(page, 'Plan a team workshop');
 			const tooLongDescription = 'Compare the available trails, travel times, and weather forecast. '.repeat(9);
 			const descriptionInput = await enterTaskDescription(page, tooLongDescription);
 			await fireEvent.blur(descriptionInput);
@@ -166,7 +168,7 @@ describe('backlog page tests', () => {
 		it('reacts correctly to missing task category', async () => {
 			const page = render(Page);
 			await openCreateTaskDialog(page);
-			await enterTaskTitle(page, testData.noDatePartition.firstTask.title);
+			await enterTaskTitle(page, 'Schedule an annual checkup');
 			const categorySelect = getSelectById(page, 'task-category');
 			await userEvent.click(categorySelect);
 			await userEvent.keyboard('{Escape}');
@@ -179,7 +181,6 @@ describe('backlog page tests', () => {
 
 		it('cancels and closes the create-task dialog', async () => {
 			const page = render(Page);
-
 			await openCreateTaskDialog(page);
 			const cancelButton = page.getByRole('button', { name: 'Cancel' });
 			await userEvent.click(cancelButton);
@@ -189,15 +190,17 @@ describe('backlog page tests', () => {
 		});
 
 		it('successfully adds a task', async () => {
-			categoryStore.setCategories([category]);
+			const title = 'Prepare the quarterly presentation';
+			const description = 'Summarize project results and prepare the final slides.';
+			const rank = generateKeyBetween(testData.noDatePartition.thirdTask.rank, undefined);
 
-			const response = getResponse({ id: 42, rank: 'a0' }, 201);
+			const response = getResponse({ id: 13, rank }, 201);
 			fetchMock.mockResolvedValue(response);
 
 			const page = render(Page);
 			await openCreateTaskDialog(page);
-			await enterTaskTitle(page, testData.noDatePartition.firstTask.title);
-			await enterTaskDescription(page, testData.noDatePartition.firstTask.description);
+			await enterTaskTitle(page, title);
+			await enterTaskDescription(page, description);
 			await selectCategory(page, category.title);
 			const createButton = page.getByRole('button', { name: 'Create' });
 			await userEvent.click(createButton);
@@ -206,8 +209,8 @@ describe('backlog page tests', () => {
 			const createTaskDialog = page.queryByRole('dialog', { name: 'Create Task' });
 			expect(createTaskDialog).not.toBeInTheDocument();
 			const requestBody = JSON.stringify({
-				title: testData.noDatePartition.firstTask.title,
-				description: testData.noDatePartition.firstTask.description,
+				title,
+				description,
 				categoryId: category.id
 			});
 			expectRequestUrl(fetchMock, '/api/tasks');
@@ -216,20 +219,13 @@ describe('backlog page tests', () => {
 			expectRequestBody(fetchMock, requestBody);
 			expectRequestContentType(fetchMock, 'application/json');
 			const tasksWithoutDateList = page.getByLabelText('Tasks without a date');
-			expectTaskToBePresent(
-				tasksWithoutDateList,
-				testData.noDatePartition.firstTask.title,
-				testData.noDatePartition.firstTask.description,
-				category.title
-			);
+			expectTaskToBePresent(tasksWithoutDateList, title, description, category.title);
 		});
 	});
 
 	describe('task editing', () => {
 		it('reacts correctly to missing task title', async () => {
 			const task = testData.noDatePartition.firstTask;
-			categoryStore.setCategories([category]);
-			undatedTaskStore.addTask(task);
 
 			const page = render(Page);
 			await openEditTaskDialog(page, task.title);
@@ -243,8 +239,6 @@ describe('backlog page tests', () => {
 
 		it('reacts correctly to too long task title', async () => {
 			const task = testData.noDatePartition.firstTask;
-			categoryStore.setCategories([category]);
-			undatedTaskStore.addTask(task);
 
 			const page = render(Page);
 			await openEditTaskDialog(page, task.title);
@@ -259,8 +253,6 @@ describe('backlog page tests', () => {
 
 		it('reacts correctly to too long task description', async () => {
 			const task = testData.noDatePartition.firstTask;
-			categoryStore.setCategories([category]);
-			undatedTaskStore.addTask(task);
 
 			const page = render(Page);
 			await openEditTaskDialog(page, task.title);
@@ -275,8 +267,6 @@ describe('backlog page tests', () => {
 
 		it('cancels and closes the edit-task dialog', async () => {
 			const task = testData.noDatePartition.firstTask;
-			categoryStore.setCategories([category]);
-			undatedTaskStore.addTask(task);
 
 			const page = render(Page);
 			await openEditTaskDialog(page, task.title);
@@ -289,9 +279,6 @@ describe('backlog page tests', () => {
 
 		it('successfully edits a task without a date', async () => {
 			const task = testData.noDatePartition.firstTask;
-			categoryStore.setCategories([category]);
-			undatedTaskStore.addTask(task);
-
 			const newTitle = 'Book the hiking trail transfer';
 			const newDescription = 'Reserve the earliest train and the return connection.';
 
@@ -332,9 +319,6 @@ describe('backlog page tests', () => {
 		it('successfully edits a task with a non-today date', async () => {
 			const task = testData.nonTodayPastPartition.firstTask;
 			const taskDate = testData.nonTodayPastPartitionDate;
-			categoryStore.setCategories([category]);
-			datedUntrashedOpenTaskStore.addTask(task);
-
 			const newTitle = 'Book the hiking trail transfer';
 			const newDescription = 'Reserve the earliest train and the return connection.';
 
@@ -378,9 +362,6 @@ describe('backlog page tests', () => {
 		it('successfully edits a task dated today', async () => {
 			const task = testData.todayPartition.firstTask;
 			const taskDate = testData.todayPartitionDate;
-			categoryStore.setCategories([category]);
-			datedUntrashedOpenTaskStore.addTask(task);
-
 			const newTitle = 'Book the hiking trail transfer';
 			const newDescription = 'Reserve the earliest train and the return connection.';
 
@@ -425,8 +406,6 @@ describe('backlog page tests', () => {
 	describe('task completion', () => {
 		it('successfully completes a task without a date', async () => {
 			const task = testData.noDatePartition.firstTask;
-			categoryStore.setCategories([category]);
-			undatedTaskStore.addTask(task);
 
 			const response = new Response(null, { status: 204 });
 			fetchMock.mockResolvedValue(response);
@@ -449,8 +428,6 @@ describe('backlog page tests', () => {
 
 		it('successfully completes a task with a non-today date', async () => {
 			const task = testData.nonTodayPastPartition.firstTask;
-			categoryStore.setCategories([category]);
-			datedUntrashedOpenTaskStore.addTask(task);
 
 			const response = new Response(null, { status: 204 });
 			fetchMock.mockResolvedValue(response);
@@ -473,8 +450,6 @@ describe('backlog page tests', () => {
 
 		it('successfully completes a task dated today', async () => {
 			const task = testData.todayPartition.firstTask;
-			categoryStore.setCategories([category]);
-			datedUntrashedOpenTaskStore.addTask(task);
 
 			const response = new Response(null, { status: 204 });
 			fetchMock.mockResolvedValue(response);
@@ -499,8 +474,6 @@ describe('backlog page tests', () => {
 	describe('task trashing', () => {
 		it('successfully trashes a task without a date', async () => {
 			const task = testData.noDatePartition.firstTask;
-			categoryStore.setCategories([category]);
-			undatedTaskStore.addTask(task);
 
 			const response = new Response(null, { status: 204 });
 			fetchMock.mockResolvedValue(response);
@@ -530,8 +503,6 @@ describe('backlog page tests', () => {
 
 		it('successfully trashes a task with a non-today date', async () => {
 			const task = testData.nonTodayPastPartition.firstTask;
-			categoryStore.setCategories([category]);
-			datedUntrashedOpenTaskStore.addTask(task);
 
 			const response = new Response(null, { status: 204 });
 			fetchMock.mockResolvedValue(response);
@@ -561,8 +532,6 @@ describe('backlog page tests', () => {
 
 		it('successfully trashes a task dated today', async () => {
 			const task = testData.todayPartition.firstTask;
-			categoryStore.setCategories([category]);
-			datedUntrashedOpenTaskStore.addTask(task);
 
 			const response = new Response(null, { status: 204 });
 			fetchMock.mockResolvedValue(response);
@@ -598,10 +567,6 @@ describe('backlog page tests', () => {
 				testData.nonTodayPastPartition.secondTask,
 				testData.todayPartition.thirdTask
 			] as const;
-			categoryStore.setCategories([category]);
-			undatedTaskStore.addTask(tasks[0]);
-			datedUntrashedOpenTaskStore.addTask(tasks[1]);
-			datedUntrashedOpenTaskStore.addTask(tasks[2]);
 			const taskIds = tasks.map((task) => task.id);
 			const completedTaskRanks = generateNKeysBetween(undefined, undefined, tasks.length);
 			const completedTasks = [
@@ -638,10 +603,6 @@ describe('backlog page tests', () => {
 				testData.nonTodayPastPartition.secondTask,
 				testData.todayPartition.thirdTask
 			] as const;
-			categoryStore.setCategories([category]);
-			undatedTaskStore.addTask(tasks[0]);
-			datedUntrashedOpenTaskStore.addTask(tasks[1]);
-			datedUntrashedOpenTaskStore.addTask(tasks[2]);
 			const taskIds = tasks.map((task) => task.id);
 
 			const response = new Response(null, { status: 204 });
@@ -675,8 +636,6 @@ describe('backlog page tests', () => {
 
 		it('successfully cancels a batch operation', async () => {
 			const task = testData.noDatePartition.firstTask;
-			categoryStore.setCategories([category]);
-			undatedTaskStore.addTask(task);
 
 			const page = render(Page);
 			await clickOnSelectTasksButton(page);
@@ -694,10 +653,6 @@ describe('backlog page tests', () => {
 		});
 
 		it('disables batch actions when no tasks are selected', async () => {
-			const task = testData.noDatePartition.firstTask;
-			categoryStore.setCategories([category]);
-			undatedTaskStore.addTask(task);
-
 			const page = render(Page);
 			await clickOnSelectTasksButton(page);
 
@@ -709,7 +664,6 @@ describe('backlog page tests', () => {
 		});
 
 		it('disables batch trash when more than 50 tasks are selected', async () => {
-			categoryStore.setCategories([category]);
 			const taskTitles = addTasksExceedingMaximumBatchSize();
 
 			const page = render(Page);
@@ -723,7 +677,6 @@ describe('backlog page tests', () => {
 		});
 
 		it('disables batch completion when more than 50 tasks are selected', async () => {
-			categoryStore.setCategories([category]);
 			const taskTitles = addTasksExceedingMaximumBatchSize();
 
 			const page = render(Page);
@@ -740,9 +693,6 @@ describe('backlog page tests', () => {
 	describe('drag and drop', () => {
 		describe('within the no-date partition', () => {
 			it('moves a task to the first index', async () => {
-				categoryStore.setCategories([category]);
-				undatedTaskStore.addTasks(testData.noDatePartition.tasks);
-
 				const response = new Response(null, { status: 204 });
 				fetchMock.mockResolvedValue(response);
 
@@ -767,9 +717,6 @@ describe('backlog page tests', () => {
 			});
 
 			it('moves a task to the middle index', async () => {
-				categoryStore.setCategories([category]);
-				undatedTaskStore.addTasks(testData.noDatePartition.tasks);
-
 				const response = new Response(null, { status: 204 });
 				fetchMock.mockResolvedValue(response);
 
@@ -797,9 +744,6 @@ describe('backlog page tests', () => {
 			});
 
 			it('moves a task to the last index', async () => {
-				categoryStore.setCategories([category]);
-				undatedTaskStore.addTasks(testData.noDatePartition.tasks);
-
 				const response = new Response(null, { status: 204 });
 				fetchMock.mockResolvedValue(response);
 
@@ -826,9 +770,6 @@ describe('backlog page tests', () => {
 
 		describe('within the today partition', () => {
 			it('moves a task to the first index', async () => {
-				categoryStore.setCategories([category]);
-				datedUntrashedOpenTaskStore.addTasks(testData.todayPartition.tasks);
-
 				const response = new Response(null, { status: 204 });
 				fetchMock.mockResolvedValue(response);
 
@@ -857,9 +798,6 @@ describe('backlog page tests', () => {
 			});
 
 			it('moves a task to the middle index', async () => {
-				categoryStore.setCategories([category]);
-				datedUntrashedOpenTaskStore.addTasks(testData.todayPartition.tasks);
-
 				const response = new Response(null, { status: 204 });
 				fetchMock.mockResolvedValue(response);
 
@@ -891,9 +829,6 @@ describe('backlog page tests', () => {
 			});
 
 			it('moves a task to the last index', async () => {
-				categoryStore.setCategories([category]);
-				datedUntrashedOpenTaskStore.addTasks(testData.todayPartition.tasks);
-
 				const response = new Response(null, { status: 204 });
 				fetchMock.mockResolvedValue(response);
 
@@ -924,9 +859,6 @@ describe('backlog page tests', () => {
 
 		describe('within the non-today-date partition', () => {
 			it('moves a task to the first index', async () => {
-				categoryStore.setCategories([category]);
-				datedUntrashedOpenTaskStore.addTasks(testData.nonTodayPastPartition.tasks);
-
 				const response = new Response(null, { status: 204 });
 				fetchMock.mockResolvedValue(response);
 
@@ -955,9 +887,6 @@ describe('backlog page tests', () => {
 			});
 
 			it('moves a task to the middle index', async () => {
-				categoryStore.setCategories([category]);
-				datedUntrashedOpenTaskStore.addTasks(testData.nonTodayPastPartition.tasks);
-
 				const response = new Response(null, { status: 204 });
 				fetchMock.mockResolvedValue(response);
 
@@ -989,9 +918,6 @@ describe('backlog page tests', () => {
 			});
 
 			it('moves a task to the last index', async () => {
-				categoryStore.setCategories([category]);
-				datedUntrashedOpenTaskStore.addTasks(testData.nonTodayPastPartition.tasks);
-
 				const response = new Response(null, { status: 204 });
 				fetchMock.mockResolvedValue(response);
 
@@ -1022,10 +948,6 @@ describe('backlog page tests', () => {
 
 		describe('between different non-today-date partitions', () => {
 			it('moves a task to the first index', async () => {
-				categoryStore.setCategories([category]);
-				datedUntrashedOpenTaskStore.addTasks(testData.nonTodayPastPartition.tasks);
-				datedUntrashedOpenTaskStore.addTasks(testData.nonTodayFuturePartition.tasks);
-
 				const response = new Response(null, { status: 204 });
 				fetchMock.mockResolvedValue(response);
 
@@ -1059,10 +981,6 @@ describe('backlog page tests', () => {
 			});
 
 			it('moves a task to the middle index', async () => {
-				categoryStore.setCategories([category]);
-				datedUntrashedOpenTaskStore.addTasks(testData.nonTodayPastPartition.tasks);
-				datedUntrashedOpenTaskStore.addTasks(testData.nonTodayFuturePartition.tasks);
-
 				const response = new Response(null, { status: 204 });
 				fetchMock.mockResolvedValue(response);
 
@@ -1099,10 +1017,6 @@ describe('backlog page tests', () => {
 			});
 
 			it('moves a task to the last index', async () => {
-				categoryStore.setCategories([category]);
-				datedUntrashedOpenTaskStore.addTasks(testData.nonTodayPastPartition.tasks);
-				datedUntrashedOpenTaskStore.addTasks(testData.nonTodayFuturePartition.tasks);
-
 				const response = new Response(null, { status: 204 });
 				fetchMock.mockResolvedValue(response);
 
@@ -1142,7 +1056,6 @@ describe('backlog page tests', () => {
 					'first',
 					testData.nonTodayPastPartitionDate,
 					testData.nonTodayPastPartitionLabel,
-					testData.nonTodayPastPartition.tasks,
 					[testData.noDatePartition.thirdTask, ...testData.nonTodayPastPartition.tasks],
 					undefined,
 					testData.nonTodayPastPartition.firstTask.rank
@@ -1151,7 +1064,6 @@ describe('backlog page tests', () => {
 					'middle',
 					testData.nonTodayPastPartitionDate,
 					testData.nonTodayPastPartitionLabel,
-					testData.nonTodayPastPartition.tasks,
 					[
 						testData.nonTodayPastPartition.firstTask,
 						testData.noDatePartition.thirdTask,
@@ -1165,18 +1077,13 @@ describe('backlog page tests', () => {
 					'last',
 					testData.nonTodayPastPartitionDate,
 					testData.nonTodayPastPartitionLabel,
-					testData.nonTodayPastPartition.tasks,
 					[...testData.nonTodayPastPartition.tasks, testData.noDatePartition.thirdTask],
 					testData.nonTodayPastPartition.thirdTask.rank,
 					undefined
 				]
 			])(
 				'moves a task to the %s index of the non-today-date partition',
-				async (_, destinationDate, destinationDateLabel, destinationTasks, reorderedTasks, previousRank, nextRank) => {
-					categoryStore.setCategories([category]);
-					undatedTaskStore.addTask(testData.noDatePartition.thirdTask);
-					datedUntrashedOpenTaskStore.addTasks(destinationTasks);
-
+				async (_, destinationDate, destinationDateLabel, reorderedTasks, previousRank, nextRank) => {
 					const response = new Response(null, { status: 204 });
 					fetchMock.mockResolvedValue(response);
 
@@ -1207,14 +1114,12 @@ describe('backlog page tests', () => {
 			it.each([
 				[
 					'first',
-					testData.todayPartition.tasks,
 					[testData.noDatePartition.thirdTask, ...testData.todayPartition.tasks],
 					undefined,
 					testData.todayPartition.firstTask.rank
 				],
 				[
 					'middle',
-					testData.todayPartition.tasks,
 					[
 						testData.todayPartition.firstTask,
 						testData.noDatePartition.thirdTask,
@@ -1226,18 +1131,13 @@ describe('backlog page tests', () => {
 				],
 				[
 					'last',
-					testData.todayPartition.tasks,
 					[...testData.todayPartition.tasks, testData.noDatePartition.thirdTask],
 					testData.todayPartition.thirdTask.rank,
 					undefined
 				]
 			])(
 				'moves a task to the %s index of the today partition',
-				async (_, destinationTasks, reorderedTasks, previousRank, nextRank) => {
-					categoryStore.setCategories([category]);
-					undatedTaskStore.addTask(testData.noDatePartition.thirdTask);
-					datedUntrashedOpenTaskStore.addTasks(destinationTasks);
-
+				async (_, reorderedTasks, previousRank, nextRank) => {
 					const response = new Response(null, { status: 204 });
 					fetchMock.mockResolvedValue(response);
 
@@ -1270,14 +1170,12 @@ describe('backlog page tests', () => {
 			it.each([
 				[
 					'first',
-					testData.noDatePartition.tasks,
 					[testData.nonTodayPastPartition.thirdTask, ...testData.noDatePartition.tasks],
 					undefined,
 					testData.noDatePartition.firstTask.rank
 				],
 				[
 					'middle',
-					testData.noDatePartition.tasks,
 					[
 						testData.noDatePartition.firstTask,
 						testData.nonTodayPastPartition.thirdTask,
@@ -1289,18 +1187,13 @@ describe('backlog page tests', () => {
 				],
 				[
 					'last',
-					testData.noDatePartition.tasks,
 					[...testData.noDatePartition.tasks, testData.nonTodayPastPartition.thirdTask],
 					testData.noDatePartition.thirdTask.rank,
 					undefined
 				]
 			])(
 				'moves a task to the %s index of the no-date partition',
-				async (_, destinationTasks, reorderedTasks, previousRank, nextRank) => {
-					categoryStore.setCategories([category]);
-					datedUntrashedOpenTaskStore.addTask(testData.nonTodayPastPartition.thirdTask);
-					undatedTaskStore.addTasks(destinationTasks);
-
+				async (_, reorderedTasks, previousRank, nextRank) => {
 					const response = new Response(null, { status: 204 });
 					fetchMock.mockResolvedValue(response);
 
@@ -1327,14 +1220,12 @@ describe('backlog page tests', () => {
 			it.each([
 				[
 					'first',
-					testData.todayPartition.tasks,
 					[testData.nonTodayPastPartition.thirdTask, ...testData.todayPartition.tasks],
 					undefined,
 					testData.todayPartition.firstTask.rank
 				],
 				[
 					'middle',
-					testData.todayPartition.tasks,
 					[
 						testData.todayPartition.firstTask,
 						testData.nonTodayPastPartition.thirdTask,
@@ -1346,18 +1237,13 @@ describe('backlog page tests', () => {
 				],
 				[
 					'last',
-					testData.todayPartition.tasks,
 					[...testData.todayPartition.tasks, testData.nonTodayPastPartition.thirdTask],
 					testData.todayPartition.thirdTask.rank,
 					undefined
 				]
 			])(
 				'moves a task to the %s index of the today partition',
-				async (_, destinationTasks, reorderedTasks, previousRank, nextRank) => {
-					categoryStore.setCategories([category]);
-					datedUntrashedOpenTaskStore.addTask(testData.nonTodayPastPartition.thirdTask);
-					datedUntrashedOpenTaskStore.addTasks(destinationTasks);
-
+				async (_, reorderedTasks, previousRank, nextRank) => {
 					const response = new Response(null, { status: 204 });
 					fetchMock.mockResolvedValue(response);
 
@@ -1390,14 +1276,12 @@ describe('backlog page tests', () => {
 			it.each([
 				[
 					'first',
-					testData.noDatePartition.tasks,
 					[testData.todayPartition.thirdTask, ...testData.noDatePartition.tasks],
 					undefined,
 					testData.noDatePartition.firstTask.rank
 				],
 				[
 					'middle',
-					testData.noDatePartition.tasks,
 					[
 						testData.noDatePartition.firstTask,
 						testData.todayPartition.thirdTask,
@@ -1409,18 +1293,13 @@ describe('backlog page tests', () => {
 				],
 				[
 					'last',
-					testData.noDatePartition.tasks,
 					[...testData.noDatePartition.tasks, testData.todayPartition.thirdTask],
 					testData.noDatePartition.thirdTask.rank,
 					undefined
 				]
 			])(
 				'moves a task to the %s index of the no-date partition',
-				async (_, destinationTasks, reorderedTasks, previousRank, nextRank) => {
-					categoryStore.setCategories([category]);
-					datedUntrashedOpenTaskStore.addTask(testData.todayPartition.thirdTask);
-					undatedTaskStore.addTasks(destinationTasks);
-
+				async (_, reorderedTasks, previousRank, nextRank) => {
 					const response = new Response(null, { status: 204 });
 					fetchMock.mockResolvedValue(response);
 
@@ -1447,14 +1326,12 @@ describe('backlog page tests', () => {
 			it.each([
 				[
 					'first',
-					testData.nonTodayPastPartition.tasks,
 					[testData.todayPartition.thirdTask, ...testData.nonTodayPastPartition.tasks],
 					undefined,
 					testData.nonTodayPastPartition.firstTask.rank
 				],
 				[
 					'middle',
-					testData.nonTodayPastPartition.tasks,
 					[
 						testData.nonTodayPastPartition.firstTask,
 						testData.todayPartition.thirdTask,
@@ -1466,18 +1343,13 @@ describe('backlog page tests', () => {
 				],
 				[
 					'last',
-					testData.nonTodayPastPartition.tasks,
 					[...testData.nonTodayPastPartition.tasks, testData.todayPartition.thirdTask],
 					testData.nonTodayPastPartition.thirdTask.rank,
 					undefined
 				]
 			])(
 				'moves a task to the %s index of the non-today-date partition',
-				async (_, destinationTasks, reorderedTasks, previousRank, nextRank) => {
-					categoryStore.setCategories([category]);
-					datedUntrashedOpenTaskStore.addTask(testData.todayPartition.thirdTask);
-					datedUntrashedOpenTaskStore.addTasks(destinationTasks);
-
+				async (_, reorderedTasks, previousRank, nextRank) => {
 					const response = new Response(null, { status: 204 });
 					fetchMock.mockResolvedValue(response);
 
@@ -1674,9 +1546,10 @@ async function openCategorySelect(page: RenderResult<typeof Page>): Promise<void
 
 function addTasksExceedingMaximumBatchSize(): string[] {
 	const taskCount = 51;
+	const firstTaskId = 13;
 	const ranks = generateNKeysBetween(undefined, undefined, taskCount);
 	const tasks = ranks.map((rank, index) => ({
-		id: index + 1,
+		id: firstTaskId + index,
 		categoryId: category.id,
 		title: `Review project note ${index + 1}`,
 		description: `Review and organize project note ${index + 1}.`,
