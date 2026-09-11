@@ -43,6 +43,11 @@ type UndatedTaskResponse struct {
 	Rank        string  `db:"rank" json:"rank"`
 }
 
+type GetUndatedTasksResponse struct {
+	Tasks   []UndatedTaskResponse `json:"tasks"`
+	HasMore bool                  `json:"hasMore"`
+}
+
 type BatchCompleteResponse struct {
 	DatedUntrashedDoneTasks []TaskResponse `json:"datedUntrashedDoneTasks"`
 	TrashedTasks            []TaskResponse `json:"trashedTasks"`

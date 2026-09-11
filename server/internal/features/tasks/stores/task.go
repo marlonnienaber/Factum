@@ -525,10 +525,10 @@ func (store *TaskStore) InsertTask(
 	return &task, nil
 }
 
-func (store *TaskStore) GetUndatedUntrashedUndoneTasks(userId int64, rank *string) ([]transport.UndatedTaskResponse, error) {
+func (store *TaskStore) GetUndatedUntrashedUndoneTasks(userId int64, rank *string) (*transport.GetUndatedTasksResponse, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("retrieving undated untrashed undone tasks failed")
 
-	tasks := make([]transport.UndatedTaskResponse, 0)
+	tasks := make([]transport.UndatedTaskResponse, 0, tasksBatchSize+1)
 	err := store.db.Select(&tasks, `
 		SELECT id,
 		       category_id,
@@ -543,12 +543,17 @@ func (store *TaskStore) GetUndatedUntrashedUndoneTasks(userId int64, rank *strin
 		  AND ($2::TEXT IS NULL OR rank > $2)
 		ORDER BY rank ASC
 		LIMIT $3
-	`, userId, rank, tasksBatchSize)
+	`, userId, rank, tasksBatchSize+1)
 	if err != nil {
 		return nil, wrapUnexpectedError(err)
 	}
 
-	return tasks, nil
+	hasMore := len(tasks) > tasksBatchSize
+	if hasMore {
+		tasks = tasks[:tasksBatchSize]
+	}
+
+	return &transport.GetUndatedTasksResponse{Tasks: tasks, HasMore: hasMore}, nil
 }
 
 func (store *TaskStore) GetDatedDoneUntrashedTasks(userId int64, date *time.Time, rank *string) ([]transport.TaskResponse, error) {
