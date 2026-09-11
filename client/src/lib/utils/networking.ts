@@ -14,6 +14,10 @@ export async function jsonPostWithoutBodyWithResponse<R>(url: string, responseSc
 	return await jsonFetchWithoutBodyWithResponse('POST', url, responseSchema);
 }
 
+export async function jsonPatchWithoutBodyWithResponse<R>(url: string, responseSchema: ZodType<R>): Promise<NetworkCall<R>> {
+	return await jsonFetchWithoutBodyWithResponse('PATCH', url, responseSchema);
+}
+
 export async function jsonPostWithBodyWithResponse<B, R>(
 	url: string,
 	requestBody: B,
@@ -55,7 +59,7 @@ export async function jsonDeleteWithoutBodyWithoutResponse(url: string): Promise
 }
 
 async function jsonFetchWithoutBodyWithResponse<R>(
-	httpMethod: 'GET' | 'POST',
+	httpMethod: 'GET' | 'POST' | 'PATCH',
 	url: string,
 	responseSchema: ZodType<R>
 ): Promise<NetworkCall<R>> {

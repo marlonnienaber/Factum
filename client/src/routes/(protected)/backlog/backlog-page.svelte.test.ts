@@ -41,8 +41,8 @@ describe('backlog page tests', () => {
 		datedUntrashedOpenTaskStore.reset();
 		trashedTaskStore.reset();
 		categoryStore.setCategories([category]);
-		undatedTaskStore.addTasks(testData.noDatePartition.tasks);
-		datedUntrashedOpenTaskStore.addTasks([
+		undatedTaskStore.addOrUpdateTasks(testData.noDatePartition.tasks);
+		datedUntrashedOpenTaskStore.addOrUpdateTasks([
 			...testData.todayPartition.tasks,
 			...testData.nonTodayPastPartition.tasks,
 			...testData.nonTodayFuturePartition.tasks
@@ -1525,7 +1525,7 @@ function addTasksExceedingMaximumBatchSize(): string[] {
 		description: `Review and organize project note ${index + 1}.`,
 		rank
 	}));
-	undatedTaskStore.addTasks(tasks);
+	undatedTaskStore.addOrUpdateTasks(tasks);
 	return tasks.map((task) => task.title);
 }
 

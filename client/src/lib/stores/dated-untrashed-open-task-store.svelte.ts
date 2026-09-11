@@ -2,14 +2,14 @@ import type { DatedUntrashedOpenTaskResponse } from '$lib/types/responses/dated-
 
 let datedUntrashedOpenTasks: DatedUntrashedOpenTaskResponse[] = $state<DatedUntrashedOpenTaskResponse[]>([]);
 
-function addTasks(tasks: DatedUntrashedOpenTaskResponse[]): void {
+function addOrUpdateTasks(tasks: DatedUntrashedOpenTaskResponse[]): void {
 	const taskIds = new Set(tasks.map((task) => task.id));
 	const deduplicatedTasks = datedUntrashedOpenTasks.filter((task) => !taskIds.has(task.id));
 	datedUntrashedOpenTasks = [...deduplicatedTasks, ...tasks].sort(compareTasksByDateAndRank);
 }
 
-function addTask(task: DatedUntrashedOpenTaskResponse): void {
-	addTasks([task]);
+function addOrUpdateTask(task: DatedUntrashedOpenTaskResponse): void {
+	addOrUpdateTasks([task]);
 }
 
 function removeTask(id: number): void {
@@ -35,8 +35,8 @@ export const datedUntrashedOpenTaskStore = {
 	get datedUntrashedOpenTasks(): DatedUntrashedOpenTaskResponse[] {
 		return datedUntrashedOpenTasks;
 	},
-	addTasks,
-	addTask,
+	addOrUpdateTasks,
+	addOrUpdateTask,
 	removeTask,
 	removeTasks,
 	reset

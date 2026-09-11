@@ -2,14 +2,14 @@ import type { UndatedTaskResponse } from '$lib/types/responses/undated-task-resp
 
 let undatedTasks: UndatedTaskResponse[] = $state<UndatedTaskResponse[]>([]);
 
-function addTasks(tasks: UndatedTaskResponse[]): void {
+function addOrUpdateTasks(tasks: UndatedTaskResponse[]): void {
 	const taskIds = new Set(tasks.map((task) => task.id));
 	const deduplicatedTasks = undatedTasks.filter((task) => !taskIds.has(task.id));
 	undatedTasks = [...deduplicatedTasks, ...tasks].sort(compareTasksByRank);
 }
 
-function addTask(task: UndatedTaskResponse): void {
-	addTasks([task]);
+function addOrUpdateTask(task: UndatedTaskResponse): void {
+	addOrUpdateTasks([task]);
 }
 
 function removeTask(id: number): void {
@@ -33,8 +33,8 @@ export const undatedTaskStore = {
 	get undatedTasks(): UndatedTaskResponse[] {
 		return undatedTasks;
 	},
-	addTasks,
-	addTask,
+	addOrUpdateTasks,
+	addOrUpdateTask,
 	removeTask,
 	removeTasks,
 	reset
