@@ -410,8 +410,10 @@ describe('backlog page tests', () => {
 	describe('task completion', () => {
 		it('successfully completes a task without a date', async () => {
 			const task = testData.noDatePartition.firstTask;
+			const completedTaskDate = testData.todayPartitionDate;
+			const completedTaskRank = generateKeyBetween(undefined, undefined);
 
-			const response = new Response(null, { status: 204 });
+			const response = getResponse({ date: completedTaskDate.toString(), rank: completedTaskRank });
 			fetchMock.mockResolvedValue(response);
 
 			const page = render(Page);
@@ -421,19 +423,24 @@ describe('backlog page tests', () => {
 			await userEvent.click(completeTaskButton);
 
 			await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-			const expectedRank = generateKeyBetween(undefined, undefined);
-			const requestUrl = `/api/tasks/${task.id}/toggle-done?rank=${expectedRank}`;
+			const requestUrl = `/api/tasks/${task.id}/toggle-done`;
 			expectRequestUrl(fetchMock, requestUrl);
 			expectRequestMethod(fetchMock, 'PATCH');
 			expectRequestCredentialsMode(fetchMock, 'same-origin');
 			expectRequestBody(fetchMock, undefined);
 			expectTaskNotToBePresent(page, task.title);
+			expect(datedUntrashedDoneTaskStore.datedUntrashedDoneTasks).toContainEqual({
+				...task,
+				date: completedTaskDate,
+				rank: completedTaskRank
+			});
 		});
 
 		it('successfully completes a task with a non-today date', async () => {
 			const task = testData.nonTodayPastPartition.firstTask;
+			const completedTaskRank = generateKeyBetween(undefined, undefined);
 
-			const response = new Response(null, { status: 204 });
+			const response = getResponse({ date: task.date.toString(), rank: completedTaskRank });
 			fetchMock.mockResolvedValue(response);
 
 			const page = render(Page);
@@ -443,19 +450,23 @@ describe('backlog page tests', () => {
 			await userEvent.click(completeTaskButton);
 
 			await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-			const expectedRank = generateKeyBetween(undefined, undefined);
-			const requestUrl = `/api/tasks/${task.id}/toggle-done?rank=${expectedRank}`;
+			const requestUrl = `/api/tasks/${task.id}/toggle-done`;
 			expectRequestUrl(fetchMock, requestUrl);
 			expectRequestMethod(fetchMock, 'PATCH');
 			expectRequestCredentialsMode(fetchMock, 'same-origin');
 			expectRequestBody(fetchMock, undefined);
 			expectTaskNotToBePresent(page, task.title);
+			expect(datedUntrashedDoneTaskStore.datedUntrashedDoneTasks).toContainEqual({
+				...task,
+				rank: completedTaskRank
+			});
 		});
 
 		it('successfully completes a task dated today', async () => {
 			const task = testData.todayPartition.firstTask;
+			const completedTaskRank = generateKeyBetween(undefined, undefined);
 
-			const response = new Response(null, { status: 204 });
+			const response = getResponse({ date: task.date.toString(), rank: completedTaskRank });
 			fetchMock.mockResolvedValue(response);
 
 			const page = render(Page);
@@ -465,13 +476,41 @@ describe('backlog page tests', () => {
 			await userEvent.click(completeTaskButton);
 
 			await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-			const expectedRank = generateKeyBetween(undefined, undefined);
-			const requestUrl = `/api/tasks/${task.id}/toggle-done?rank=${expectedRank}`;
+			const requestUrl = `/api/tasks/${task.id}/toggle-done`;
 			expectRequestUrl(fetchMock, requestUrl);
 			expectRequestMethod(fetchMock, 'PATCH');
 			expectRequestCredentialsMode(fetchMock, 'same-origin');
 			expectRequestBody(fetchMock, undefined);
 			expectTaskNotToBePresent(page, task.title);
+			expect(datedUntrashedDoneTaskStore.datedUntrashedDoneTasks).toContainEqual({
+				...task,
+				rank: completedTaskRank
+			});
+		});
+
+		it('reports potentially inconsistent data when completing a dated task returns no rank', async () => {
+			const task = testData.todayPartition.firstTask;
+
+			const response = getResponse({ date: task.date.toString() });
+			fetchMock.mockResolvedValue(response);
+
+			const page = render(Page);
+			const completeTaskButton = page.getByRole('checkbox', {
+				name: `Mark "${task.title}" as completed`
+			});
+			await userEvent.click(completeTaskButton);
+
+			await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+			expect(toastErrorMock).toHaveBeenCalledWith(
+				'An unexpected error occurred. Your data might be inconsistent. Please reload the page to resolve the issue.'
+			);
+			expectTaskToBePresent(
+				page.getByLabelText(`Tasks dated ${testData.todayPartitionLabel}`),
+				task.title,
+				task.description,
+				category.title
+			);
+			expect(datedUntrashedDoneTaskStore.datedUntrashedDoneTasks).toHaveLength(0);
 		});
 	});
 
