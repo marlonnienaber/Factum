@@ -20,7 +20,6 @@ var (
 	ErrTaskAlreadyRestored                           = errors.New("task is already restored")
 	ErrTaskAlreadyCompleted                          = errors.New("task is already completed")
 	ErrTaskAlreadyOpen                               = errors.New("task is already open")
-	ErrTaskRankRequired                              = errors.New("task rank is required for an untrashed task")
 )
 
 type TaskService struct {
@@ -324,41 +323,60 @@ func (service *TaskService) RestoreTask(userId int64, taskId int64, rank string)
 	return nil
 }
 
-func (service *TaskService) ToggleTaskDone(userId int64, taskId int64, rank *string) error {
+func (service *TaskService) ToggleTaskDone(userId int64, taskId int64) (*transport.ToggleTaskDoneResponse, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("toggling task done failed")
 
-	err := shared.ExecuteAsSerializableTransactionWithoutResult(service.db, func(transaction *sqlx.Tx) error {
+	response, err := shared.ExecuteAsSerializableTransaction(service.db, func(transaction *sqlx.Tx) (*transport.ToggleTaskDoneResponse, error) {
 		task, err := service.taskStore.GetTaskByIdForUser(transaction, taskId, userId)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		if task.TrashedDate == nil {
-			if rank == nil {
-				return ErrTaskRankRequired
-			}
-			task.Rank = rank
-		}
-
 		task.Done = !task.Done
 		if task.Done && task.Date == nil {
 			currentDate := shared.NewDate(time.Now())
 			task.Date = &currentDate
 		}
+		if task.TrashedDate != nil {
+			if err := service.taskStore.UpdateTaskDoneState(transaction, task); err != nil {
+				return nil, err
+			}
+			return &transport.ToggleTaskDoneResponse{Date: *task.Date}, nil
+		}
 
-		return service.taskStore.UpdateTaskDoneState(transaction, task)
+		var highestRank *string
+		if task.Done {
+			highestRank, err = service.taskStore.GetHighestDatedUntrashedDoneTaskRank(transaction, userId, task.Date)
+		} else {
+			highestRank, err = service.taskStore.GetHighestDatedUntrashedOpenTaskRank(transaction, userId, task.Date)
+		}
+		if err != nil {
+			return nil, err
+		}
+		previousTaskRank := ""
+		if highestRank != nil {
+			previousTaskRank = *highestRank
+		}
+		rank, err := fracdex.KeyBetween(previousTaskRank, "")
+		if err != nil {
+			return nil, err
+		}
+		task.Rank = &rank
+
+		if err := service.taskStore.UpdateTaskDoneState(transaction, task); err != nil {
+			return nil, err
+		}
+		return &transport.ToggleTaskDoneResponse{Date: *task.Date, Rank: &rank}, nil
 	})
 	if err != nil {
 		switch {
-		case errors.Is(err, stores.ErrTaskNotFound),
-			errors.Is(err, stores.ErrTaskRankAlreadyExists),
-			errors.Is(err, ErrTaskRankRequired):
-			return err
+		case errors.Is(err, stores.ErrTaskNotFound):
+			return nil, err
 		default:
-			return wrapUnexpectedError(err)
+			return nil, wrapUnexpectedError(err)
 		}
 	}
 
-	return nil
+	return response, nil
 }
 
 func (service *TaskService) BatchCompleteTasks(userId int64, taskIds []int64) (*transport.BatchCompleteResponse, error) {

@@ -14,13 +14,8 @@ import (
 func NewToggleTaskDoneHandler(taskService *services.TaskService) shared.AuthenticatedHandlerFunc {
 	return func(c *shared.AuthenticatedContext) {
 		id, idErr := shared.GetRequiredInt64PathVariable(c, "id")
-		rank, rankErr := shared.GetOptionalRankQueryParameter(c, "rank")
 
-		handlerEntryLog := fmt.Sprintf(
-			"/tasks/%v/toggle-done?rank=%v [PATCH]",
-			shared.GetLogValueForRequiredInt64PathVariable(id, idErr),
-			shared.GetLogValueForOptionalStringQueryParameter(rank, rankErr),
-		)
+		handlerEntryLog := fmt.Sprintf("/tasks/%v/toggle-done [PATCH]", shared.GetLogValueForRequiredInt64PathVariable(id, idErr))
 		slog.Info(handlerEntryLog)
 
 		unexpectedErrorLogMessage := "handling toggle task done failed"
@@ -29,21 +24,11 @@ func NewToggleTaskDoneHandler(taskService *services.TaskService) shared.Authenti
 			c.JSON(http.StatusBadRequest, invalidTaskIdErrorResponse)
 			return
 		}
-		if rankErr != nil {
-			c.JSON(http.StatusBadRequest, shared.InvalidQueryParameterErrorResponse)
-			return
-		}
-
-		if err := taskService.ToggleTaskDone(c.UserId, id, rank); err != nil {
+		response, err := taskService.ToggleTaskDone(c.UserId, id)
+		if err != nil {
 			switch {
 			case errors.Is(err, stores.ErrTaskNotFound):
 				c.JSON(http.StatusNotFound, taskNotFoundErrorResponse)
-				return
-			case errors.Is(err, services.ErrTaskRankRequired):
-				c.JSON(http.StatusBadRequest, shared.MissingQueryParameterErrorResponse)
-				return
-			case errors.Is(err, stores.ErrTaskRankAlreadyExists):
-				c.JSON(http.StatusConflict, taskRankAlreadyExistsErrorResponse)
 				return
 			default:
 				slog.Error(unexpectedErrorLogMessage, "error", err)
@@ -52,6 +37,6 @@ func NewToggleTaskDoneHandler(taskService *services.TaskService) shared.Authenti
 			}
 		}
 
-		c.Status(http.StatusNoContent)
+		c.JSON(http.StatusOK, response)
 	}
 }
