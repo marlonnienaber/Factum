@@ -293,34 +293,58 @@ func (service *TaskService) BatchTrashTasks(userId int64, taskIds []int64, trash
 	return nil
 }
 
-func (service *TaskService) RestoreTask(userId int64, taskId int64, rank string) error {
+func (service *TaskService) RestoreTask(userId int64, taskId int64) (*transport.RestoreTaskResponse, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("restoring task failed")
 
-	err := shared.ExecuteAsSerializableTransactionWithoutResult(service.db, func(transaction *sqlx.Tx) error {
+	response, err := shared.ExecuteAsSerializableTransaction(service.db, func(transaction *sqlx.Tx) (*transport.RestoreTaskResponse, error) {
 		task, err := service.taskStore.GetTaskByIdForUser(transaction, taskId, userId)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if task.TrashedDate == nil {
-			return ErrTaskAlreadyRestored
+			return nil, ErrTaskAlreadyRestored
 		}
 
+		var highestRank *string
+		switch {
+		case task.Date == nil:
+			highestRank, err = service.taskStore.GetHighestUndatedUntrashedOpenTaskRank(transaction, userId)
+		case task.Done:
+			highestRank, err = service.taskStore.GetHighestDatedUntrashedDoneTaskRank(transaction, userId, task.Date)
+		default:
+			highestRank, err = service.taskStore.GetHighestDatedUntrashedOpenTaskRank(transaction, userId, task.Date)
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		previousTaskRank := ""
+		if highestRank != nil {
+			previousTaskRank = *highestRank
+		}
+		rank, err := fracdex.KeyBetween(previousTaskRank, "")
+		if err != nil {
+			return nil, err
+		}
 		task.TrashedDate = nil
 		task.Rank = &rank
-		return service.taskStore.UpdateTaskTrashedState(transaction, task)
+		if err := service.taskStore.UpdateTaskTrashedState(transaction, task); err != nil {
+			return nil, err
+		}
+
+		return &transport.RestoreTaskResponse{Rank: rank}, nil
 	})
 	if err != nil {
 		switch {
 		case errors.Is(err, stores.ErrTaskNotFound),
-			errors.Is(err, stores.ErrTaskRankAlreadyExists),
 			errors.Is(err, ErrTaskAlreadyRestored):
-			return err
+			return nil, err
 		default:
-			return wrapUnexpectedError(err)
+			return nil, wrapUnexpectedError(err)
 		}
 	}
 
-	return nil
+	return response, nil
 }
 
 func (service *TaskService) ToggleTaskDone(userId int64, taskId int64) (*transport.ToggleTaskDoneResponse, error) {

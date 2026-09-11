@@ -26,6 +26,10 @@ type TaskDragAndDropResponse struct {
 	Rank string `json:"rank"`
 }
 
+type RestoreTaskResponse struct {
+	Rank string `json:"rank"`
+}
+
 type ToggleTaskDoneResponse struct {
 	Date shared.Date `json:"date"`
 	Rank *string     `json:"rank,omitempty"`
