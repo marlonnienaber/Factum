@@ -13,13 +13,12 @@ import (
 
 func NewGetDatedUntrashedTasksHandler(taskStore *stores.TaskStore) shared.AuthenticatedHandlerFunc {
 	return func(c *shared.AuthenticatedContext) {
-		// TODO: Always load complete day groups when loading next page (potentially more than actual page size) so clients never calculate ranks with missing neighbours.
 		done, doneErr := shared.GetRequiredBooleanQueryParameter(c, "done")
 		date, dateErr := shared.GetOptionalDateQueryParameter(c, "date")
 		rank, rankErr := shared.GetOptionalRankQueryParameter(c, "rank")
 
 		handlerEntryLog := fmt.Sprintf(
-			"/tasks/dated/untrashed?open=%v&date=%v&rank=%v [GET]",
+			"/tasks/dated-untrashed?done=%v&date=%v&rank=%v [GET]",
 			shared.GetLogValueForRequiredBoolQueryParameter(done, doneErr),
 			shared.GetLogValueForOptionalDateQueryParameter(date, dateErr),
 			shared.GetLogValueForOptionalStringQueryParameter(rank, rankErr),
@@ -43,12 +42,12 @@ func NewGetDatedUntrashedTasksHandler(taskStore *stores.TaskStore) shared.Authen
 			return
 		}
 
-		var taskResponses []transport.TaskResponse
+		var response *transport.GetDatedUntrashedTasksResponse
 		var err error
 		if done {
-			taskResponses, err = taskStore.GetDatedDoneUntrashedTasks(c.UserId, date, rank)
+			response, err = taskStore.GetDatedDoneUntrashedTasks(c.UserId, date, rank)
 		} else {
-			taskResponses, err = taskStore.GetDatedOpenUntrashedTasks(c.UserId, date, rank)
+			response, err = taskStore.GetDatedOpenUntrashedTasks(c.UserId, date, rank)
 		}
 		if err != nil {
 			slog.Error(unexpectedErrorLogMessage, "error", err)
@@ -56,6 +55,6 @@ func NewGetDatedUntrashedTasksHandler(taskStore *stores.TaskStore) shared.Authen
 			return
 		}
 
-		c.JSON(http.StatusOK, taskResponses)
+		c.JSON(http.StatusOK, response)
 	}
 }

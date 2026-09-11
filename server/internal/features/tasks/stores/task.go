@@ -556,10 +556,14 @@ func (store *TaskStore) GetUndatedUntrashedUndoneTasks(userId int64, rank *strin
 	return &transport.GetUndatedTasksResponse{Tasks: tasks, HasMore: hasMore}, nil
 }
 
-func (store *TaskStore) GetDatedDoneUntrashedTasks(userId int64, date *time.Time, rank *string) ([]transport.TaskResponse, error) {
+func (store *TaskStore) GetDatedDoneUntrashedTasks(
+	userId int64,
+	date *time.Time,
+	rank *string,
+) (*transport.GetDatedUntrashedTasksResponse, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("retrieving dated untrashed done tasks failed")
 
-	tasks := make([]transport.TaskResponse, 0)
+	tasks := make([]transport.DatedUntrashedTaskResponse, 0, tasksBatchSize+1)
 	err := store.db.Select(&tasks, `
 		SELECT id,
 		       category_id,
@@ -586,18 +590,27 @@ func (store *TaskStore) GetDatedDoneUntrashedTasks(userId int64, date *time.Time
 		  )
 		ORDER BY date ASC, rank ASC
 		LIMIT $4
-	`, userId, date, rank, tasksBatchSize)
+	`, userId, date, rank, tasksBatchSize+1)
 	if err != nil {
 		return nil, wrapUnexpectedError(err)
 	}
 
-	return tasks, nil
+	hasMore := len(tasks) > tasksBatchSize
+	if hasMore {
+		tasks = tasks[:tasksBatchSize]
+	}
+
+	return &transport.GetDatedUntrashedTasksResponse{Tasks: tasks, HasMore: hasMore}, nil
 }
 
-func (store *TaskStore) GetDatedOpenUntrashedTasks(userId int64, date *time.Time, rank *string) ([]transport.TaskResponse, error) {
+func (store *TaskStore) GetDatedOpenUntrashedTasks(
+	userId int64,
+	date *time.Time,
+	rank *string,
+) (*transport.GetDatedUntrashedTasksResponse, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("retrieving dated untrashed undone tasks failed")
 
-	tasks := make([]transport.TaskResponse, 0)
+	tasks := make([]transport.DatedUntrashedTaskResponse, 0, tasksBatchSize+1)
 	err := store.db.Select(&tasks, `
 		SELECT id,
 		       category_id,
@@ -624,12 +637,17 @@ func (store *TaskStore) GetDatedOpenUntrashedTasks(userId int64, date *time.Time
 		  )
 		ORDER BY date ASC, rank ASC
 		LIMIT $4
-	`, userId, date, rank, tasksBatchSize)
+	`, userId, date, rank, tasksBatchSize+1)
 	if err != nil {
 		return nil, wrapUnexpectedError(err)
 	}
 
-	return tasks, nil
+	hasMore := len(tasks) > tasksBatchSize
+	if hasMore {
+		tasks = tasks[:tasksBatchSize]
+	}
+
+	return &transport.GetDatedUntrashedTasksResponse{Tasks: tasks, HasMore: hasMore}, nil
 }
 
 func (store *TaskStore) GetTrashedTasks(userId int64, trashedTimestamp *time.Time, id *int64) ([]transport.TaskResponse, error) {
