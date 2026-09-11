@@ -126,8 +126,8 @@ func TestTasksBatchOpenOneTaskOwnedByDifferentUser(t *testing.T) {
 	var secondCategory categoriesTransport.CategoryResponse
 	require.NoError(t, json.NewDecoder(secondCategoryResp.Body).Decode(&secondCategory), "failed to decode second category response")
 
-	firstUserTasks := support.PrepareDoneDatedUntrashedTasks(t, app, firstCategory.Id, firstUserCookies...)
-	secondUserTasks := support.PrepareDoneDatedUntrashedTasks(t, app, secondCategory.Id, secondUserCookies...)
+	firstUserTasks := support.PrepareDoneDatedUntrashedTasks(t, app, firstCategory.Id, support.TestTaskDate, firstUserCookies...)
+	secondUserTasks := support.PrepareDoneDatedUntrashedTasks(t, app, secondCategory.Id, support.TestTaskDate, secondUserCookies...)
 
 	payload, err := json.Marshal(tasksTransport.BatchUpdateDoneRequest{
 		TaskIds: []int64{firstUserTasks[0].Id, secondUserTasks[0].Id},
@@ -158,7 +158,7 @@ func TestTasksBatchOpenOneTaskAlreadyOpen(t *testing.T) {
 	var category categoriesTransport.CategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
 
-	completedTasks := support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, cookies...)
+	completedTasks := support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 	openTasks := support.PrepareOpenUndatedUntrashedTasks(t, app, category.Id, cookies...)
 
 	payload, err := json.Marshal(tasksTransport.BatchUpdateDoneRequest{
@@ -191,7 +191,7 @@ func TestTasksBatchOpenTasksFromAllValidPartitions(t *testing.T) {
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
 
 	trashedTasks := support.PrepareTrashedTasks(t, app, category.Id, cookies...)
-	completedUntrashedTasks := support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, cookies...)
+	completedUntrashedTasks := support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 	var completedTrashedTask tasksTransport.TaskResponse
 	for _, task := range trashedTasks {
 		if task.Done {

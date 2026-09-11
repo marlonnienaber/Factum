@@ -158,7 +158,7 @@ func TestTasksBatchCompleteOneTaskAlreadyDone(t *testing.T) {
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
 
 	openTasks := support.PrepareOpenUndatedUntrashedTasks(t, app, category.Id, cookies...)
-	completedTasks := support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, cookies...)
+	completedTasks := support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 	payload, err := json.Marshal(tasksTransport.BatchUpdateDoneRequest{
 		TaskIds: []int64{openTasks[0].Id, completedTasks[0].Id},
 	})
@@ -189,7 +189,7 @@ func TestTasksBatchCompleteTasksFromAllValidPartitions(t *testing.T) {
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
 
 	undatedUntrashedTasks := support.PrepareOpenUndatedUntrashedTasks(t, app, category.Id, cookies...)
-	datedUntrashedTasks := support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, cookies...)
+	datedUntrashedTasks := support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 	trashedTasks := support.PrepareTrashedTasks(t, app, category.Id, cookies...)
 
 	var undatedTrashedTask tasksTransport.TaskResponse

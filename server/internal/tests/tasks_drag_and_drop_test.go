@@ -168,7 +168,7 @@ func TestTasksDragAndDropPreviousTaskBelongsToAnotherPartition(t *testing.T) {
 	var category categoriesTransport.CreateCategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
 	undatedTasks := support.PrepareOpenUndatedUntrashedTasks(t, app, category.Id, cookies...)
-	datedTasks := support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, cookies...)
+	datedTasks := support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 
 	payload, err := json.Marshal(tasksTransport.TaskDragAndDropRequest{PreviousTaskId: &datedTasks[0].Id})
 	require.NoError(t, err, "serializing request failed")
@@ -194,7 +194,7 @@ func TestTasksDragAndDropCompletedTask(t *testing.T) {
 	require.Equal(t, http.StatusCreated, categoryResp.Code)
 	var category categoriesTransport.CreateCategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
-	tasks := support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, cookies...)
+	tasks := support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 
 	payload, err := json.Marshal(tasksTransport.TaskDragAndDropRequest{Date: tasks[0].Date, PreviousTaskId: &tasks[1].Id})
 	require.NoError(t, err, "serializing request failed")
@@ -277,7 +277,7 @@ func TestTasksDragAndDropWithinDatedPartition(t *testing.T) {
 	require.Equal(t, http.StatusCreated, categoryResp.Code)
 	var category categoriesTransport.CreateCategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
-	tasks := support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, cookies...)
+	tasks := support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 	require.NotNil(t, tasks[1].Rank, "expected previous task to have a rank")
 	require.NotNil(t, tasks[2].Rank, "expected next task to have a rank")
 	expectedRank, err := fracdex.KeyBetween(*tasks[1].Rank, *tasks[2].Rank)
@@ -307,7 +307,7 @@ func TestTasksDragAndDropFromUndatedToDatedPartition(t *testing.T) {
 	var category categoriesTransport.CreateCategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
 	undatedTasks := support.PrepareOpenUndatedUntrashedTasks(t, app, category.Id, cookies...)
-	datedTasks := support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, cookies...)
+	datedTasks := support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 	require.NotNil(t, datedTasks[1].Rank, "expected previous task to have a rank")
 	require.NotNil(t, datedTasks[2].Rank, "expected next task to have a rank")
 	expectedRank, err := fracdex.KeyBetween(*datedTasks[1].Rank, *datedTasks[2].Rank)
@@ -336,7 +336,7 @@ func TestTasksDragAndDropFromDatedToUndatedPartition(t *testing.T) {
 	require.Equal(t, http.StatusCreated, categoryResp.Code)
 	var category categoriesTransport.CreateCategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
-	datedTasks := support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, cookies...)
+	datedTasks := support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 	undatedTasks := support.PrepareOpenUndatedUntrashedTasks(t, app, category.Id, cookies...)
 	require.NotNil(t, undatedTasks[1].Rank, "expected previous task to have a rank")
 	require.NotNil(t, undatedTasks[2].Rank, "expected next task to have a rank")
@@ -366,7 +366,7 @@ func TestTasksDragAndDropFromDatedToDifferentDatedPartition(t *testing.T) {
 	require.Equal(t, http.StatusCreated, categoryResp.Code)
 	var category categoriesTransport.CreateCategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
-	tasks := support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, cookies...)
+	tasks := support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 	targetDate, err := shared.ParseDate("2026-03-26")
 	require.NoError(t, err, "parsing test date failed")
 	expectedRank, err := fracdex.KeyBetween("", "")

@@ -29,6 +29,8 @@ const (
 	preparedPartitionTasksCount = 3
 )
 
+var TestTaskDate = shared.NewDate(time.Date(2026, time.March, 25, 0, 0, 0, 0, time.UTC))
+
 var defaultTestConfiguration = configuration.Configuration{
 	Port:                ":3001",
 	SessionCookieSecure: false,
@@ -123,15 +125,11 @@ func MakeToggleDoneRequest(
 	t *testing.T,
 	app *gin.Engine,
 	taskId int64,
-	rank *string,
 	cookies ...*http.Cookie,
 ) *httptest.ResponseRecorder {
 	t.Helper()
 
 	path := fmt.Sprintf("/api/tasks/%d/toggle-done", taskId)
-	if rank != nil {
-		path += "?" + url.Values{"rank": {*rank}}.Encode()
-	}
 	return MakeJsonRequest(t, app, http.MethodPatch, path, nil, cookies...)
 }
 
@@ -161,12 +159,10 @@ func PrepareOpenDatedUntrashedTasks(
 	t *testing.T,
 	app *gin.Engine,
 	categoryId int64,
+	date shared.Date,
 	cookies ...*http.Cookie,
 ) []tasksTransport.TaskResponse {
 	t.Helper()
-
-	date, err := shared.ParseDate("2026-03-25")
-	require.NoError(t, err, "parsing test date failed")
 
 	tasks := make([]tasksTransport.TaskResponse, 0, preparedPartitionTasksCount)
 	for range preparedPartitionTasksCount {
@@ -187,15 +183,20 @@ func PrepareDoneDatedUntrashedTasks(
 	t *testing.T,
 	app *gin.Engine,
 	categoryId int64,
+	date shared.Date,
 	cookies ...*http.Cookie,
 ) []tasksTransport.TaskResponse {
 	t.Helper()
 
-	tasks := PrepareOpenDatedUntrashedTasks(t, app, categoryId, cookies...)
+	tasks := PrepareOpenDatedUntrashedTasks(t, app, categoryId, date, cookies...)
 	for index := range tasks {
-		resp := MakeToggleDoneRequest(t, app, tasks[index].Id, tasks[index].Rank, cookies...)
-		require.Equal(t, http.StatusNoContent, resp.Code)
+		resp := MakeToggleDoneRequest(t, app, tasks[index].Id, cookies...)
+		require.Equal(t, http.StatusOK, resp.Code)
+		var toggleResponse tasksTransport.ToggleTaskDoneResponse
+		require.NoError(t, json.NewDecoder(resp.Body).Decode(&toggleResponse), "failed to decode toggle task done response")
 		tasks[index].Done = true
+		tasks[index].Date = &toggleResponse.Date
+		tasks[index].Rank = toggleResponse.Rank
 	}
 	return tasks
 }
@@ -253,11 +254,14 @@ func PrepareTrashedTasks(
 	)
 	doneDatedTask.CategoryId = categoryId
 	doneDatedTask.Title = "Done dated task"
-	doneDatedTask.Date = &date
 	require.NotNil(t, doneDatedTask.Rank, "expected created task to have a rank")
-	toggleDoneResp := MakeToggleDoneRequest(t, app, doneDatedTask.Id, doneDatedTask.Rank, cookies...)
-	require.Equal(t, http.StatusNoContent, toggleDoneResp.Code)
+	toggleDoneResp := MakeToggleDoneRequest(t, app, doneDatedTask.Id, cookies...)
+	require.Equal(t, http.StatusOK, toggleDoneResp.Code)
+	var toggleResponse tasksTransport.ToggleTaskDoneResponse
+	require.NoError(t, json.NewDecoder(toggleDoneResp.Body).Decode(&toggleResponse), "failed to decode toggle task done response")
 	doneDatedTask.Done = true
+	doneDatedTask.Date = &toggleResponse.Date
+	doneDatedTask.Rank = toggleResponse.Rank
 
 	return []tasksTransport.TaskResponse{
 		trashTask(doneDatedTask),

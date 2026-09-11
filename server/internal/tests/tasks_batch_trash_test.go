@@ -249,8 +249,8 @@ func TestTasksBatchTrashMultipleTasks(t *testing.T) {
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
 
 	undatedTasks := support.PrepareOpenUndatedUntrashedTasks(t, app, category.Id, cookies...)
-	datedOpenTasks := support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, cookies...)
-	datedDoneTasks := support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, cookies...)
+	datedOpenTasks := support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
+	datedDoneTasks := support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 
 	payload, err := json.Marshal(tasksTransport.BatchTrashTasksRequest{
 		TaskIds: []int64{undatedTasks[0].Id, datedOpenTasks[0].Id, datedDoneTasks[0].Id},

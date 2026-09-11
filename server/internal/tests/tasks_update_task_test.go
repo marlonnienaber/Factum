@@ -516,7 +516,7 @@ func TestTasksUpdateTaskFromOpenWithoutDateUntrashedToDate(t *testing.T) {
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
 
 	undatedTasks := support.PrepareOpenUndatedUntrashedTasks(t, app, category.Id, cookies...)
-	datedTasks := support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, cookies...)
+	datedTasks := support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 	task := undatedTasks[0]
 	require.NotNil(t, datedTasks[0].Date, "expected dated task date")
 
@@ -552,7 +552,7 @@ func TestTasksUpdateTaskFromOpenWithDateUntrashedToNoDate(t *testing.T) {
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
 
 	support.PrepareOpenUndatedUntrashedTasks(t, app, category.Id, cookies...)
-	datedTasks := support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, cookies...)
+	datedTasks := support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 	task := datedTasks[0]
 
 	payload, err := json.Marshal(tasksTransport.UpdateTaskRequest{
@@ -586,7 +586,7 @@ func TestTasksUpdateTaskFromDoneWithDateUntrashedToNoDate(t *testing.T) {
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
 
 	support.PrepareOpenUndatedUntrashedTasks(t, app, category.Id, cookies...)
-	doneTasks := support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, cookies...)
+	doneTasks := support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 	task := doneTasks[0]
 
 	payload, err := json.Marshal(tasksTransport.UpdateTaskRequest{
@@ -745,7 +745,7 @@ func TestTasksUpdateTaskFromOpenWithDateToOtherDate(t *testing.T) {
 	var category categoriesTransport.CategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
 
-	datedTasks := support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, cookies...)
+	datedTasks := support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 	task := datedTasks[0]
 	targetDate, err := shared.ParseDate("2026-03-26")
 	require.NoError(t, err, "parsing test date failed")
@@ -781,7 +781,7 @@ func TestTasksUpdateTaskFromDoneWithDateToOtherDate(t *testing.T) {
 	var category categoriesTransport.CategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
 
-	doneTasks := support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, cookies...)
+	doneTasks := support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 	task := doneTasks[0]
 	targetDate, err := shared.ParseDate("2026-03-26")
 	require.NoError(t, err, "parsing test date failed")

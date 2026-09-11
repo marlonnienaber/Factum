@@ -129,8 +129,8 @@ func TestTasksGetTrashedTasksNoCursor(t *testing.T) {
 
 	expectedTasks := support.PrepareTrashedTasks(t, app, category.Id, cookies...)
 	support.PrepareOpenUndatedUntrashedTasks(t, app, category.Id, cookies...)
-	support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, cookies...)
-	support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, cookies...)
+	support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
+	support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 
 	resp := support.MakeJsonRequest(t, app, http.MethodGet, "/api/tasks/trashed", nil, cookies...)
 	require.Equal(t, http.StatusOK, resp.Code)

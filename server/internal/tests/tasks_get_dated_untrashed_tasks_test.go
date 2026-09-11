@@ -186,8 +186,8 @@ func TestTasksGetDatedUntrashedTasksDoneWithoutCursor(t *testing.T) {
 	var category categoriesTransport.CategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
 
-	expectedTasks := support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, cookies...)
-	support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, cookies...)
+	expectedTasks := support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
+	support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 	support.PrepareOpenUndatedUntrashedTasks(t, app, category.Id, cookies...)
 	support.PrepareTrashedTasks(t, app, category.Id, cookies...)
 
@@ -220,7 +220,7 @@ func TestTasksGetDatedUntrashedTasksDoneWithCursor(t *testing.T) {
 	var category categoriesTransport.CategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
 
-	tasks := support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, cookies...)
+	tasks := support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 	cursor := tasks[0]
 	require.NotNil(t, cursor.Date, "expected cursor task to have a date")
 	require.NotNil(t, cursor.Rank, "expected cursor task to have a rank")
@@ -258,10 +258,10 @@ func TestTasksGetDatedUntrashedTasksOpenWithoutCursor(t *testing.T) {
 	var category categoriesTransport.CategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
 
-	expectedTasks := support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, cookies...)
+	expectedTasks := support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 	support.PrepareOpenUndatedUntrashedTasks(t, app, category.Id, cookies...)
 	support.PrepareTrashedTasks(t, app, category.Id, cookies...)
-	support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, cookies...)
+	support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 
 	resp := support.MakeJsonRequest(
 		t,
@@ -292,7 +292,7 @@ func TestTasksGetDatedUntrashedTasksOpenWithCursor(t *testing.T) {
 	var category categoriesTransport.CategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
 
-	tasks := support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, cookies...)
+	tasks := support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 	cursor := tasks[0]
 	require.NotNil(t, cursor.Date, "expected cursor task to have a date")
 	require.NotNil(t, cursor.Rank, "expected cursor task to have a rank")
