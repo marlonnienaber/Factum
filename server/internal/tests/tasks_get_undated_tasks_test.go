@@ -80,7 +80,7 @@ func TestTasksGetUndatedTasksNoCursor(t *testing.T) {
 	var respBody tasksTransport.GetUndatedTasksResponse
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
 
-	assert.Equal(t, toUndatedTaskResponses(t, expectedTasks), respBody.Tasks, "unexpected tasks")
+	assert.Equal(t, expectedTasks, respBody.Tasks, "unexpected tasks")
 	assert.False(t, respBody.HasMore, "expected no additional tasks")
 }
 
@@ -100,13 +100,11 @@ func TestTasksGetUndatedTasksCursor(t *testing.T) {
 
 	tasks := support.PrepareOpenUndatedUntrashedTasks(t, app, category.Id, cookies...)
 	cursor := tasks[0]
-	require.NotNil(t, cursor.Rank, "expected cursor task to have a rank")
-
 	resp := support.MakeJsonRequest(
 		t,
 		app,
 		http.MethodGet,
-		"/api/tasks/undated?"+url.Values{"rank": {*cursor.Rank}}.Encode(),
+		"/api/tasks/undated?"+url.Values{"rank": {cursor.Rank}}.Encode(),
 		nil,
 		cookies...,
 	)
@@ -114,7 +112,7 @@ func TestTasksGetUndatedTasksCursor(t *testing.T) {
 	var respBody tasksTransport.GetUndatedTasksResponse
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
 
-	assert.Equal(t, toUndatedTaskResponses(t, tasks[1:]), respBody.Tasks, "unexpected tasks")
+	assert.Equal(t, tasks[1:], respBody.Tasks, "unexpected tasks")
 	assert.False(t, respBody.HasMore, "expected no additional tasks")
 }
 
@@ -157,22 +155,4 @@ func TestTasksGetUndatedTasksHasMore(t *testing.T) {
 
 	assert.Equal(t, expectedTasks, respBody.Tasks, "unexpected tasks")
 	assert.True(t, respBody.HasMore, "expected additional tasks")
-}
-
-func toUndatedTaskResponses(t *testing.T, tasks []tasksTransport.TaskResponse) []tasksTransport.UndatedTaskResponse {
-	t.Helper()
-
-	responses := make([]tasksTransport.UndatedTaskResponse, 0, len(tasks))
-	for _, task := range tasks {
-		require.NotNil(t, task.Rank, "expected undated task to have a rank")
-		responses = append(responses, tasksTransport.UndatedTaskResponse{
-			Id:          task.Id,
-			CategoryId:  task.CategoryId,
-			Title:       task.Title,
-			Description: task.Description,
-			Rank:        *task.Rank,
-		})
-	}
-
-	return responses
 }

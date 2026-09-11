@@ -143,7 +143,7 @@ func TestTasksDragAndDropTaskCannotBeItsOwnPreviousTask(t *testing.T) {
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
 	tasks := support.PrepareOpenUndatedUntrashedTasks(t, app, category.Id, cookies...)
 
-	payload, err := json.Marshal(tasksTransport.TaskDragAndDropRequest{Date: tasks[0].Date, PreviousTaskId: &tasks[0].Id})
+	payload, err := json.Marshal(tasksTransport.TaskDragAndDropRequest{PreviousTaskId: &tasks[0].Id})
 	require.NoError(t, err, "serializing request failed")
 	path := fmt.Sprintf("/api/tasks/%d/drag-and-drop", tasks[0].Id)
 	resp := support.MakeJsonRequest(t, app, http.MethodPatch, path, payload, cookies...)
@@ -249,9 +249,7 @@ func TestTasksDragAndDropWithinUndatedPartition(t *testing.T) {
 	var category categoriesTransport.CreateCategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
 	tasks := support.PrepareOpenUndatedUntrashedTasks(t, app, category.Id, cookies...)
-	require.NotNil(t, tasks[1].Rank, "expected previous task to have a rank")
-	require.NotNil(t, tasks[2].Rank, "expected next task to have a rank")
-	expectedRank, err := fracdex.KeyBetween(*tasks[1].Rank, *tasks[2].Rank)
+	expectedRank, err := fracdex.KeyBetween(tasks[1].Rank, tasks[2].Rank)
 	require.NoError(t, err, "generating expected rank failed")
 
 	payload, err := json.Marshal(tasksTransport.TaskDragAndDropRequest{PreviousTaskId: &tasks[1].Id})
@@ -338,9 +336,7 @@ func TestTasksDragAndDropFromDatedToUndatedPartition(t *testing.T) {
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
 	datedTasks := support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 	undatedTasks := support.PrepareOpenUndatedUntrashedTasks(t, app, category.Id, cookies...)
-	require.NotNil(t, undatedTasks[1].Rank, "expected previous task to have a rank")
-	require.NotNil(t, undatedTasks[2].Rank, "expected next task to have a rank")
-	expectedRank, err := fracdex.KeyBetween(*undatedTasks[1].Rank, *undatedTasks[2].Rank)
+	expectedRank, err := fracdex.KeyBetween(undatedTasks[1].Rank, undatedTasks[2].Rank)
 	require.NoError(t, err, "generating expected rank failed")
 
 	payload, err := json.Marshal(tasksTransport.TaskDragAndDropRequest{PreviousTaskId: &undatedTasks[1].Id})

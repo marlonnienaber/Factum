@@ -138,19 +138,22 @@ func PrepareOpenUndatedUntrashedTasks(
 	app *gin.Engine,
 	categoryId int64,
 	cookies ...*http.Cookie,
-) []tasksTransport.TaskResponse {
+) []tasksTransport.UndatedTaskResponse {
 	t.Helper()
 
-	tasks := make([]tasksTransport.TaskResponse, 0, preparedPartitionTasksCount)
+	tasks := make([]tasksTransport.UndatedTaskResponse, 0, preparedPartitionTasksCount)
 	for range preparedPartitionTasksCount {
 		resp := MakeCreateTaskRequest(t, app, "Undated task", nil, nil, categoryId, cookies...)
 		require.Equal(t, http.StatusCreated, resp.Code)
 
-		var task tasksTransport.TaskResponse
-		require.NoError(t, json.NewDecoder(resp.Body).Decode(&task), "failed to decode task response")
-		task.CategoryId = categoryId
-		task.Title = "Undated task"
-		tasks = append(tasks, task)
+		var response tasksTransport.CreateTaskResponse
+		require.NoError(t, json.NewDecoder(resp.Body).Decode(&response), "failed to decode task response")
+		tasks = append(tasks, tasksTransport.UndatedTaskResponse{
+			Id:         response.Id,
+			CategoryId: categoryId,
+			Title:      "Undated task",
+			Rank:       response.Rank,
+		})
 	}
 	return tasks
 }
