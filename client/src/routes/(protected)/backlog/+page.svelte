@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { CheckCheck, MousePointer2, Plus, Trash2, XCircle } from '@lucide/svelte';
 	import Button from '$lib/components/shared/button.svelte';
+	import InfiniteScrollContainer from '$lib/components/shared/infinite-scroll-container.svelte';
 	import TaskDialog from '$lib/components/taskCreation/task-dialog.svelte';
 	import Task from '$lib/components/taskDisplay/task.svelte';
 	import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-task-store.svelte';
@@ -102,6 +103,11 @@
 		taskDialogOpen = true;
 	}
 
+	function loadMoreUndatedTasks(): Promise<void> | undefined {
+		const lastLoadedTaskRank = undatedTaskStore.undatedTasks.at(-1)?.rank;
+		if (lastLoadedTaskRank !== undefined) return taskService.fetchUndatedTasks(lastLoadedTaskRank);
+	}
+
 	function startTaskSelection(): void {
 		selectionEnabled = true;
 	}
@@ -128,8 +134,6 @@
 			selectedTaskIds = selectedTaskIds.filter((selectedTaskId) => selectedTaskId !== taskId);
 		}
 	}
-
-	// TODO: implement page loading
 </script>
 
 <svelte:head>
@@ -178,28 +182,35 @@
 		</div>
 		<div class="no-date-section">
 			<h1>No Date Assigned</h1>
-			<div
-				class="task-item-drop-zone"
-				aria-label="Tasks without a date"
-				use:dndzone={{
-					items: undatedTaskDragItems,
-					dragDisabled: selectionEnabled || taskService.taskMutationBlocked,
-					dropTargetStyle: dropTargetStyle
-				}}
-				onconsider={handleConsider}
-				onfinalize={handleFinalize}
+			<InfiniteScrollContainer
+				hasMore={undatedTaskStore.hasMore}
+				loading={taskService.undatedTasksLoading}
+				disabled={dragging}
+				loadMore={loadMoreUndatedTasks}
 			>
-				{#each undatedTaskDragItems as taskDragItem (getTaskDragItemKey(taskDragItem))}
-					<Task
-						task={taskDragItem}
-						isShadowItem={Boolean(taskDragItem[isShadowTask])}
-						{selectionEnabled}
-						selected={selectedTaskIds.includes(taskDragItem.id)}
-						onSelectedChange={updateTaskSelection}
-						onedit={() => openEditTaskDialog(taskDragItem)}
-					/>
-				{/each}
-			</div>
+				<div
+					class="task-item-drop-zone"
+					aria-label="Tasks without a date"
+					use:dndzone={{
+						items: undatedTaskDragItems,
+						dragDisabled: selectionEnabled || taskService.taskMutationBlocked,
+						dropTargetStyle: dropTargetStyle
+					}}
+					onconsider={handleConsider}
+					onfinalize={handleFinalize}
+				>
+					{#each undatedTaskDragItems as taskDragItem (getTaskDragItemKey(taskDragItem))}
+						<Task
+							task={taskDragItem}
+							isShadowItem={Boolean(taskDragItem[isShadowTask])}
+							{selectionEnabled}
+							selected={selectedTaskIds.includes(taskDragItem.id)}
+							onSelectedChange={updateTaskSelection}
+							onedit={() => openEditTaskDialog(taskDragItem)}
+						/>
+					{/each}
+				</div>
+			</InfiniteScrollContainer>
 		</div>
 	</div>
 	<div class="date-section">
@@ -294,11 +305,6 @@
 			display: flex;
 			flex-direction: column;
 			gap: 0.75rem;
-			scrollbar-width: none;
-
-			&::-webkit-scrollbar {
-				display: none;
-			}
 		}
 
 		.left-column-container {
@@ -341,12 +347,6 @@
 				border: 1px solid var(--border);
 				border-radius: 0.75rem;
 				gap: 0.75rem;
-
-				.task-item-drop-zone {
-					flex: 1;
-					min-height: 0;
-					overflow-y: auto;
-				}
 			}
 		}
 
@@ -407,6 +407,11 @@
 				flex: 1;
 				min-height: 0;
 				overflow-y: auto;
+				scrollbar-width: none;
+
+				&::-webkit-scrollbar {
+					display: none;
+				}
 			}
 		}
 	}

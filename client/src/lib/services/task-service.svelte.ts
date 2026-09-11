@@ -24,6 +24,7 @@ import {
 	DatedUntrashedOpenTaskResponseSchema,
 	type DatedUntrashedOpenTaskResponse
 } from '$lib/types/responses/dated-untrashed-open-task-response';
+import { GetUndatedTasksResponseSchema, type GetUndatedTasksResponse } from '$lib/types/responses/get-undated-tasks-response';
 import type { TrashedTaskResponse } from '$lib/types/responses/trashed-task-response';
 import { TaskDragAndDropResponseSchema, type TaskDragAndDropResponse } from '$lib/types/responses/task-drag-and-drop-response';
 import { ToggleTaskDoneResponseSchema, type ToggleTaskDoneResponse } from '$lib/types/responses/toggle-task-done-response';
@@ -38,14 +39,16 @@ let taskMutationLoading = $state(false);
 const taskMutationBlocked = $derived(taskMutationLoading || undatedTasksLoading || datedUntrashedOpenTasksLoading);
 
 async function fetchUndatedTasks(rank?: string): Promise<void> {
-	if (undatedTasksLoading || taskMutationLoading) return;
+	if (undatedTasksLoading || taskMutationLoading || (rank !== undefined && !undatedTaskStore.hasMore)) return;
 	undatedTasksLoading = true;
 	try {
-		const networkCall: NetworkCall<UndatedTaskResponse[]> = await jsonGetWithoutBodyWithResponse(
+		const networkCall: NetworkCall<GetUndatedTasksResponse> = await jsonGetWithoutBodyWithResponse(
 			`/api/tasks/undated${rank ? `?rank=${encodeURIComponent(rank)}` : ''}`,
-			z.array(UndatedTaskResponseSchema)
+			GetUndatedTasksResponseSchema
 		);
-		if (networkCall.status === 'success') undatedTaskStore.addOrUpdateTasks(networkCall.result);
+		if (networkCall.status === 'success') {
+			undatedTaskStore.addPage(networkCall.result.tasks, networkCall.result.hasMore);
+		}
 	} finally {
 		undatedTasksLoading = false;
 	}
@@ -284,6 +287,9 @@ async function dragAndDropTask(id: number, request: TaskDragAndDropRequest): Pro
 }
 
 export const taskService = {
+	get undatedTasksLoading(): boolean {
+		return undatedTasksLoading;
+	},
 	get taskMutationLoading(): boolean {
 		return taskMutationLoading;
 	},
