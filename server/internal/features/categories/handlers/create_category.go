@@ -14,8 +14,6 @@ import (
 
 func NewCreateCategoryHandler(categoryStore *stores.CategoryStore) shared.AuthenticatedHandlerFunc {
 	return func(c *shared.AuthenticatedContext) {
-		slog.Info("/categories [POST]")
-
 		unexpectedErrorLogMessage := "handling create category failed"
 
 		var request transport.CreateCategoryRequest

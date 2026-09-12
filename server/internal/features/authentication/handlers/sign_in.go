@@ -16,8 +16,6 @@ import (
 
 func NewSignInHandler(authenticationService *services.AuthenticationService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		slog.Info("/sign-in [POST]")
-
 		unexpectedErrorLogMessage := "handling sign-in failed"
 
 		var request transport.AuthenticationRequest

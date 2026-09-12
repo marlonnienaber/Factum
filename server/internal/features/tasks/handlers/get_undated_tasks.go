@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -12,12 +11,6 @@ import (
 func NewGetUndatedTasksHandler(taskStore *stores.TaskStore) shared.AuthenticatedHandlerFunc {
 	return func(c *shared.AuthenticatedContext) {
 		rank, rankErr := shared.GetOptionalRankQueryParameter(c, "rank")
-
-		handlerEntryLog := fmt.Sprintf(
-			"/tasks/undated?rank=%v [GET]",
-			shared.GetLogValueForOptionalStringQueryParameter(rank, rankErr),
-		)
-		slog.Info(handlerEntryLog)
 
 		unexpectedErrorLogMessage := "handling get undated tasks failed"
 

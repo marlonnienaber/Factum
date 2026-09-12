@@ -15,8 +15,6 @@ import (
 
 func NewBatchOpenTasksHandler(taskService *services.TaskService) shared.AuthenticatedHandlerFunc {
 	return func(c *shared.AuthenticatedContext) {
-		slog.Info("/tasks/batch-open [PATCH]")
-
 		unexpectedErrorLogMessage := "handling batch open tasks failed"
 
 		var request transport.BatchUpdateDoneRequest

@@ -15,8 +15,6 @@ import (
 
 func NewUpdateTaskHandler(taskService *services.TaskService) shared.AuthenticatedHandlerFunc {
 	return func(c *shared.AuthenticatedContext) {
-		slog.Info("/tasks [PUT]")
-
 		unexpectedErrorLogMessage := "handling update task failed"
 
 		var request transport.UpdateTaskRequest

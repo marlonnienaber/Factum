@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -13,12 +12,6 @@ import (
 func NewDeleteCategoryHandler(categoryStore *stores.CategoryStore) shared.AuthenticatedHandlerFunc {
 	return func(c *shared.AuthenticatedContext) {
 		id, idErr := shared.GetRequiredInt64PathVariable(c, "id")
-
-		handlerEntryLog := fmt.Sprintf(
-			"/categories/%v [DELETE]",
-			shared.GetLogValueForRequiredInt64PathVariable(id, idErr),
-		)
-		slog.Info(handlerEntryLog)
 
 		unexpectedErrorLogMessage := "handling delete category failed"
 

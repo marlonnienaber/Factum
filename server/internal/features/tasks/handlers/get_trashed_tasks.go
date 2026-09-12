@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -13,13 +12,6 @@ func NewGetTrashedTasksHandler(taskStore *stores.TaskStore) shared.Authenticated
 	return func(c *shared.AuthenticatedContext) {
 		trashedDate, trashedDateErr := shared.GetOptionalTimestampQueryParameter(c, "trashedDate")
 		id, idErr := shared.GetOptionalInt64QueryParameter(c, "id")
-
-		handlerEntryLog := fmt.Sprintf(
-			"/tasks/trashed?trashedDate=%v&id=%v [GET]",
-			shared.GetLogValueForOptionalTimestampQueryParameter(trashedDate, trashedDateErr),
-			shared.GetLogValueForOptionalInt64QueryParameter(id, idErr),
-		)
-		slog.Info(handlerEntryLog)
 
 		unexpectedErrorLogMessage := "handling get trashed tasks failed"
 

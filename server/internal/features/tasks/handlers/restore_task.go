@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -14,9 +13,6 @@ import (
 func NewRestoreTaskHandler(taskService *services.TaskService) shared.AuthenticatedHandlerFunc {
 	return func(c *shared.AuthenticatedContext) {
 		id, idErr := shared.GetRequiredInt64PathVariable(c, "id")
-
-		handlerEntryLog := fmt.Sprintf("/tasks/%v/restore [PATCH]", shared.GetLogValueForRequiredInt64PathVariable(id, idErr))
-		slog.Info(handlerEntryLog)
 
 		unexpectedErrorLogMessage := "handling restore task failed"
 

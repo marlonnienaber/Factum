@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -17,12 +16,6 @@ import (
 func NewBatchTrashTasksHandler(taskService *services.TaskService) shared.AuthenticatedHandlerFunc {
 	return func(c *shared.AuthenticatedContext) {
 		trashedDate, trashedDateErr := shared.GetRequiredTimestampQueryParameter(c, "trashedDate")
-
-		handlerEntryLog := fmt.Sprintf(
-			"/tasks/batch-trash?trashedDate=%v [PATCH]",
-			shared.GetLogValueForRequiredTimestampQueryParameter(trashedDate, trashedDateErr),
-		)
-		slog.Info(handlerEntryLog)
 
 		unexpectedErrorLogMessage := "handling batch trash tasks failed"
 

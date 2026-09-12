@@ -15,8 +15,6 @@ import (
 
 func NewCreateTaskHandler(taskService *services.TaskService) shared.AuthenticatedHandlerFunc {
 	return func(c *shared.AuthenticatedContext) {
-		slog.Info("/tasks [POST]")
-
 		unexpectedErrorLogMessage := "handling create task failed"
 
 		var request transport.CreateTaskRequest

@@ -10,8 +10,6 @@ import (
 
 func NewGetCategoriesHandler(categoryStore *stores.CategoryStore) shared.AuthenticatedHandlerFunc {
 	return func(c *shared.AuthenticatedContext) {
-		slog.Info("/categories [GET]")
-
 		unexpectedErrorLogMessage := "handling get categories failed"
 
 		categoryResponses, err := categoryStore.GetCategories(c.UserId)

@@ -15,8 +15,6 @@ import (
 
 func NewBatchCompleteTasksHandler(taskService *services.TaskService) shared.AuthenticatedHandlerFunc {
 	return func(c *shared.AuthenticatedContext) {
-		slog.Info("/tasks/batch-complete [PATCH]")
-
 		unexpectedErrorLogMessage := "handling batch complete tasks failed"
 
 		var request transport.BatchUpdateDoneRequest
