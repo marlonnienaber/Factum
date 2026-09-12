@@ -172,7 +172,7 @@ describe('backlog page tests', () => {
 
 				const createButton = page.getByRole('button', { name: 'Create' });
 				expect(createButton).toBeDisabled();
-				await expectTextareaToBeInvalid(page, 'task-description', 'Title must have at most 500 characters');
+				await expectTextareaToBeInvalid(page, 'task-description', 'Description must have at most 500 characters');
 			});
 
 			it('reacts correctly to missing task category', async () => {
@@ -272,7 +272,7 @@ describe('backlog page tests', () => {
 
 				const saveButton = page.getByRole('button', { name: 'Save' });
 				expect(saveButton).toBeDisabled();
-				await expectTextareaToBeInvalid(page, 'task-description', 'Title must have at most 500 characters');
+				await expectTextareaToBeInvalid(page, 'task-description', 'Description must have at most 500 characters');
 			});
 
 			it('cancels and closes the edit-task dialog', async () => {
