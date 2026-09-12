@@ -1,37 +1,50 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import { authenticationService } from '$lib/services/authentication-service.svelte';
 	import { authenticationStore } from '$lib/stores/authentication-store.svelte';
+	import { categoryService } from '$lib/services/category-service.svelte';
+	import { taskService } from '$lib/services/task-service.svelte';
+	import { categoryStore } from '$lib/stores/category-store.svelte';
+	import { datedUntrashedDoneTaskStore } from '$lib/stores/dated-untrashed-done-task-store.svelte';
+	import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-task-store.svelte';
+	import { trashedTaskStore } from '$lib/stores/trashed-task-store.svelte';
 	import { themeStore } from '$lib/stores/theme-store.svelte';
+	import { undatedTaskStore } from '$lib/stores/undated-task-store.svelte';
 	import { Moon, Sun } from '@lucide/svelte';
+	import { untrack } from 'svelte';
 	import logoBlack from '$lib/assets/logo-black.svg';
 	import logoWhite from '$lib/assets/logo-white.svg';
 
 	const { children } = $props();
 	const authentication = $derived(authenticationStore.authentication);
-	const attemptedToFetchAuthentication = $derived(authenticationStore.fetchAttempted);
-	const authenticationNotLoading = $derived(!authenticationStore.loading);
-	const loading = $derived(authenticationStore.loading);
+	const notAttemptedToFetchAuthentication = $derived(!authenticationService.fetchAttempted);
+	const loading = $derived(authenticationService.loading);
 	const isDarkTheme = $derived(themeStore.isDarkTheme);
 
 	$effect(() => {
-		if (!authentication && authenticationNotLoading) {
-			if (attemptedToFetchAuthentication) {
-				void goto(resolve('/sign-in'));
-			} else {
-				void authenticationStore.fetchCurrentAuthenticationIfNecessary();
+		if (authentication) {
+			untrack(() => {
+				void categoryService.fetchCategories();
+				void taskService.fetchDatedUntrashedOpenTodayTasks();
+				void taskService.fetchDatedUntrashedOpenNonTodayTasks();
+				void taskService.fetchUndatedTasks();
+			});
+		} else {
+			if (!loading) {
+				if (notAttemptedToFetchAuthentication) {
+					void authenticationService.fetchCurrentAuthenticationIfNecessary();
+				} else {
+					void goto(resolve('/sign-in'));
+				}
 			}
+			categoryStore.reset();
+			datedUntrashedDoneTaskStore.reset();
+			datedUntrashedOpenTaskStore.reset();
+			trashedTaskStore.reset();
+			undatedTaskStore.reset();
 		}
 	});
-
-	async function handleSignOut(): Promise<void> {
-		await authenticationStore.signOut();
-		await goto(resolve('/sign-in'));
-	}
-
-	function handleThemeToggle(): void {
-		themeStore.toggleTheme();
-	}
 </script>
 
 {#if authentication}
@@ -43,14 +56,14 @@
 			</div>
 			<div class="account-actions">
 				<span class="user-label">User #{authentication.userId}</span>
-				<button class="theme-toggle-button" type="button" onclick={handleThemeToggle}>
+				<button class="theme-toggle-button" type="button" onclick={() => themeStore.toggleTheme()}>
 					{#if isDarkTheme}
 						<Sun size={18} aria-hidden={true} />
 					{:else}
 						<Moon size={18} aria-hidden={true} />
 					{/if}
 				</button>
-				<button class="sign-out-button" type="button" disabled={loading} onclick={handleSignOut}>
+				<button class="sign-out-button" type="button" disabled={loading} onclick={() => void authenticationService.signOut()}>
 					{loading ? 'Signing out...' : 'Sign out'}
 				</button>
 			</div>
@@ -76,13 +89,12 @@
 			justify-content: space-between;
 			align-items: center;
 			gap: 1rem;
-			padding: 0.865rem 1rem;
-			border-bottom: 1px solid var(--border);
+			padding: 1rem 1rem 0 1rem;
 
 			.brand {
 				display: flex;
 				align-items: center;
-				gap: 0.5rem;
+				gap: 0.375rem;
 
 				.logo {
 					height: 2.25rem;
@@ -144,6 +156,7 @@
 
 		.content {
 			flex: 1;
+			min-height: 0;
 			display: flex;
 			flex-direction: column;
 		}

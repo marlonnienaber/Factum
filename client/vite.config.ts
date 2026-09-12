@@ -23,13 +23,16 @@ export default defineConfig(({ mode }) => {
 		test: {
 			expect: { requireAssertions: true },
 			passWithNoTests: true,
+			silent: 'passed-only',
 			coverage: {
 				provider: 'v8',
-				reporter: ['text', 'html'],
+				reporter: ['text-summary', 'html'],
 				reportsDirectory: './coverage',
 				include: ['src/**/*.{ts,svelte}'],
 				exclude: [
 					'src/app.d.ts',
+					'src/lib/utils/testing.ts',
+					'src/lib/utils/testing-setup.ts',
 					'src/**/*.d.ts',
 					'src/**/*.test.{js,ts}',
 					'src/**/*.spec.{js,ts}',
@@ -43,6 +46,7 @@ export default defineConfig(({ mode }) => {
 					test: {
 						name: 'client',
 						environment: 'jsdom',
+						setupFiles: ['./src/lib/utils/testing-setup.ts'],
 						include: ['src/**/*.svelte.{test,spec}.{js,ts}']
 					}
 				},

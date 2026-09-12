@@ -1,78 +1,94 @@
 <script lang="ts">
-	import Popover from '$lib/components/popover.svelte';
+	import Popover from '$lib/components/shared/popover.svelte';
 	import { Info, type LucideIcon } from '@lucide/svelte';
 	import type { HTMLInputAttributes } from 'svelte/elements';
 
 	type Props = {
+		id: string;
 		value: string;
 		error?: string;
-		icon: LucideIcon;
-		placeholder: string;
+		leadingIcon?: LucideIcon;
+		placeholder?: string;
 		type?: 'email' | 'password' | 'text';
 		autocomplete?: HTMLInputAttributes['autocomplete'];
 		disabled?: boolean;
-		'data-testid'?: string;
+		oninput?: () => void;
+		onblur?: () => void;
 	};
 
 	let {
+		id,
 		value = $bindable(),
-		error = $bindable(),
-		icon: Icon,
+		error,
+		leadingIcon: LeadingIcon,
 		placeholder,
 		type = 'text',
 		autocomplete,
 		disabled = false,
-		'data-testid': dataTestId
+		oninput,
+		onblur
 	}: Props = $props();
 
 	const invalid = $derived(error !== undefined);
-
-	function clearError() {
-		error = undefined;
-	}
 </script>
 
-<div class:invalid class="authentication-input">
-	<span class="field-icon">
-		<Icon size={18} />
-	</span>
-	<input bind:value {type} {placeholder} {autocomplete} {disabled} data-testid={dataTestId} oninput={clearError} />
+<div class:invalid class="input">
+	{#if LeadingIcon}
+		<span class="leading-icon"><LeadingIcon size={18} /></span>
+	{/if}
+	<input {id} bind:value {type} {placeholder} {autocomplete} {disabled} {oninput} {onblur} aria-invalid={invalid} />
 	{#if invalid}
-		<span class="error-icon">
+		<span class="error-indicator-icon">
 			<Popover side="right" align="center" openOnHover>
 				{#snippet trigger()}
-					<span data-testid={dataTestId === undefined ? undefined : `${dataTestId}-error-trigger`}>
+					<span id={`${id}-error-indicator-popover-trigger`}>
 						<Info size={18} aria-hidden={true} />
 					</span>
 				{/snippet}
-				<span class="error-popover-content">{error}</span>
+				<span class="error-indicator-message">{error}</span>
 			</Popover>
 		</span>
 	{/if}
 </div>
 
 <style lang="scss">
-	.authentication-input {
-		width: 20rem;
+	.input {
 		display: flex;
 		align-items: center;
+		width: 100%;
+		height: 2.75rem;
 		box-sizing: border-box;
 		gap: 0.6125rem;
-		padding: 0.6125rem 0.875rem;
+		padding: 0.6125rem 0.625rem;
 		border: 1px solid var(--border);
 		border-radius: 0.5rem;
+		background: var(--background);
 		color: var(--text);
-		background-color: var(--background);
+
+		&:focus-within {
+			border-color: var(--border-accented);
+		}
 
 		&.invalid {
 			border-color: var(--danger);
 		}
 
-		.field-icon {
+		.leading-icon {
 			display: flex;
 		}
 
-		.error-icon {
+		input {
+			flex: 1;
+			min-width: 0;
+			border: 0;
+			outline: none;
+			background: transparent;
+			color: var(--text);
+			font: inherit;
+			font-size: 0.865rem;
+		}
+
+		.error-indicator-icon {
 			display: flex;
 			align-items: center;
 			width: 1.125rem;
@@ -80,18 +96,9 @@
 			color: var(--danger);
 			line-height: 0;
 		}
-
-		input {
-			flex: 1;
-			border: none;
-			outline: none;
-			background: transparent;
-			font-size: 1rem;
-			color: var(--text);
-		}
 	}
 
-	.error-popover-content {
+	.error-indicator-message {
 		color: var(--text);
 		font-size: 0.865rem;
 	}

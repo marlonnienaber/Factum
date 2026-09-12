@@ -3,18 +3,39 @@ package support
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/marlonnienaber/Factum/server/internal/configuration"
-	"github.com/marlonnienaber/Factum/server/internal/features/authentication/types/transport"
+	authenticationTransport "github.com/marlonnienaber/Factum/server/internal/features/authentication/types/transport"
+	categoriesTransport "github.com/marlonnienaber/Factum/server/internal/features/categories/types/transport"
+	tasksTransport "github.com/marlonnienaber/Factum/server/internal/features/tasks/types/transport"
 	"github.com/marlonnienaber/Factum/server/internal/shared"
 	"github.com/marlonnienaber/Factum/server/internal/validation"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+const (
+	TestUser1Email              = "ada@example.com"
+	TestUser1Password           = "passwordPassword"
+	TestUser2Email              = "grace@example.com"
+	TestUser2Password           = "pAas5&WsHm}z#*]:W&qH"
+	preparedPartitionTasksCount = 3
+)
+
+var TestTaskDate = shared.NewDate(time.Date(2026, time.March, 25, 0, 0, 0, 0, time.UTC))
+
+var defaultTestConfiguration = configuration.Configuration{
+	Port:                ":3001",
+	SessionCookieSecure: false,
+	SessionSecretKey:    "test-session-secret-key",
+}
 
 func PrepareTestEnvironment(t *testing.T) *gin.Engine {
 	t.Helper()
@@ -34,24 +55,226 @@ func prepareTestEnvironmentWithConfig(t *testing.T, cfg configuration.Configurat
 	return TestApp(cfg)
 }
 
-var defaultTestConfiguration = configuration.Configuration{
-	Port:                ":3001",
-	SessionCookieSecure: false,
-	SessionSecretKey:    "test-session-secret-key",
-}
-
-const (
-	TestUserEmail    = "ada@example.com"
-	TestUserPassword = "passwordPassword"
-)
-
-func MakeSignUpRequest(t *testing.T, app *gin.Engine, body transport.AuthenticationRequest) *httptest.ResponseRecorder {
+func MakeSignUpRequest(t *testing.T, app *gin.Engine, body authenticationTransport.AuthenticationRequest) *httptest.ResponseRecorder {
 	t.Helper()
 
 	payload, err := json.Marshal(body)
 	require.NoError(t, err, "serializing request failed")
 
 	return MakeJsonRequest(t, app, http.MethodPost, "/api/sign-up", payload)
+}
+
+func MakeCreateCategoryRequest(
+	t *testing.T,
+	app *gin.Engine,
+	title string,
+	color string,
+	cookies ...*http.Cookie,
+) *httptest.ResponseRecorder {
+	t.Helper()
+
+	payload, err := json.Marshal(categoriesTransport.CreateCategoryRequest{
+		Title: title,
+		Color: color,
+	})
+	require.NoError(t, err, "serializing request failed")
+
+	return MakeJsonRequest(t, app, http.MethodPost, "/api/categories", payload, cookies...)
+}
+
+func MakeCreateTaskRequest(
+	t *testing.T,
+	app *gin.Engine,
+	title string,
+	description *string,
+	date *shared.Date,
+	categoryId int64,
+	cookies ...*http.Cookie,
+) *httptest.ResponseRecorder {
+	t.Helper()
+
+	payload, err := json.Marshal(tasksTransport.CreateTaskRequest{
+		Title:       title,
+		Description: description,
+		Date:        date,
+		CategoryId:  categoryId,
+	})
+	require.NoError(t, err, "serializing request failed")
+
+	return MakeJsonRequest(t, app, http.MethodPost, "/api/tasks", payload, cookies...)
+}
+
+func MakeTrashTaskRequest(
+	t *testing.T,
+	app *gin.Engine,
+	taskId int64,
+	trashedDate time.Time,
+	cookies ...*http.Cookie,
+) *httptest.ResponseRecorder {
+	t.Helper()
+
+	path := fmt.Sprintf(
+		"/api/tasks/%d/trash?%s",
+		taskId,
+		url.Values{"trashedDate": {trashedDate.Format(time.RFC3339Nano)}}.Encode(),
+	)
+	return MakeJsonRequest(t, app, http.MethodPatch, path, nil, cookies...)
+}
+
+func MakeToggleDoneRequest(
+	t *testing.T,
+	app *gin.Engine,
+	taskId int64,
+	cookies ...*http.Cookie,
+) *httptest.ResponseRecorder {
+	t.Helper()
+
+	path := fmt.Sprintf("/api/tasks/%d/toggle-done", taskId)
+	return MakeJsonRequest(t, app, http.MethodPatch, path, nil, cookies...)
+}
+
+func PrepareOpenUndatedUntrashedTasks(
+	t *testing.T,
+	app *gin.Engine,
+	categoryId int64,
+	cookies ...*http.Cookie,
+) []tasksTransport.UndatedTaskResponse {
+	t.Helper()
+
+	tasks := make([]tasksTransport.UndatedTaskResponse, 0, preparedPartitionTasksCount)
+	for range preparedPartitionTasksCount {
+		resp := MakeCreateTaskRequest(t, app, "Undated task", nil, nil, categoryId, cookies...)
+		require.Equal(t, http.StatusCreated, resp.Code)
+
+		var response tasksTransport.CreateTaskResponse
+		require.NoError(t, json.NewDecoder(resp.Body).Decode(&response), "failed to decode task response")
+		tasks = append(tasks, tasksTransport.UndatedTaskResponse{
+			Id:         response.Id,
+			CategoryId: categoryId,
+			Title:      "Undated task",
+			Rank:       response.Rank,
+		})
+	}
+	return tasks
+}
+
+func PrepareOpenDatedUntrashedTasks(
+	t *testing.T,
+	app *gin.Engine,
+	categoryId int64,
+	date shared.Date,
+	cookies ...*http.Cookie,
+) []tasksTransport.DatedUntrashedTaskResponse {
+	t.Helper()
+
+	tasks := make([]tasksTransport.DatedUntrashedTaskResponse, 0, preparedPartitionTasksCount)
+	for range preparedPartitionTasksCount {
+		resp := MakeCreateTaskRequest(t, app, "Dated task", nil, &date, categoryId, cookies...)
+		require.Equal(t, http.StatusCreated, resp.Code)
+
+		var response tasksTransport.CreateTaskResponse
+		require.NoError(t, json.NewDecoder(resp.Body).Decode(&response), "failed to decode task response")
+		tasks = append(tasks, tasksTransport.DatedUntrashedTaskResponse{
+			Id:         response.Id,
+			CategoryId: categoryId,
+			Title:      "Dated task",
+			Date:       date,
+			Rank:       response.Rank,
+		})
+	}
+	return tasks
+}
+
+func PrepareDoneDatedUntrashedTasks(
+	t *testing.T,
+	app *gin.Engine,
+	categoryId int64,
+	date shared.Date,
+	cookies ...*http.Cookie,
+) []tasksTransport.DatedUntrashedTaskResponse {
+	t.Helper()
+
+	tasks := PrepareOpenDatedUntrashedTasks(t, app, categoryId, date, cookies...)
+	for index := range tasks {
+		resp := MakeToggleDoneRequest(t, app, tasks[index].Id, cookies...)
+		require.Equal(t, http.StatusOK, resp.Code)
+		var toggleResponse tasksTransport.ToggleTaskDoneResponse
+		require.NoError(t, json.NewDecoder(resp.Body).Decode(&toggleResponse), "failed to decode toggle task done response")
+		require.NotNil(t, toggleResponse.Rank, "expected toggled task to have a rank")
+		tasks[index].Done = true
+		tasks[index].Date = toggleResponse.Date
+		tasks[index].Rank = *toggleResponse.Rank
+	}
+	return tasks
+}
+
+func PrepareTrashedTasks(
+	t *testing.T,
+	app *gin.Engine,
+	categoryId int64,
+	cookies ...*http.Cookie,
+) []tasksTransport.TaskResponse {
+	t.Helper()
+
+	date, err := shared.ParseDate("2026-03-25")
+	require.NoError(t, err, "parsing test date failed")
+	trashedDate := time.Date(2026, time.March, 26, 10, 30, 0, 0, time.UTC)
+
+	trashTask := func(task tasksTransport.TaskResponse) tasksTransport.TaskResponse {
+		resp := MakeTrashTaskRequest(t, app, task.Id, trashedDate, cookies...)
+		require.Equal(t, http.StatusNoContent, resp.Code)
+		task.Rank = nil
+		task.TrashedDate = &trashedDate
+		return task
+	}
+
+	openUndatedResp := MakeCreateTaskRequest(t, app, "Open undated task", nil, nil, categoryId, cookies...)
+	require.Equal(t, http.StatusCreated, openUndatedResp.Code)
+	var openUndatedTask tasksTransport.TaskResponse
+	require.NoError(
+		t,
+		json.NewDecoder(openUndatedResp.Body).Decode(&openUndatedTask),
+		"failed to decode task response",
+	)
+	openUndatedTask.CategoryId = categoryId
+	openUndatedTask.Title = "Open undated task"
+
+	openDatedResp := MakeCreateTaskRequest(t, app, "Open dated task", nil, &date, categoryId, cookies...)
+	require.Equal(t, http.StatusCreated, openDatedResp.Code)
+	var openDatedTask tasksTransport.TaskResponse
+	require.NoError(
+		t,
+		json.NewDecoder(openDatedResp.Body).Decode(&openDatedTask),
+		"failed to decode task response",
+	)
+	openDatedTask.CategoryId = categoryId
+	openDatedTask.Title = "Open dated task"
+	openDatedTask.Date = &date
+
+	doneDatedResp := MakeCreateTaskRequest(t, app, "Done dated task", nil, &date, categoryId, cookies...)
+	require.Equal(t, http.StatusCreated, doneDatedResp.Code)
+	var doneDatedTask tasksTransport.TaskResponse
+	require.NoError(
+		t,
+		json.NewDecoder(doneDatedResp.Body).Decode(&doneDatedTask),
+		"failed to decode task response",
+	)
+	doneDatedTask.CategoryId = categoryId
+	doneDatedTask.Title = "Done dated task"
+	require.NotNil(t, doneDatedTask.Rank, "expected created task to have a rank")
+	toggleDoneResp := MakeToggleDoneRequest(t, app, doneDatedTask.Id, cookies...)
+	require.Equal(t, http.StatusOK, toggleDoneResp.Code)
+	var toggleResponse tasksTransport.ToggleTaskDoneResponse
+	require.NoError(t, json.NewDecoder(toggleDoneResp.Body).Decode(&toggleResponse), "failed to decode toggle task done response")
+	doneDatedTask.Done = true
+	doneDatedTask.Date = &toggleResponse.Date
+	doneDatedTask.Rank = toggleResponse.Rank
+
+	return []tasksTransport.TaskResponse{
+		trashTask(doneDatedTask),
+		trashTask(openDatedTask),
+		trashTask(openUndatedTask),
+	}
 }
 
 func MakeJsonRequest(

@@ -13,16 +13,16 @@ import (
 )
 
 func TestAuthenticationSignInSuccess(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, transport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 
 	body := transport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	}
 	payload, err := json.Marshal(body)
 	require.NoError(t, err, "serializing request failed")
@@ -42,7 +42,7 @@ func TestAuthenticationSignInInvalidEmail(t *testing.T) {
 
 	body := transport.AuthenticationRequest{
 		Email:    "benexample.com",
-		Password: support.TestUserPassword,
+		Password: support.TestUser1Password,
 	}
 	payload, err := json.Marshal(body)
 	require.NoError(t, err, "serializing request failed")
@@ -56,7 +56,7 @@ func TestAuthenticationSignInPasswordTooShort(t *testing.T) {
 	app := support.PrepareTestEnvironment(t)
 
 	body := transport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
+		Email:    support.TestUser1Email,
 		Password: strings.Repeat("a", 9),
 	}
 	payload, err := json.Marshal(body)
@@ -71,7 +71,7 @@ func TestAuthenticationSignInPasswordTooLong(t *testing.T) {
 	app := support.PrepareTestEnvironment(t)
 
 	body := transport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
+		Email:    support.TestUser1Email,
 		Password: strings.Repeat("a", 129),
 	}
 	payload, err := json.Marshal(body)
@@ -100,8 +100,8 @@ func TestAuthenticationSignInInvalidCredentialsOnNonExistentEmail(t *testing.T) 
 	app := support.PrepareTestEnvironment(t)
 
 	body := transport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	}
 	payload, err := json.Marshal(body)
 	require.NoError(t, err, "serializing request failed")
@@ -118,15 +118,15 @@ func TestAuthenticationSignInInvalidCredentialsOnNonExistentEmail(t *testing.T) 
 }
 
 func TestAuthenticationSignInInvalidCredentialsOnWrongPassword(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUserEmail)
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, transport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
-		Password: support.TestUserPassword,
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
 	})
 	require.Equal(t, http.StatusCreated, signUpResp.Code)
 
 	body := transport.AuthenticationRequest{
-		Email:    support.TestUserEmail,
+		Email:    support.TestUser1Email,
 		Password: "wrongPassword",
 	}
 	payload, err := json.Marshal(body)

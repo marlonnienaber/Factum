@@ -2,31 +2,45 @@
 	font-family: 'Poppins', sans-serif;
 
 	&[data-theme='dark'] {
+		color-scheme: dark;
 		--background: #000000;
+		--background-check-control-unchecked: #000000;
+		--background-check-control-checked: #ffffff;
 		--text: #ffffff;
 		--text-subtle: #949191;
 		--text-inverse: #000000;
 		--button: #ffffff;
-		--button-hover: #d1d1d1;
+		--button-hover: #e3e3e3;
 		--button-ghost: #292929;
 		--border: #2d2c2c;
+		--border-accented: #ffffff;
+		--border-check-control: #949191;
 		--surface: #252525;
-		--surface-subtle: #0c0c0c;
+		--surface-subtle: #191919;
 		--danger: #f1716a;
+		--success: #68ff8e;
+		--overlay: #0000008c;
 	}
 
 	&[data-theme='light'] {
+		color-scheme: light;
 		--background: #ffffff;
+		--background-check-control-unchecked: #ffffff;
+		--background-check-control-checked: #000000;
 		--text: #000000;
 		--text-subtle: #5f5f5f;
 		--text-inverse: #ffffff;
 		--button: #000000;
-		--button-hover: #474747;
+		--button-hover: #222222;
 		--button-ghost: #dfdfdf;
 		--border: #e1e1e1;
-		--surface: #252525;
-		--surface-subtle: #fcfcfc;
+		--border-accented: #000000;
+		--border-check-control: #949191;
+		--surface: #e1e1e1;
+		--surface-subtle: #f1f1f1;
 		--danger: #f1716a;
+		--success: #5de681;
+		--overlay: #0000008c;
 	}
 }
 
@@ -34,4 +48,8 @@ body {
 	margin: 0;
 	font-family: inherit;
 	background-color: var(--background);
+}
+
+button {
+	font: inherit;
 }

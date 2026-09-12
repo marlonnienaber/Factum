@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import AuthenticationInput from '$lib/components/authentication-input.svelte';
+	import Input from '$lib/components/shared/input.svelte';
+	import { authenticationService } from '$lib/services/authentication-service.svelte';
 	import { authenticationStore } from '$lib/stores/authentication-store.svelte';
 	import { themeStore } from '$lib/stores/theme-store.svelte';
 	import { signUpInputSchema } from '$lib/types/inputs/sign-up-input';
@@ -16,12 +17,12 @@
 	let passwordError = $state<string | undefined>(undefined);
 	let repeatedPasswordError = $state<string | undefined>(undefined);
 	const authenticated = $derived(authenticationStore.authentication !== undefined);
-	const loading = $derived(authenticationStore.loading);
+	const loading = $derived(authenticationService.loading);
 	const isDarkTheme = $derived(themeStore.isDarkTheme);
 
 	$effect(() => {
 		if (authenticated) {
-			void goto(resolve('/workbench'));
+			void goto(resolve('/backlog'));
 		}
 	});
 
@@ -33,7 +34,7 @@
 		}
 
 		clearValidationErrors();
-		await authenticationStore.signUp({
+		await authenticationService.signUp({
 			email: inputParseResult.data.email,
 			password: inputParseResult.data.password
 		});
@@ -74,35 +75,38 @@
 		</div>
 
 		<div class="inputs">
-			<AuthenticationInput
+			<Input
+				id="email-input"
 				bind:value={email}
-				bind:error={emailError}
-				icon={Mail}
+				error={emailError}
+				leadingIcon={Mail}
 				type="email"
 				placeholder="Provide Email"
 				autocomplete="email"
 				disabled={loading}
-				data-testid="email-input"
+				oninput={() => (emailError = undefined)}
 			/>
-			<AuthenticationInput
+			<Input
+				id="password-input"
 				bind:value={password}
-				bind:error={passwordError}
-				icon={Lock}
+				error={passwordError}
+				leadingIcon={Lock}
 				type="password"
 				placeholder="Provide Password"
 				autocomplete="new-password"
 				disabled={loading}
-				data-testid="password-input"
+				oninput={() => (passwordError = undefined)}
 			/>
-			<AuthenticationInput
+			<Input
+				id="repeated-password-input"
 				bind:value={repeatedPassword}
-				bind:error={repeatedPasswordError}
-				icon={Repeat}
+				error={repeatedPasswordError}
+				leadingIcon={Repeat}
 				type="password"
 				placeholder="Repeat Password"
 				autocomplete="new-password"
 				disabled={loading}
-				data-testid="repeated-password-input"
+				oninput={() => (repeatedPasswordError = undefined)}
 			/>
 		</div>
 
@@ -157,6 +161,7 @@
 				display: flex;
 				flex-direction: column;
 				align-items: center;
+				width: 20rem;
 				gap: 1rem;
 			}
 

@@ -11,8 +11,6 @@ import (
 
 func NewSignOutHandler(authenticationService *services.AuthenticationService) shared.AuthenticatedHandlerFunc {
 	return func(c *shared.AuthenticatedContext) {
-		slog.Info("/sign-out [POST]")
-
 		unexpectedErrorLogMessage := "handling sign-out failed"
 
 		session := sessions.Default(c.Context)

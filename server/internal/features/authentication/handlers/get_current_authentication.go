@@ -11,8 +11,6 @@ import (
 
 func NewGetCurrentAuthenticationHandler(userStore *stores.UserStore) shared.AuthenticatedHandlerFunc {
 	return func(c *shared.AuthenticatedContext) {
-		slog.Info("/current-authentication [GET]")
-
 		unexpectedErrorLogMessage := "handling get current authentication failed"
 
 		doesUserExist, err := userStore.DoesUserExistForId(c.UserId)

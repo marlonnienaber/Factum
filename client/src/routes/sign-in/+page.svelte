@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import AuthenticationInput from '$lib/components/authentication-input.svelte';
+	import Input from '$lib/components/shared/input.svelte';
+	import { authenticationService } from '$lib/services/authentication-service.svelte';
 	import { authenticationStore } from '$lib/stores/authentication-store.svelte';
 	import { themeStore } from '$lib/stores/theme-store.svelte';
 	import { signInInputSchema } from '$lib/types/inputs/sign-in-input';
@@ -14,12 +15,12 @@
 	let emailError = $state<string | undefined>(undefined);
 	let passwordError = $state<string | undefined>(undefined);
 	const authenticated = $derived(authenticationStore.authentication !== undefined);
-	const loading = $derived(authenticationStore.loading);
+	const loading = $derived(authenticationService.loading);
 	const isDarkTheme = $derived(themeStore.isDarkTheme);
 
 	$effect(() => {
 		if (authenticated) {
-			void goto(resolve('/workbench'));
+			void goto(resolve('/backlog'));
 		}
 	});
 
@@ -33,7 +34,7 @@
 		}
 
 		clearValidationErrors();
-		await authenticationStore.signIn(inputParseResult.data);
+		await authenticationService.signIn(inputParseResult.data);
 	}
 
 	function clearValidationErrors(): void {
@@ -67,23 +68,27 @@
 		</div>
 
 		<div class="inputs">
-			<AuthenticationInput
+			<Input
+				id="email-input"
 				bind:value={email}
-				bind:error={emailError}
-				icon={Mail}
+				error={emailError}
+				leadingIcon={Mail}
 				type="email"
 				placeholder="Provide Email"
 				autocomplete="email"
 				disabled={loading}
+				oninput={() => (emailError = undefined)}
 			/>
-			<AuthenticationInput
+			<Input
+				id="password-input"
 				bind:value={password}
-				bind:error={passwordError}
-				icon={Lock}
+				error={passwordError}
+				leadingIcon={Lock}
 				type="password"
 				placeholder="Provide Password"
 				autocomplete="current-password"
 				disabled={loading}
+				oninput={() => (passwordError = undefined)}
 			/>
 		</div>
 
@@ -138,6 +143,7 @@
 				display: flex;
 				flex-direction: column;
 				align-items: center;
+				width: 20rem;
 				gap: 1rem;
 			}
 

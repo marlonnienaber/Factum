@@ -5,19 +5,28 @@
 	type Props = {
 		children: Snippet;
 		trigger: Snippet;
-		open?: boolean;
 		side?: 'top' | 'right' | 'bottom' | 'left';
 		align?: 'start' | 'center' | 'end';
+		open?: boolean;
 		openOnHover?: boolean;
+		triggerAriaLabel?: string;
 	};
 
-	let { children, trigger, open = $bindable(false), side = 'bottom', align = 'center', openOnHover = false }: Props = $props();
+	let {
+		children,
+		trigger,
+		side = 'bottom',
+		align = 'center',
+		open = $bindable(false),
+		openOnHover = false,
+		triggerAriaLabel
+	}: Props = $props();
 </script>
 
 <BitsPopover.Root bind:open>
 	<BitsPopover.Trigger {openOnHover} openDelay={0} closeDelay={0}>
 		{#snippet child({ props })}
-			<button {...props} class="trigger">
+			<button {...props} type="button" class="trigger" aria-label={triggerAriaLabel}>
 				{@render trigger()}
 			</button>
 		{/snippet}
@@ -46,14 +55,19 @@
 		padding: 0;
 		background: transparent;
 		color: inherit;
+		cursor: pointer;
 	}
 
 	.content {
+		z-index: 60;
+		display: flex;
+		flex-direction: column;
 		box-sizing: border-box;
 		width: fit-content;
-		padding: 0.75rem;
+		padding: 0.5rem;
+		gap: 0.5rem;
 		border: 1px solid var(--border);
-		border-radius: 0.5rem;
-		background: var(--surface-subtle);
+		border-radius: 0.75rem;
+		background: var(--background);
 	}
 </style>
