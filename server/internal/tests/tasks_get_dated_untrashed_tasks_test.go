@@ -2,6 +2,7 @@ package tests
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 	"testing"
@@ -200,10 +201,11 @@ func TestTasksGetDatedUntrashedTasksDoneWithoutCursor(t *testing.T) {
 		cookies...,
 	)
 	require.Equal(t, http.StatusOK, resp.Code)
-	var respBody []tasksTransport.TaskResponse
+	var respBody tasksTransport.GetDatedUntrashedTasksResponse
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
 
-	assert.Equal(t, expectedTasks, respBody, "unexpected tasks")
+	assert.Equal(t, expectedTasks, respBody.Tasks, "unexpected tasks")
+	assert.False(t, respBody.HasMore, "unexpected additional page")
 }
 
 func TestTasksGetDatedUntrashedTasksDoneWithCursor(t *testing.T) {
@@ -222,9 +224,6 @@ func TestTasksGetDatedUntrashedTasksDoneWithCursor(t *testing.T) {
 
 	tasks := support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 	cursor := tasks[0]
-	require.NotNil(t, cursor.Date, "expected cursor task to have a date")
-	require.NotNil(t, cursor.Rank, "expected cursor task to have a rank")
-
 	resp := support.MakeJsonRequest(
 		t,
 		app,
@@ -232,16 +231,17 @@ func TestTasksGetDatedUntrashedTasksDoneWithCursor(t *testing.T) {
 		"/api/tasks/dated-untrashed?"+url.Values{
 			"done": {"true"},
 			"date": {cursor.Date.Format(time.DateOnly)},
-			"rank": {*cursor.Rank},
+			"rank": {cursor.Rank},
 		}.Encode(),
 		nil,
 		cookies...,
 	)
 	require.Equal(t, http.StatusOK, resp.Code)
-	var respBody []tasksTransport.TaskResponse
+	var respBody tasksTransport.GetDatedUntrashedTasksResponse
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
 
-	assert.Equal(t, tasks[1:], respBody, "unexpected tasks")
+	assert.Equal(t, tasks[1:], respBody.Tasks, "unexpected tasks")
+	assert.False(t, respBody.HasMore, "unexpected additional page")
 }
 
 func TestTasksGetDatedUntrashedTasksOpenWithoutCursor(t *testing.T) {
@@ -272,10 +272,11 @@ func TestTasksGetDatedUntrashedTasksOpenWithoutCursor(t *testing.T) {
 		cookies...,
 	)
 	require.Equal(t, http.StatusOK, resp.Code)
-	var respBody []tasksTransport.TaskResponse
+	var respBody tasksTransport.GetDatedUntrashedTasksResponse
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
 
-	assert.Equal(t, expectedTasks, respBody, "unexpected tasks")
+	assert.Equal(t, expectedTasks, respBody.Tasks, "unexpected tasks")
+	assert.False(t, respBody.HasMore, "unexpected additional page")
 }
 
 func TestTasksGetDatedUntrashedTasksOpenWithCursor(t *testing.T) {
@@ -294,9 +295,6 @@ func TestTasksGetDatedUntrashedTasksOpenWithCursor(t *testing.T) {
 
 	tasks := support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 	cursor := tasks[0]
-	require.NotNil(t, cursor.Date, "expected cursor task to have a date")
-	require.NotNil(t, cursor.Rank, "expected cursor task to have a rank")
-
 	resp := support.MakeJsonRequest(
 		t,
 		app,
@@ -304,14 +302,120 @@ func TestTasksGetDatedUntrashedTasksOpenWithCursor(t *testing.T) {
 		"/api/tasks/dated-untrashed?"+url.Values{
 			"done": {"false"},
 			"date": {cursor.Date.Format(time.DateOnly)},
-			"rank": {*cursor.Rank},
+			"rank": {cursor.Rank},
 		}.Encode(),
 		nil,
 		cookies...,
 	)
 	require.Equal(t, http.StatusOK, resp.Code)
-	var respBody []tasksTransport.TaskResponse
+	var respBody tasksTransport.GetDatedUntrashedTasksResponse
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
 
-	assert.Equal(t, tasks[1:], respBody, "unexpected tasks")
+	assert.Equal(t, tasks[1:], respBody.Tasks, "unexpected tasks")
+	assert.False(t, respBody.HasMore, "unexpected additional page")
+}
+
+func TestTasksGetDatedUntrashedOpenTasksHasMore(t *testing.T) {
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
+	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
+	})
+	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	cookies := signUpResp.Result().Cookies()
+
+	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
+	require.Equal(t, http.StatusCreated, categoryResp.Code)
+	var category categoriesTransport.CreateCategoryResponse
+	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
+
+	const taskBatchSize = 50
+	expectedTasks := make([]tasksTransport.DatedUntrashedTaskResponse, 0, taskBatchSize)
+	for index := range taskBatchSize + 1 {
+		title := fmt.Sprintf("Task %d", index+1)
+		createTaskResp := support.MakeCreateTaskRequest(t, app, title, nil, &support.TestTaskDate, category.Id, cookies...)
+		require.Equal(t, http.StatusCreated, createTaskResp.Code)
+		var task tasksTransport.CreateTaskResponse
+		require.NoError(t, json.NewDecoder(createTaskResp.Body).Decode(&task), "failed to decode task response")
+		if index < taskBatchSize {
+			expectedTasks = append(expectedTasks, tasksTransport.DatedUntrashedTaskResponse{
+				Id:         task.Id,
+				CategoryId: category.Id,
+				Title:      title,
+				Date:       support.TestTaskDate,
+				Rank:       task.Rank,
+			})
+		}
+	}
+
+	resp := support.MakeJsonRequest(
+		t,
+		app,
+		http.MethodGet,
+		"/api/tasks/dated-untrashed?"+url.Values{"done": {"false"}}.Encode(),
+		nil,
+		cookies...,
+	)
+	require.Equal(t, http.StatusOK, resp.Code)
+	var respBody tasksTransport.GetDatedUntrashedTasksResponse
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
+
+	assert.Equal(t, expectedTasks, respBody.Tasks, "unexpected tasks")
+	assert.True(t, respBody.HasMore, "expected additional tasks")
+}
+
+func TestTasksGetDatedUntrashedDoneTasksHasMore(t *testing.T) {
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
+	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
+	})
+	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	cookies := signUpResp.Result().Cookies()
+
+	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
+	require.Equal(t, http.StatusCreated, categoryResp.Code)
+	var category categoriesTransport.CreateCategoryResponse
+	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
+
+	const taskBatchSize = 50
+	expectedTasks := make([]tasksTransport.DatedUntrashedTaskResponse, 0, taskBatchSize)
+	for index := range taskBatchSize + 1 {
+		title := fmt.Sprintf("Task %d", index+1)
+		createTaskResp := support.MakeCreateTaskRequest(t, app, title, nil, &support.TestTaskDate, category.Id, cookies...)
+		require.Equal(t, http.StatusCreated, createTaskResp.Code)
+		var task tasksTransport.CreateTaskResponse
+		require.NoError(t, json.NewDecoder(createTaskResp.Body).Decode(&task), "failed to decode task response")
+
+		toggleDoneResp := support.MakeToggleDoneRequest(t, app, task.Id, cookies...)
+		require.Equal(t, http.StatusOK, toggleDoneResp.Code)
+		var toggleDoneResponse tasksTransport.ToggleTaskDoneResponse
+		require.NoError(t, json.NewDecoder(toggleDoneResp.Body).Decode(&toggleDoneResponse), "failed to decode toggle task done response")
+		require.NotNil(t, toggleDoneResponse.Rank, "expected toggled task to have a rank")
+		if index < taskBatchSize {
+			expectedTasks = append(expectedTasks, tasksTransport.DatedUntrashedTaskResponse{
+				Id:         task.Id,
+				CategoryId: category.Id,
+				Title:      title,
+				Date:       toggleDoneResponse.Date,
+				Rank:       *toggleDoneResponse.Rank,
+				Done:       true,
+			})
+		}
+	}
+
+	resp := support.MakeJsonRequest(
+		t,
+		app,
+		http.MethodGet,
+		"/api/tasks/dated-untrashed?"+url.Values{"done": {"true"}}.Encode(),
+		nil,
+		cookies...,
+	)
+	require.Equal(t, http.StatusOK, resp.Code)
+	var respBody tasksTransport.GetDatedUntrashedTasksResponse
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
+
+	assert.Equal(t, expectedTasks, respBody.Tasks, "unexpected tasks")
+	assert.True(t, respBody.HasMore, "expected additional tasks")
 }

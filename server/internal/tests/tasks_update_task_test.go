@@ -518,12 +518,10 @@ func TestTasksUpdateTaskFromOpenWithoutDateUntrashedToDate(t *testing.T) {
 	undatedTasks := support.PrepareOpenUndatedUntrashedTasks(t, app, category.Id, cookies...)
 	datedTasks := support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 	task := undatedTasks[0]
-	require.NotNil(t, datedTasks[0].Date, "expected dated task date")
-
 	payload, err := json.Marshal(tasksTransport.UpdateTaskRequest{
 		Id:         task.Id,
 		Title:      "Task",
-		Date:       datedTasks[0].Date,
+		Date:       &datedTasks[0].Date,
 		CategoryId: category.Id,
 	})
 	require.NoError(t, err, "serializing request failed")
@@ -532,7 +530,7 @@ func TestTasksUpdateTaskFromOpenWithoutDateUntrashedToDate(t *testing.T) {
 	var respBody tasksTransport.TaskResponse
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
 
-	assert.Equal(t, datedTasks[0].Date, respBody.Date, "unexpected task date")
+	assert.Equal(t, &datedTasks[0].Date, respBody.Date, "unexpected task date")
 	assert.False(t, respBody.Done, "expected task to remain open")
 	assert.NotNil(t, respBody.Rank, "expected task to have a rank")
 }

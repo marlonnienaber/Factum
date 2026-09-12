@@ -200,7 +200,6 @@ func TestTasksBatchOpenTasksFromAllValidPartitions(t *testing.T) {
 		}
 	}
 	require.NotZero(t, completedTrashedTask.Id, "expected a completed trashed task")
-	require.NotNil(t, completedUntrashedTasks[0].Date, "expected completed task to have a date")
 	require.NotNil(t, completedTrashedTask.Date, "expected completed task to have a date")
 
 	payload, err := json.Marshal(tasksTransport.BatchUpdateDoneRequest{
@@ -218,7 +217,7 @@ func TestTasksBatchOpenTasksFromAllValidPartitions(t *testing.T) {
 	openedUntrashedTask := respBody.DatedUntrashedOpenTasks[0]
 	assert.Equal(t, completedUntrashedTasks[0].Id, openedUntrashedTask.Id)
 	assert.False(t, openedUntrashedTask.Done, "expected task to be open")
-	assert.Equal(t, completedUntrashedTasks[0].Date, openedUntrashedTask.Date, "expected date to remain unchanged")
+	assert.Equal(t, &completedUntrashedTasks[0].Date, openedUntrashedTask.Date, "expected date to remain unchanged")
 	assert.NotNil(t, openedUntrashedTask.Rank, "expected untrashed task to have a rank")
 	assert.Nil(t, openedUntrashedTask.TrashedDate, "expected task to be untrashed")
 

@@ -128,8 +128,7 @@ func TestTasksRestoreOpenDatedTask(t *testing.T) {
 	}
 	require.NotZero(t, task.Id, "expected an open dated trashed task")
 	lastDestinationTask := destinationTasks[len(destinationTasks)-1]
-	require.NotNil(t, lastDestinationTask.Rank, "expected last destination task to have a rank")
-	expectedRank, err := fracdex.KeyBetween(*lastDestinationTask.Rank, "")
+	expectedRank, err := fracdex.KeyBetween(lastDestinationTask.Rank, "")
 	require.NoError(t, err, "generating expected rank failed")
 
 	resp := support.MakeJsonRequest(t, app, http.MethodPatch, fmt.Sprintf("/api/tasks/%d/restore", task.Id), nil, cookies...)
@@ -163,8 +162,7 @@ func TestTasksRestoreDoneDatedTask(t *testing.T) {
 	}
 	require.NotZero(t, task.Id, "expected a done dated trashed task")
 	lastDestinationTask := destinationTasks[len(destinationTasks)-1]
-	require.NotNil(t, lastDestinationTask.Rank, "expected last destination task to have a rank")
-	expectedRank, err := fracdex.KeyBetween(*lastDestinationTask.Rank, "")
+	expectedRank, err := fracdex.KeyBetween(lastDestinationTask.Rank, "")
 	require.NoError(t, err, "generating expected rank failed")
 
 	resp := support.MakeJsonRequest(t, app, http.MethodPatch, fmt.Sprintf("/api/tasks/%d/restore", task.Id), nil, cookies...)

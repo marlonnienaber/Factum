@@ -70,8 +70,7 @@ func TestTasksToggleDoneForDatedOpenUntrashedTask(t *testing.T) {
 	sourceTasks := support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 	task := sourceTasks[0]
 	lastDestinationTask := destinationTasks[len(destinationTasks)-1]
-	require.NotNil(t, lastDestinationTask.Rank, "expected last destination task to have a rank")
-	expectedRank, err := fracdex.KeyBetween(*lastDestinationTask.Rank, "")
+	expectedRank, err := fracdex.KeyBetween(lastDestinationTask.Rank, "")
 	require.NoError(t, err, "generating expected rank failed")
 
 	resp := support.MakeJsonRequest(t, app, http.MethodPatch, fmt.Sprintf("/api/tasks/%d/toggle-done", task.Id), nil, cookies...)
@@ -79,7 +78,7 @@ func TestTasksToggleDoneForDatedOpenUntrashedTask(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.Code)
 	var response tasksTransport.ToggleTaskDoneResponse
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&response), "failed to decode toggle task done response")
-	require.Equal(t, task.Date, &response.Date)
+	require.Equal(t, task.Date, response.Date)
 	require.NotNil(t, response.Rank)
 	require.Equal(t, expectedRank, *response.Rank)
 }
@@ -100,8 +99,7 @@ func TestTasksToggleDoneForDatedDoneUntrashedTask(t *testing.T) {
 	destinationTasks := support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 	task := sourceTasks[0]
 	lastDestinationTask := destinationTasks[len(destinationTasks)-1]
-	require.NotNil(t, lastDestinationTask.Rank, "expected last destination task to have a rank")
-	expectedRank, err := fracdex.KeyBetween(*lastDestinationTask.Rank, "")
+	expectedRank, err := fracdex.KeyBetween(lastDestinationTask.Rank, "")
 	require.NoError(t, err, "generating expected rank failed")
 
 	resp := support.MakeJsonRequest(t, app, http.MethodPatch, fmt.Sprintf("/api/tasks/%d/toggle-done", task.Id), nil, cookies...)
@@ -109,7 +107,7 @@ func TestTasksToggleDoneForDatedDoneUntrashedTask(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.Code)
 	var response tasksTransport.ToggleTaskDoneResponse
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&response), "failed to decode toggle task done response")
-	require.Equal(t, task.Date, &response.Date)
+	require.Equal(t, task.Date, response.Date)
 	require.NotNil(t, response.Rank)
 	require.Equal(t, expectedRank, *response.Rank)
 }
@@ -131,8 +129,7 @@ func TestTasksToggleDoneForUndatedOpenUntrashedTask(t *testing.T) {
 	sourceTasks := support.PrepareOpenUndatedUntrashedTasks(t, app, category.Id, cookies...)
 	task := sourceTasks[0]
 	lastDestinationTask := destinationTasks[len(destinationTasks)-1]
-	require.NotNil(t, lastDestinationTask.Rank, "expected last destination task to have a rank")
-	expectedRank, err := fracdex.KeyBetween(*lastDestinationTask.Rank, "")
+	expectedRank, err := fracdex.KeyBetween(lastDestinationTask.Rank, "")
 	require.NoError(t, err, "generating expected rank failed")
 
 	resp := support.MakeJsonRequest(t, app, http.MethodPatch, fmt.Sprintf("/api/tasks/%d/toggle-done", task.Id), nil, cookies...)

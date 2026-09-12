@@ -164,20 +164,23 @@ func PrepareOpenDatedUntrashedTasks(
 	categoryId int64,
 	date shared.Date,
 	cookies ...*http.Cookie,
-) []tasksTransport.TaskResponse {
+) []tasksTransport.DatedUntrashedTaskResponse {
 	t.Helper()
 
-	tasks := make([]tasksTransport.TaskResponse, 0, preparedPartitionTasksCount)
+	tasks := make([]tasksTransport.DatedUntrashedTaskResponse, 0, preparedPartitionTasksCount)
 	for range preparedPartitionTasksCount {
 		resp := MakeCreateTaskRequest(t, app, "Dated task", nil, &date, categoryId, cookies...)
 		require.Equal(t, http.StatusCreated, resp.Code)
 
-		var task tasksTransport.TaskResponse
-		require.NoError(t, json.NewDecoder(resp.Body).Decode(&task), "failed to decode task response")
-		task.CategoryId = categoryId
-		task.Title = "Dated task"
-		task.Date = &date
-		tasks = append(tasks, task)
+		var response tasksTransport.CreateTaskResponse
+		require.NoError(t, json.NewDecoder(resp.Body).Decode(&response), "failed to decode task response")
+		tasks = append(tasks, tasksTransport.DatedUntrashedTaskResponse{
+			Id:         response.Id,
+			CategoryId: categoryId,
+			Title:      "Dated task",
+			Date:       date,
+			Rank:       response.Rank,
+		})
 	}
 	return tasks
 }
@@ -188,7 +191,7 @@ func PrepareDoneDatedUntrashedTasks(
 	categoryId int64,
 	date shared.Date,
 	cookies ...*http.Cookie,
-) []tasksTransport.TaskResponse {
+) []tasksTransport.DatedUntrashedTaskResponse {
 	t.Helper()
 
 	tasks := PrepareOpenDatedUntrashedTasks(t, app, categoryId, date, cookies...)
@@ -197,9 +200,10 @@ func PrepareDoneDatedUntrashedTasks(
 		require.Equal(t, http.StatusOK, resp.Code)
 		var toggleResponse tasksTransport.ToggleTaskDoneResponse
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&toggleResponse), "failed to decode toggle task done response")
+		require.NotNil(t, toggleResponse.Rank, "expected toggled task to have a rank")
 		tasks[index].Done = true
-		tasks[index].Date = &toggleResponse.Date
-		tasks[index].Rank = toggleResponse.Rank
+		tasks[index].Date = toggleResponse.Date
+		tasks[index].Rank = *toggleResponse.Rank
 	}
 	return tasks
 }

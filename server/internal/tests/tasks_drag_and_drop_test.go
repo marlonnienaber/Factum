@@ -196,7 +196,7 @@ func TestTasksDragAndDropCompletedTask(t *testing.T) {
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
 	tasks := support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 
-	payload, err := json.Marshal(tasksTransport.TaskDragAndDropRequest{Date: tasks[0].Date, PreviousTaskId: &tasks[1].Id})
+	payload, err := json.Marshal(tasksTransport.TaskDragAndDropRequest{Date: &tasks[0].Date, PreviousTaskId: &tasks[1].Id})
 	require.NoError(t, err, "serializing request failed")
 	path := fmt.Sprintf("/api/tasks/%d/drag-and-drop", tasks[0].Id)
 	resp := support.MakeJsonRequest(t, app, http.MethodPatch, path, payload, cookies...)
@@ -276,12 +276,10 @@ func TestTasksDragAndDropWithinDatedPartition(t *testing.T) {
 	var category categoriesTransport.CreateCategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
 	tasks := support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
-	require.NotNil(t, tasks[1].Rank, "expected previous task to have a rank")
-	require.NotNil(t, tasks[2].Rank, "expected next task to have a rank")
-	expectedRank, err := fracdex.KeyBetween(*tasks[1].Rank, *tasks[2].Rank)
+	expectedRank, err := fracdex.KeyBetween(tasks[1].Rank, tasks[2].Rank)
 	require.NoError(t, err, "generating expected rank failed")
 
-	payload, err := json.Marshal(tasksTransport.TaskDragAndDropRequest{Date: tasks[0].Date, PreviousTaskId: &tasks[1].Id})
+	payload, err := json.Marshal(tasksTransport.TaskDragAndDropRequest{Date: &tasks[0].Date, PreviousTaskId: &tasks[1].Id})
 	require.NoError(t, err, "serializing request failed")
 	path := fmt.Sprintf("/api/tasks/%d/drag-and-drop", tasks[0].Id)
 	resp := support.MakeJsonRequest(t, app, http.MethodPatch, path, payload, cookies...)
@@ -306,12 +304,10 @@ func TestTasksDragAndDropFromUndatedToDatedPartition(t *testing.T) {
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
 	undatedTasks := support.PrepareOpenUndatedUntrashedTasks(t, app, category.Id, cookies...)
 	datedTasks := support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
-	require.NotNil(t, datedTasks[1].Rank, "expected previous task to have a rank")
-	require.NotNil(t, datedTasks[2].Rank, "expected next task to have a rank")
-	expectedRank, err := fracdex.KeyBetween(*datedTasks[1].Rank, *datedTasks[2].Rank)
+	expectedRank, err := fracdex.KeyBetween(datedTasks[1].Rank, datedTasks[2].Rank)
 	require.NoError(t, err, "generating expected rank failed")
 
-	payload, err := json.Marshal(tasksTransport.TaskDragAndDropRequest{Date: datedTasks[0].Date, PreviousTaskId: &datedTasks[1].Id})
+	payload, err := json.Marshal(tasksTransport.TaskDragAndDropRequest{Date: &datedTasks[0].Date, PreviousTaskId: &datedTasks[1].Id})
 	require.NoError(t, err, "serializing request failed")
 	path := fmt.Sprintf("/api/tasks/%d/drag-and-drop", undatedTasks[0].Id)
 	resp := support.MakeJsonRequest(t, app, http.MethodPatch, path, payload, cookies...)
