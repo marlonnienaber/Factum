@@ -63,6 +63,21 @@ type GetUndatedTasksResponse struct {
 	HasMore bool                  `json:"hasMore"`
 }
 
+type TrashedTaskResponse struct {
+	Id          int64        `db:"id" json:"id"`
+	CategoryId  int64        `db:"category_id" json:"categoryId"`
+	Title       string       `db:"title" json:"title"`
+	Description *string      `db:"description" json:"description,omitempty"`
+	Date        *shared.Date `db:"date" json:"date,omitempty"`
+	Done        bool         `db:"done" json:"done"`
+	TrashedDate time.Time    `db:"trashed_date" json:"trashedDate"`
+}
+
+type GetTrashedTasksResponse struct {
+	Tasks   []TrashedTaskResponse `json:"tasks"`
+	HasMore bool                  `json:"hasMore"`
+}
+
 type BatchCompleteResponse struct {
 	DatedUntrashedDoneTasks []TaskResponse `json:"datedUntrashedDoneTasks"`
 	TrashedTasks            []TaskResponse `json:"trashedTasks"`

@@ -26,13 +26,13 @@ func NewGetTrashedTasksHandler(taskStore *stores.TaskStore) shared.Authenticated
 			return
 		}
 
-		taskResponses, err := taskStore.GetTrashedTasks(c.UserId, trashedDate, id)
+		response, err := taskStore.GetTrashedTasks(c.UserId, trashedDate, id)
 		if err != nil {
 			slog.Error(unexpectedErrorLogMessage, "error", err)
 			c.JSON(http.StatusInternalServerError, shared.UnexpectedErrorResponse)
 			return
 		}
 
-		c.JSON(http.StatusOK, taskResponses)
+		c.JSON(http.StatusOK, response)
 	}
 }

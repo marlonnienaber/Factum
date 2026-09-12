@@ -642,17 +642,20 @@ func (store *TaskStore) GetDatedUntrashedOpenNonTodayTasks(
 	return &transport.GetDatedUntrashedTasksResponse{Tasks: tasks, HasMore: hasMore}, nil
 }
 
-func (store *TaskStore) GetTrashedTasks(userId int64, trashedTimestamp *time.Time, id *int64) ([]transport.TaskResponse, error) {
+func (store *TaskStore) GetTrashedTasks(
+	userId int64,
+	trashedTimestamp *time.Time,
+	id *int64,
+) (*transport.GetTrashedTasksResponse, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("retrieving trashed tasks failed")
 
-	tasks := make([]transport.TaskResponse, 0)
+	tasks := make([]transport.TrashedTaskResponse, 0, tasksBatchSize+1)
 	err := store.db.Select(&tasks, `
 		SELECT id,
 		       category_id,
 		       title,
 		       description,
 		       date,
-		       rank,
 		       done,
 		       trashed_date
 		FROM tasks
@@ -671,10 +674,15 @@ func (store *TaskStore) GetTrashedTasks(userId int64, trashedTimestamp *time.Tim
 		  )
 		ORDER BY trashed_date DESC, id DESC
 		LIMIT $4
-	`, userId, trashedTimestamp, id, tasksBatchSize)
+	`, userId, trashedTimestamp, id, tasksBatchSize+1)
 	if err != nil {
 		return nil, wrapUnexpectedError(err)
 	}
 
-	return tasks, nil
+	hasMore := len(tasks) > tasksBatchSize
+	if hasMore {
+		tasks = tasks[:tasksBatchSize]
+	}
+
+	return &transport.GetTrashedTasksResponse{Tasks: tasks, HasMore: hasMore}, nil
 }
