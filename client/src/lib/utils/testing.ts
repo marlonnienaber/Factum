@@ -1,6 +1,9 @@
 import { waitFor } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
+import { mockIntersectionObserver } from 'jsdom-testing-mocks';
 import { expect, vi } from 'vitest';
+
+export const intersectionObserverMock = mockIntersectionObserver();
 
 type PageQueries = {
 	container: HTMLElement;

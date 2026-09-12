@@ -1,9 +1,12 @@
 import '@testing-library/jest-dom/vitest';
-import { vi } from 'vitest';
+import { configMocks } from 'jsdom-testing-mocks';
+import { afterAll, vi } from 'vitest';
 
 HTMLElement.prototype.hasPointerCapture ??= () => false;
 HTMLElement.prototype.setPointerCapture ??= () => {};
 HTMLElement.prototype.releasePointerCapture ??= () => {};
+
+configMocks({ afterAll });
 
 vi.mock('$app/navigation');
 
