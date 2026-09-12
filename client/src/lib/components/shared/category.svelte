@@ -18,7 +18,7 @@
 		box-sizing: border-box;
 		padding: 0.25rem 0.625rem;
 		border-radius: 1rem;
-		color: var(--text);
+		color: var(--black);
 		font-size: 0.75rem;
 	}
 </style>

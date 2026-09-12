@@ -3,6 +3,7 @@
 
 	&[data-theme='dark'] {
 		color-scheme: dark;
+		--black: #000000;
 		--background: #000000;
 		--background-check-control-unchecked: #000000;
 		--background-check-control-checked: #ffffff;
@@ -24,6 +25,7 @@
 
 	&[data-theme='light'] {
 		color-scheme: light;
+		--black: #000000;
 		--background: #ffffff;
 		--background-check-control-unchecked: #ffffff;
 		--background-check-control-checked: #000000;

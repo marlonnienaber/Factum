@@ -419,7 +419,7 @@
 				cursor: pointer;
 
 				.color-pill-label {
-					color: var(--text);
+					color: var(--black);
 					font-size: 0.75rem;
 				}
 
