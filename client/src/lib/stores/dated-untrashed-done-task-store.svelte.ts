@@ -4,7 +4,7 @@ let datedUntrashedDoneTasks: DatedUntrashedDoneTaskResponse[] = $state<DatedUntr
 
 function addOrUpdateTasks(tasks: DatedUntrashedDoneTaskResponse[]): void {
 	const taskIds = new Set(tasks.map((task) => task.id));
-	const deduplicatedTasks = datedUntrashedDoneTasks.filter((task) => !taskIds.has(task.id));
+	const deduplicatedTasks: DatedUntrashedDoneTaskResponse[] = datedUntrashedDoneTasks.filter((task) => !taskIds.has(task.id));
 	datedUntrashedDoneTasks = [...deduplicatedTasks, ...tasks].sort(compareTasksByDateAndRank);
 	console.log('Dated untrashed done tasks:', $state.snapshot(datedUntrashedDoneTasks));
 }

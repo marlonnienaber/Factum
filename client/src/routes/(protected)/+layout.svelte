@@ -26,7 +26,8 @@
 		if (authentication) {
 			untrack(() => {
 				void categoryService.fetchCategories();
-				void taskService.fetchDatedUntrashedOpenTasks();
+				void taskService.fetchDatedUntrashedOpenTodayTasks();
+				void taskService.fetchDatedUntrashedOpenNonTodayTasks();
 				void taskService.fetchUndatedTasks();
 			});
 		} else {

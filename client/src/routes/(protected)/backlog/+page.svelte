@@ -28,11 +28,13 @@
 	let selectedTaskIds = $state<number[]>([]);
 	let taskDialogTask = $state<DatedUntrashedOpenTaskResponse | UndatedTaskResponse>();
 	let undatedTaskDragItems = $state<TaskDragItem[]>([...undatedTaskStore.undatedTasks]);
+	let todayTaskDragItems = $state<TaskDragItem[]>([...datedUntrashedOpenTaskStore.datedUntrashedOpenTodayTasks]);
 	let dateKeyToDatedTaskDragItemsRecord = $state<Record<string, TaskDragItem[]>>(createGroupKeyToDatedTaskItemsRecord());
 
 	$effect.pre(() => {
 		if (dragging) return;
 		undatedTaskDragItems = [...undatedTaskStore.undatedTasks];
+		todayTaskDragItems = [...datedUntrashedOpenTaskStore.datedUntrashedOpenTodayTasks];
 		dateKeyToDatedTaskDragItemsRecord = createGroupKeyToDatedTaskItemsRecord();
 	});
 
@@ -41,7 +43,7 @@
 	});
 
 	function createGroupKeyToDatedTaskItemsRecord(): Record<string, TaskDragItem[]> {
-		const dateKeyToTaskDragItemsMap = Map.groupBy(datedUntrashedOpenTaskStore.datedUntrashedOpenTasks, (task) =>
+		const dateKeyToTaskDragItemsMap = Map.groupBy(datedUntrashedOpenTaskStore.datedUntrashedOpenNonTodayTasks, (task) =>
 			task.date.toString()
 		);
 		return Object.fromEntries(dateKeyToTaskDragItemsMap);
@@ -74,7 +76,9 @@
 	}
 
 	function setTaskDragItems(taskDragItems: TaskDragItem[], dateKey?: string): void {
-		if (dateKey) {
+		if (dateKey === todayDateKey) {
+			todayTaskDragItems = taskDragItems;
+		} else if (dateKey) {
 			dateKeyToDatedTaskDragItemsRecord = {
 				...dateKeyToDatedTaskDragItemsRecord,
 				[dateKey]: taskDragItems
@@ -106,6 +110,18 @@
 	function loadMoreUndatedTasks(): Promise<void> | undefined {
 		const lastLoadedTaskRank = undatedTaskStore.undatedTasks.at(-1)?.rank;
 		if (lastLoadedTaskRank !== undefined) return taskService.fetchUndatedTasks(lastLoadedTaskRank);
+	}
+
+	function loadMoreDatedUntrashedOpenNonTodayTasks(): Promise<void> | undefined {
+		const lastLoadedTask = datedUntrashedOpenTaskStore.datedUntrashedOpenNonTodayTasks.at(-1);
+		if (lastLoadedTask !== undefined) {
+			return taskService.fetchDatedUntrashedOpenNonTodayTasks({ date: lastLoadedTask.date, rank: lastLoadedTask.rank });
+		}
+	}
+
+	function loadMoreDatedUntrashedOpenTodayTasks(): Promise<void> | undefined {
+		const lastLoadedTaskRank = datedUntrashedOpenTaskStore.datedUntrashedOpenTodayTasks.at(-1)?.rank;
+		if (lastLoadedTaskRank !== undefined) return taskService.fetchDatedUntrashedOpenTodayTasks(lastLoadedTaskRank);
 	}
 
 	function startTaskSelection(): void {
@@ -215,9 +231,14 @@
 	</div>
 	<div class="date-section">
 		<h1>Date Assigned</h1>
-		<div class="date-groups">
-			{#each Object.entries(dateKeyToDatedTaskDragItemsRecord) as [groupKey, taskDragItems] (groupKey)}
-				{#if groupKey !== todayDateKey}
+		<InfiniteScrollContainer
+			hasMore={datedUntrashedOpenTaskStore.nonTodayTasksHasMore}
+			loading={taskService.datedUntrashedOpenNonTodayTasksLoading}
+			disabled={dragging}
+			loadMore={loadMoreDatedUntrashedOpenNonTodayTasks}
+		>
+			<div class="date-groups">
+				{#each Object.entries(dateKeyToDatedTaskDragItemsRecord) as [groupKey, taskDragItems] (groupKey)}
 					{@const groupDate = parseDate(groupKey)}
 					<div class="date-group">
 						<h2>{formatDate(groupDate)}</h2>
@@ -244,34 +265,41 @@
 							{/each}
 						</div>
 					</div>
-				{/if}
-			{/each}
-		</div>
+				{/each}
+			</div>
+		</InfiniteScrollContainer>
 	</div>
 	<div class="today-section">
 		<h1>Today</h1>
-		<div
-			class="task-item-drop-zone"
-			aria-label="Tasks dated Today"
-			use:dndzone={{
-				items: dateKeyToDatedTaskDragItemsRecord[todayDateKey] ?? [],
-				dragDisabled: selectionEnabled || taskService.taskMutationBlocked,
-				dropTargetStyle: dropTargetStyle
-			}}
-			onconsider={(event) => handleConsider(event, todayDateKey)}
-			onfinalize={(event) => handleFinalize(event, todayDateKey)}
+		<InfiniteScrollContainer
+			hasMore={datedUntrashedOpenTaskStore.todayTasksHasMore}
+			loading={taskService.datedUntrashedOpenTodayTasksLoading}
+			disabled={dragging}
+			loadMore={loadMoreDatedUntrashedOpenTodayTasks}
 		>
-			{#each dateKeyToDatedTaskDragItemsRecord[todayDateKey] as taskDragItem (getTaskDragItemKey(taskDragItem))}
-				<Task
-					task={taskDragItem}
-					isShadowItem={Boolean(taskDragItem[isShadowTask])}
-					{selectionEnabled}
-					selected={selectedTaskIds.includes(taskDragItem.id)}
-					onSelectedChange={updateTaskSelection}
-					onedit={() => openEditTaskDialog(taskDragItem)}
-				/>
-			{/each}
-		</div>
+			<div
+				class="task-item-drop-zone"
+				aria-label="Tasks dated Today"
+				use:dndzone={{
+					items: todayTaskDragItems,
+					dragDisabled: selectionEnabled || taskService.taskMutationBlocked,
+					dropTargetStyle: dropTargetStyle
+				}}
+				onconsider={(event) => handleConsider(event, todayDateKey)}
+				onfinalize={(event) => handleFinalize(event, todayDateKey)}
+			>
+				{#each todayTaskDragItems as taskDragItem (getTaskDragItemKey(taskDragItem))}
+					<Task
+						task={taskDragItem}
+						isShadowItem={Boolean(taskDragItem[isShadowTask])}
+						{selectionEnabled}
+						selected={selectedTaskIds.includes(taskDragItem.id)}
+						onSelectedChange={updateTaskSelection}
+						onedit={() => openEditTaskDialog(taskDragItem)}
+					/>
+				{/each}
+			</div>
+		</InfiniteScrollContainer>
 	</div>
 </div>
 
@@ -364,16 +392,8 @@
 
 			.date-groups {
 				display: flex;
-				flex: 1;
-				min-height: 0;
 				flex-direction: column;
 				gap: 0.75rem;
-				overflow-y: auto;
-				scrollbar-width: none;
-
-				&::-webkit-scrollbar {
-					display: none;
-				}
 			}
 
 			.date-group {
@@ -406,12 +426,6 @@
 			.task-item-drop-zone {
 				flex: 1;
 				min-height: 0;
-				overflow-y: auto;
-				scrollbar-width: none;
-
-				&::-webkit-scrollbar {
-					display: none;
-				}
 			}
 		}
 	}
