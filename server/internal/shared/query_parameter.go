@@ -4,7 +4,6 @@ import (
 	"errors"
 	"strconv"
 	"time"
-	"unicode/utf8"
 
 	"roci.dev/fracdex"
 )
@@ -45,37 +44,6 @@ func GetOptionalRankQueryParameter(c *AuthenticatedContext, key string) (*string
 	}
 
 	return rank, nil
-}
-
-func GetRequiredRankQueryParameter(c *AuthenticatedContext, key string) (string, error) {
-	rank, err := GetRequiredStringQueryParameter(c, key)
-	if err != nil {
-		return "", err
-	}
-	if _, err := fracdex.Float64Approx(rank); err != nil {
-		return "", InvalidQueryParameterErr
-	}
-
-	return rank, nil
-}
-
-func GetRequiredStringQueryParameterWithLength(
-	c *AuthenticatedContext,
-	key string,
-	minimumLength int,
-	maximumLength int,
-) (string, error) {
-	value, err := GetRequiredStringQueryParameter(c, key)
-	if err != nil {
-		return "", err
-	}
-
-	valueLength := utf8.RuneCountInString(value)
-	if valueLength < minimumLength || valueLength > maximumLength {
-		return "", InvalidQueryParameterErr
-	}
-
-	return value, nil
 }
 
 func GetOptionalInt64QueryParameter(c *AuthenticatedContext, key string) (*int64, error) {
@@ -132,32 +100,4 @@ func GetRequiredTimestampQueryParameter(c *AuthenticatedContext, key string) (ti
 	}
 
 	return timestamp, nil
-}
-
-func GetOptionalBooleanQueryParameter(c *AuthenticatedContext, key string) (*bool, error) {
-	value, exists := c.GetQuery(key)
-	if !exists {
-		return nil, nil
-	}
-
-	boolean, err := strconv.ParseBool(value)
-	if err != nil {
-		return nil, InvalidQueryParameterErr
-	}
-
-	return &boolean, nil
-}
-
-func GetRequiredBooleanQueryParameter(c *AuthenticatedContext, key string) (bool, error) {
-	value, exists := c.GetQuery(key)
-	if !exists {
-		return false, MissingQueryParameterErr
-	}
-
-	boolean, err := strconv.ParseBool(value)
-	if err != nil {
-		return false, InvalidQueryParameterErr
-	}
-
-	return boolean, nil
 }
