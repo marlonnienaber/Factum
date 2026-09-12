@@ -192,8 +192,8 @@ func TestTasksBatchCompleteTasksFromAllValidPartitions(t *testing.T) {
 	datedUntrashedTasks := support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 	trashedTasks := support.PrepareTrashedTasks(t, app, category.Id, cookies...)
 
-	var undatedTrashedTask tasksTransport.TaskResponse
-	var datedTrashedTask tasksTransport.TaskResponse
+	var undatedTrashedTask tasksTransport.TrashedTaskResponse
+	var datedTrashedTask tasksTransport.TrashedTaskResponse
 	for _, task := range trashedTasks {
 		if task.Done {
 			continue

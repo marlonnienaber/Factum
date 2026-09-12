@@ -192,7 +192,7 @@ func TestTasksBatchOpenTasksFromAllValidPartitions(t *testing.T) {
 
 	trashedTasks := support.PrepareTrashedTasks(t, app, category.Id, cookies...)
 	completedUntrashedTasks := support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
-	var completedTrashedTask tasksTransport.TaskResponse
+	var completedTrashedTask tasksTransport.TrashedTaskResponse
 	for _, task := range trashedTasks {
 		if task.Done {
 			completedTrashedTask = task
@@ -226,5 +226,5 @@ func TestTasksBatchOpenTasksFromAllValidPartitions(t *testing.T) {
 	assert.False(t, openedTrashedTask.Done, "expected task to be open")
 	assert.Equal(t, completedTrashedTask.Date, openedTrashedTask.Date, "expected date to remain unchanged")
 	assert.Nil(t, openedTrashedTask.Rank, "expected trashed task not to have a rank")
-	assert.Equal(t, completedTrashedTask.TrashedDate, openedTrashedTask.TrashedDate, "expected task to remain trashed")
+	assert.Equal(t, &completedTrashedTask.TrashedDate, openedTrashedTask.TrashedDate, "expected task to remain trashed")
 }

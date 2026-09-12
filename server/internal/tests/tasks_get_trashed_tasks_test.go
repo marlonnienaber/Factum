@@ -2,6 +2,7 @@ package tests
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -124,7 +125,7 @@ func TestTasksGetTrashedTasksNoCursor(t *testing.T) {
 
 	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
 	require.Equal(t, http.StatusCreated, categoryResp.Code)
-	var category categoriesTransport.CategoryResponse
+	var category categoriesTransport.CreateCategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
 
 	expectedTasks := support.PrepareTrashedTasks(t, app, category.Id, cookies...)
@@ -134,10 +135,11 @@ func TestTasksGetTrashedTasksNoCursor(t *testing.T) {
 
 	resp := support.MakeJsonRequest(t, app, http.MethodGet, "/api/tasks/trashed", nil, cookies...)
 	require.Equal(t, http.StatusOK, resp.Code)
-	var respBody []tasksTransport.TaskResponse
+	var respBody tasksTransport.GetTrashedTasksResponse
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
 
-	assert.Equal(t, expectedTasks, respBody, "unexpected tasks")
+	assert.Equal(t, expectedTasks, respBody.Tasks, "unexpected tasks")
+	assert.False(t, respBody.HasMore, "expected no additional tasks")
 }
 
 func TestTasksGetTrashedTasksCursor(t *testing.T) {
@@ -151,12 +153,11 @@ func TestTasksGetTrashedTasksCursor(t *testing.T) {
 
 	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
 	require.Equal(t, http.StatusCreated, categoryResp.Code)
-	var category categoriesTransport.CategoryResponse
+	var category categoriesTransport.CreateCategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
 
 	tasks := support.PrepareTrashedTasks(t, app, category.Id, cookies...)
 	cursor := tasks[0]
-	require.NotNil(t, cursor.TrashedDate, "expected cursor task to have a trashed date")
 
 	resp := support.MakeJsonRequest(
 		t,
@@ -170,8 +171,57 @@ func TestTasksGetTrashedTasksCursor(t *testing.T) {
 		cookies...,
 	)
 	require.Equal(t, http.StatusOK, resp.Code)
-	var respBody []tasksTransport.TaskResponse
+	var respBody tasksTransport.GetTrashedTasksResponse
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
 
-	assert.Equal(t, tasks[1:], respBody, "unexpected tasks")
+	assert.Equal(t, tasks[1:], respBody.Tasks, "unexpected tasks")
+	assert.False(t, respBody.HasMore, "expected no additional tasks")
+}
+
+func TestTasksGetTrashedTasksHasMore(t *testing.T) {
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
+	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
+	})
+	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	cookies := signUpResp.Result().Cookies()
+
+	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
+	require.Equal(t, http.StatusCreated, categoryResp.Code)
+	var category categoriesTransport.CreateCategoryResponse
+	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
+
+	const taskBatchSize = 50
+	trashedDate := time.Date(2026, time.March, 26, 10, 30, 0, 0, time.UTC)
+	createdTasks := make([]tasksTransport.TrashedTaskResponse, 0, taskBatchSize+1)
+	for index := range taskBatchSize + 1 {
+		title := fmt.Sprintf("Task %d", index+1)
+		createTaskResp := support.MakeCreateTaskRequest(t, app, title, nil, nil, category.Id, cookies...)
+		require.Equal(t, http.StatusCreated, createTaskResp.Code)
+		var task tasksTransport.CreateTaskResponse
+		require.NoError(t, json.NewDecoder(createTaskResp.Body).Decode(&task), "failed to decode task response")
+
+		trashTaskResp := support.MakeTrashTaskRequest(t, app, task.Id, trashedDate, cookies...)
+		require.Equal(t, http.StatusNoContent, trashTaskResp.Code)
+		createdTasks = append(createdTasks, tasksTransport.TrashedTaskResponse{
+			Id:          task.Id,
+			CategoryId:  category.Id,
+			Title:       title,
+			TrashedDate: trashedDate,
+		})
+	}
+
+	expectedTasks := make([]tasksTransport.TrashedTaskResponse, 0, taskBatchSize)
+	for index := taskBatchSize; index > 0; index-- {
+		expectedTasks = append(expectedTasks, createdTasks[index])
+	}
+
+	resp := support.MakeJsonRequest(t, app, http.MethodGet, "/api/tasks/trashed", nil, cookies...)
+	require.Equal(t, http.StatusOK, resp.Code)
+	var respBody tasksTransport.GetTrashedTasksResponse
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
+
+	assert.Equal(t, expectedTasks, respBody.Tasks, "unexpected tasks")
+	assert.True(t, respBody.HasMore, "expected additional tasks")
 }

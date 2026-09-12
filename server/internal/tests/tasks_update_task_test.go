@@ -618,7 +618,7 @@ func TestTasksUpdateTaskFromDoneWithDateTrashedToNoDateTrashed(t *testing.T) {
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
 
 	trashedTasks := support.PrepareTrashedTasks(t, app, category.Id, cookies...)
-	var task tasksTransport.TaskResponse
+	var task tasksTransport.TrashedTaskResponse
 	for _, candidate := range trashedTasks {
 		if candidate.Done && candidate.Date != nil {
 			task = candidate
@@ -626,7 +626,6 @@ func TestTasksUpdateTaskFromDoneWithDateTrashedToNoDateTrashed(t *testing.T) {
 		}
 	}
 	require.NotZero(t, task.Id, "expected a done dated trashed task")
-	require.Nil(t, task.Rank, "expected trashed task not to have a rank")
 
 	payload, err := json.Marshal(tasksTransport.UpdateTaskRequest{
 		Id:         task.Id,
@@ -659,7 +658,7 @@ func TestTasksUpdateTaskFromOpenWithDateTrashedToNoDateTrashed(t *testing.T) {
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
 
 	trashedTasks := support.PrepareTrashedTasks(t, app, category.Id, cookies...)
-	var task tasksTransport.TaskResponse
+	var task tasksTransport.TrashedTaskResponse
 	for _, candidate := range trashedTasks {
 		if !candidate.Done && candidate.Date != nil {
 			task = candidate
@@ -667,7 +666,6 @@ func TestTasksUpdateTaskFromOpenWithDateTrashedToNoDateTrashed(t *testing.T) {
 		}
 	}
 	require.NotZero(t, task.Id, "expected an open dated trashed task")
-	require.Nil(t, task.Rank, "expected trashed task not to have a rank")
 
 	payload, err := json.Marshal(tasksTransport.UpdateTaskRequest{
 		Id:         task.Id,
@@ -700,7 +698,7 @@ func TestTasksUpdateTaskFromOpenWithoutDateTrashedToDateTrashed(t *testing.T) {
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
 
 	trashedTasks := support.PrepareTrashedTasks(t, app, category.Id, cookies...)
-	var task tasksTransport.TaskResponse
+	var task tasksTransport.TrashedTaskResponse
 	for _, candidate := range trashedTasks {
 		if !candidate.Done && candidate.Date == nil {
 			task = candidate
@@ -708,7 +706,6 @@ func TestTasksUpdateTaskFromOpenWithoutDateTrashedToDateTrashed(t *testing.T) {
 		}
 	}
 	require.NotZero(t, task.Id, "expected an open undated trashed task")
-	require.Nil(t, task.Rank, "expected trashed task not to have a rank")
 	targetDate, err := shared.ParseDate("2026-03-25")
 	require.NoError(t, err, "parsing test date failed")
 
