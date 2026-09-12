@@ -556,12 +556,12 @@ func (store *TaskStore) GetUndatedUntrashedUndoneTasks(userId int64, rank *strin
 	return &transport.GetUndatedTasksResponse{Tasks: tasks, HasMore: hasMore}, nil
 }
 
-func (store *TaskStore) GetDatedDoneUntrashedTasks(
+func (store *TaskStore) GetDatedUntrashedOpenTodayTasks(
 	userId int64,
-	date *time.Time,
+	today shared.Date,
 	rank *string,
 ) (*transport.GetDatedUntrashedTasksResponse, error) {
-	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("retrieving dated untrashed done tasks failed")
+	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("retrieving dated untrashed open today tasks failed")
 
 	tasks := make([]transport.DatedUntrashedTaskResponse, 0, tasksBatchSize+1)
 	err := store.db.Select(&tasks, `
@@ -574,23 +574,13 @@ func (store *TaskStore) GetDatedDoneUntrashedTasks(
 		       done
 		FROM tasks
 		WHERE user_id = $1
-		  AND date IS NOT NULL
+		  AND date = $2
 		  AND trashed_date IS NULL
-		  AND done = TRUE
-		  AND (
-		      ($2::DATE IS NULL AND $3::TEXT IS NULL)
-		      OR (
-		          $2::DATE IS NOT NULL
-		          AND $3::TEXT IS NOT NULL
-		          AND (
-		              date > $2
-		              OR (date = $2 AND rank > $3)
-		          )
-		      )
-		  )
-		ORDER BY date ASC, rank ASC
+		  AND done = FALSE
+		  AND ($3::TEXT IS NULL OR rank > $3)
+		ORDER BY rank ASC
 		LIMIT $4
-	`, userId, date, rank, tasksBatchSize+1)
+	`, userId, today, rank, tasksBatchSize+1)
 	if err != nil {
 		return nil, wrapUnexpectedError(err)
 	}
@@ -603,12 +593,13 @@ func (store *TaskStore) GetDatedDoneUntrashedTasks(
 	return &transport.GetDatedUntrashedTasksResponse{Tasks: tasks, HasMore: hasMore}, nil
 }
 
-func (store *TaskStore) GetDatedOpenUntrashedTasks(
+func (store *TaskStore) GetDatedUntrashedOpenNonTodayTasks(
 	userId int64,
+	today shared.Date,
 	date *time.Time,
 	rank *string,
 ) (*transport.GetDatedUntrashedTasksResponse, error) {
-	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("retrieving dated untrashed undone tasks failed")
+	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("retrieving dated untrashed open non-today tasks failed")
 
 	tasks := make([]transport.DatedUntrashedTaskResponse, 0, tasksBatchSize+1)
 	err := store.db.Select(&tasks, `
@@ -622,22 +613,23 @@ func (store *TaskStore) GetDatedOpenUntrashedTasks(
 		FROM tasks
 		WHERE user_id = $1
 		  AND date IS NOT NULL
+		  AND date <> $2
 		  AND trashed_date IS NULL
 		  AND done = FALSE
 		  AND (
-		      ($2::DATE IS NULL AND $3::TEXT IS NULL)
+		      ($3::DATE IS NULL AND $4::TEXT IS NULL)
 		      OR (
-		          $2::DATE IS NOT NULL
-		          AND $3::TEXT IS NOT NULL
+		          $3::DATE IS NOT NULL
+		          AND $4::TEXT IS NOT NULL
 		          AND (
-		              date > $2
-		              OR (date = $2 AND rank > $3)
+		              date > $3
+		              OR (date = $3 AND rank > $4)
 		          )
 		      )
 		  )
 		ORDER BY date ASC, rank ASC
-		LIMIT $4
-	`, userId, date, rank, tasksBatchSize+1)
+		LIMIT $5
+	`, userId, today, date, rank, tasksBatchSize+1)
 	if err != nil {
 		return nil, wrapUnexpectedError(err)
 	}

@@ -33,5 +33,5 @@ CREATE TABLE tasks (
 );
 
 CREATE UNIQUE INDEX tasks_untrashed_user_id_done_date_rank_unique
-    ON tasks (user_id, date, done, rank) NULLS NOT DISTINCT
+    ON tasks (user_id, done, date, rank) NULLS NOT DISTINCT
     WHERE trashed_date IS NULL;
