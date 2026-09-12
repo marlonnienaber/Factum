@@ -10,10 +10,6 @@ export async function jsonGetWithoutBodyWithResponse<R>(url: string, responseSch
 	return await jsonFetchWithoutBodyWithResponse('GET', url, responseSchema);
 }
 
-export async function jsonPostWithoutBodyWithResponse<R>(url: string, responseSchema: ZodType<R>): Promise<NetworkCall<R>> {
-	return await jsonFetchWithoutBodyWithResponse('POST', url, responseSchema);
-}
-
 export async function jsonPatchWithoutBodyWithResponse<R>(url: string, responseSchema: ZodType<R>): Promise<NetworkCall<R>> {
 	return await jsonFetchWithoutBodyWithResponse('PATCH', url, responseSchema);
 }
