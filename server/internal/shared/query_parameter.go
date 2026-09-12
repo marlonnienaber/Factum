@@ -22,18 +22,6 @@ func GetOptionalStringQueryParameter(c *AuthenticatedContext, key string) *strin
 	return &value
 }
 
-func GetRequiredStringQueryParameter(c *AuthenticatedContext, key string) (string, error) {
-	value, exists := c.GetQuery(key)
-	if !exists {
-		return "", MissingQueryParameterErr
-	}
-	if value == "" {
-		return "", InvalidQueryParameterErr
-	}
-
-	return value, nil
-}
-
 func GetOptionalRankQueryParameter(c *AuthenticatedContext, key string) (*string, error) {
 	rank := GetOptionalStringQueryParameter(c, key)
 	if rank == nil {
