@@ -62,11 +62,8 @@ async function fetchUndatedTasks(rank?: string): Promise<void> {
 }
 
 async function fetchDatedUntrashedOpenTodayTasks(rank?: string): Promise<void> {
-	if (
-		datedUntrashedOpenTodayTasksLoading ||
-		taskMutationLoading ||
-		(rank !== undefined && !datedUntrashedOpenTaskStore.todayTasksHasMore)
-	) return;
+	const cursorUsedIncorrectly = rank !== undefined && !datedUntrashedOpenTaskStore.todayTasksHasMore;
+	if (datedUntrashedOpenTodayTasksLoading || taskMutationLoading || cursorUsedIncorrectly) return;
 	datedUntrashedOpenTodayTasksLoading = true;
 	try {
 		const networkCall: NetworkCall<GetDatedUntrashedOpenTasksResponse> = await jsonGetWithoutBodyWithResponse(
@@ -82,11 +79,8 @@ async function fetchDatedUntrashedOpenTodayTasks(rank?: string): Promise<void> {
 }
 
 async function fetchDatedUntrashedOpenNonTodayTasks(cursor?: DatedUntrashedOpenTasksCursor): Promise<void> {
-	if (
-		datedUntrashedOpenNonTodayTasksLoading ||
-		taskMutationLoading ||
-		(cursor !== undefined && !datedUntrashedOpenTaskStore.nonTodayTasksHasMore)
-	) return;
+	const cursorUsedIncorrectly = cursor !== undefined && !datedUntrashedOpenTaskStore.nonTodayTasksHasMore;
+	if (datedUntrashedOpenNonTodayTasksLoading || taskMutationLoading || cursorUsedIncorrectly) return;
 	datedUntrashedOpenNonTodayTasksLoading = true;
 	try {
 		const queryParameters = cursor
