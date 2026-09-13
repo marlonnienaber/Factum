@@ -6,12 +6,13 @@
 	import Popover from '$lib/components/shared/popover.svelte';
 	import { taskService } from '$lib/services/task-service.svelte';
 	import { categoryStore } from '$lib/stores/category-store.svelte';
-	import type { DatedUntrashedOpenTaskResponse } from '$lib/types/responses/dated-untrashed-open-task-response';
+	import type { DatedUntrashedTaskResponse } from '$lib/types/responses/dated-untrashed-task-response';
 	import type { UndatedTaskResponse } from '$lib/types/responses/undated-task-response';
+	import type { TrashedTaskResponse } from '$lib/types/responses/trashed-task-response';
 	import { Ellipsis, SquarePen, Trash2 } from '@lucide/svelte';
 
 	type Props = {
-		task: DatedUntrashedOpenTaskResponse | UndatedTaskResponse;
+		task: DatedUntrashedTaskResponse | UndatedTaskResponse | TrashedTaskResponse;
 		isShadowItem: boolean;
 		selectionEnabled: boolean;
 		selected: boolean;

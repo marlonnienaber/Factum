@@ -15,20 +15,22 @@ import { undatedTaskStore } from '$lib/stores/undated-task-store.svelte';
 import type { BatchTrashTasksRequest } from '$lib/types/requests/batch-trash-tasks-request';
 import type { BatchUpdateDoneRequest } from '$lib/types/requests/batch-update-done-request';
 import type { CreateTaskRequest } from '$lib/types/requests/create-task-request';
-import type { DatedUntrashedOpenTasksCursor } from '$lib/types/requests/dated-untrashed-open-tasks';
+import type { DatedUntrashedTasksCursor } from '$lib/types/requests/dated-untrashed-tasks-cursor.ts';
 import type { TaskDragAndDropRequest } from '$lib/types/requests/task-drag-and-drop-request';
+import type { TrashedTasksCursor } from '$lib/types/requests/trashed-tasks-cursor.ts';
 import type { UpdateTaskRequest } from '$lib/types/requests/update-task-request';
 import { BatchCompleteResponseSchema, type BatchCompleteResponse } from '$lib/types/responses/batch-complete-response';
 import { CreateTaskResponseSchema, type CreateTaskResponse } from '$lib/types/responses/create-task-response';
 import {
-	DatedUntrashedOpenTaskResponseSchema,
-	type DatedUntrashedOpenTaskResponse
-} from '$lib/types/responses/dated-untrashed-open-task-response';
+	DatedUntrashedTaskResponseSchema,
+	type DatedUntrashedTaskResponse
+} from '$lib/types/responses/dated-untrashed-task-response';
 import {
-	GetDatedUntrashedOpenTasksResponseSchema,
-	type GetDatedUntrashedOpenTasksResponse
-} from '$lib/types/responses/get-dated-untrashed-open-tasks-response';
+	GetDatedUntrashedTasksResponseSchema,
+	type GetDatedUntrashedTasksResponse
+} from '$lib/types/responses/get-dated-untrashed-tasks-response';
 import { GetUndatedTasksResponseSchema, type GetUndatedTasksResponse } from '$lib/types/responses/get-undated-tasks-response';
+import { GetTrashedTasksResponseSchema, type GetTrashedTasksResponse } from '$lib/types/responses/get-trashed-tasks-response';
 import type { TrashedTaskResponse } from '$lib/types/responses/trashed-task-response';
 import { TaskDragAndDropResponseSchema, type TaskDragAndDropResponse } from '$lib/types/responses/task-drag-and-drop-response';
 import { ToggleTaskDoneResponseSchema, type ToggleTaskDoneResponse } from '$lib/types/responses/toggle-task-done-response';
@@ -38,12 +40,39 @@ import { toast } from 'svelte-sonner';
 import { z } from 'zod';
 
 let undatedTasksLoading = $state(false);
+let datedUntrashedDoneTasksLoading = $state(false);
 let datedUntrashedOpenTodayTasksLoading = $state(false);
 let datedUntrashedOpenNonTodayTasksLoading = $state(false);
+let trashedTasksLoading = $state(false);
 let taskMutationLoading = $state(false);
 const taskMutationBlocked = $derived(
-	taskMutationLoading || undatedTasksLoading || datedUntrashedOpenTodayTasksLoading || datedUntrashedOpenNonTodayTasksLoading
+	taskMutationLoading ||
+		undatedTasksLoading ||
+		datedUntrashedDoneTasksLoading ||
+		datedUntrashedOpenTodayTasksLoading ||
+		datedUntrashedOpenNonTodayTasksLoading ||
+		trashedTasksLoading
 );
+
+async function fetchDatedUntrashedDoneTasks(cursor?: DatedUntrashedTasksCursor): Promise<void> {
+	const cursorUsedIncorrectly = cursor !== undefined && !datedUntrashedDoneTaskStore.hasMore;
+	if (datedUntrashedDoneTasksLoading || taskMutationLoading || cursorUsedIncorrectly) return;
+	datedUntrashedDoneTasksLoading = true;
+	try {
+		const queryParameters = cursor
+			? `?date=${encodeURIComponent(cursor.date.toString())}&rank=${encodeURIComponent(cursor.rank)}`
+			: '';
+		const networkCall: NetworkCall<GetDatedUntrashedTasksResponse> = await jsonGetWithoutBodyWithResponse(
+			`/api/tasks/dated-untrashed-done${queryParameters}`,
+			GetDatedUntrashedTasksResponseSchema
+		);
+		if (networkCall.status === 'success') {
+			datedUntrashedDoneTaskStore.addPage(networkCall.result.tasks, networkCall.result.hasMore);
+		}
+	} finally {
+		datedUntrashedDoneTasksLoading = false;
+	}
+}
 
 async function fetchUndatedTasks(rank?: string): Promise<void> {
 	if (undatedTasksLoading || taskMutationLoading || (rank !== undefined && !undatedTaskStore.hasMore)) return;
@@ -66,9 +95,9 @@ async function fetchDatedUntrashedOpenTodayTasks(rank?: string): Promise<void> {
 	if (datedUntrashedOpenTodayTasksLoading || taskMutationLoading || cursorUsedIncorrectly) return;
 	datedUntrashedOpenTodayTasksLoading = true;
 	try {
-		const networkCall: NetworkCall<GetDatedUntrashedOpenTasksResponse> = await jsonGetWithoutBodyWithResponse(
+		const networkCall: NetworkCall<GetDatedUntrashedTasksResponse> = await jsonGetWithoutBodyWithResponse(
 			`/api/tasks/dated-untrashed-open-today${rank ? `?rank=${encodeURIComponent(rank)}` : ''}`,
-			GetDatedUntrashedOpenTasksResponseSchema
+			GetDatedUntrashedTasksResponseSchema
 		);
 		if (networkCall.status === 'success') {
 			datedUntrashedOpenTaskStore.addTodayPage(networkCall.result.tasks, networkCall.result.hasMore);
@@ -78,7 +107,7 @@ async function fetchDatedUntrashedOpenTodayTasks(rank?: string): Promise<void> {
 	}
 }
 
-async function fetchDatedUntrashedOpenNonTodayTasks(cursor?: DatedUntrashedOpenTasksCursor): Promise<void> {
+async function fetchDatedUntrashedOpenNonTodayTasks(cursor?: DatedUntrashedTasksCursor): Promise<void> {
 	const cursorUsedIncorrectly = cursor !== undefined && !datedUntrashedOpenTaskStore.nonTodayTasksHasMore;
 	if (datedUntrashedOpenNonTodayTasksLoading || taskMutationLoading || cursorUsedIncorrectly) return;
 	datedUntrashedOpenNonTodayTasksLoading = true;
@@ -86,15 +115,35 @@ async function fetchDatedUntrashedOpenNonTodayTasks(cursor?: DatedUntrashedOpenT
 		const queryParameters = cursor
 			? `?date=${encodeURIComponent(cursor.date.toString())}&rank=${encodeURIComponent(cursor.rank)}`
 			: '';
-		const networkCall: NetworkCall<GetDatedUntrashedOpenTasksResponse> = await jsonGetWithoutBodyWithResponse(
+		const networkCall: NetworkCall<GetDatedUntrashedTasksResponse> = await jsonGetWithoutBodyWithResponse(
 			`/api/tasks/dated-untrashed-open-non-today${queryParameters}`,
-			GetDatedUntrashedOpenTasksResponseSchema
+			GetDatedUntrashedTasksResponseSchema
 		);
 		if (networkCall.status === 'success') {
 			datedUntrashedOpenTaskStore.addNonTodayPage(networkCall.result.tasks, networkCall.result.hasMore);
 		}
 	} finally {
 		datedUntrashedOpenNonTodayTasksLoading = false;
+	}
+}
+
+async function fetchTrashedTasks(cursor?: TrashedTasksCursor): Promise<void> {
+	const cursorUsedIncorrectly = cursor !== undefined && !trashedTaskStore.hasMore;
+	if (trashedTasksLoading || taskMutationLoading || cursorUsedIncorrectly) return;
+	trashedTasksLoading = true;
+	try {
+		const queryParameters = cursor
+			? `?trashedDate=${encodeURIComponent(cursor.trashedDate.toAbsoluteString())}&id=${cursor.id}`
+			: '';
+		const networkCall: NetworkCall<GetTrashedTasksResponse> = await jsonGetWithoutBodyWithResponse(
+			`/api/tasks/trashed${queryParameters}`,
+			GetTrashedTasksResponseSchema
+		);
+		if (networkCall.status === 'success') {
+			trashedTaskStore.addPage(networkCall.result.tasks, networkCall.result.hasMore);
+		}
+	} finally {
+		trashedTasksLoading = false;
 	}
 }
 
@@ -127,10 +176,10 @@ async function updateTask(request: UpdateTaskRequest): Promise<void> {
 	if (taskMutationBlocked) return;
 	taskMutationLoading = true;
 	try {
-		const networkCall: NetworkCall<DatedUntrashedOpenTaskResponse | UndatedTaskResponse> = await jsonPutWithBodyWithResponse(
+		const networkCall: NetworkCall<DatedUntrashedTaskResponse | UndatedTaskResponse> = await jsonPutWithBodyWithResponse(
 			'/api/tasks',
 			request,
-			z.union([DatedUntrashedOpenTaskResponseSchema, UndatedTaskResponseSchema])
+			z.union([DatedUntrashedTaskResponseSchema, UndatedTaskResponseSchema])
 		);
 		if (networkCall.status !== 'success') return;
 
@@ -314,6 +363,9 @@ async function dragAndDropTask(id: number, request: TaskDragAndDropRequest): Pro
 }
 
 export const taskService = {
+	get datedUntrashedDoneTasksLoading(): boolean {
+		return datedUntrashedDoneTasksLoading;
+	},
 	get undatedTasksLoading(): boolean {
 		return undatedTasksLoading;
 	},
@@ -323,15 +375,20 @@ export const taskService = {
 	get datedUntrashedOpenNonTodayTasksLoading(): boolean {
 		return datedUntrashedOpenNonTodayTasksLoading;
 	},
+	get trashedTasksLoading(): boolean {
+		return trashedTasksLoading;
+	},
 	get taskMutationLoading(): boolean {
 		return taskMutationLoading;
 	},
 	get taskMutationBlocked(): boolean {
 		return taskMutationBlocked;
 	},
+	fetchDatedUntrashedDoneTasks,
 	fetchUndatedTasks,
 	fetchDatedUntrashedOpenTodayTasks,
 	fetchDatedUntrashedOpenNonTodayTasks,
+	fetchTrashedTasks,
 	createTask,
 	updateTask,
 	completeTask,

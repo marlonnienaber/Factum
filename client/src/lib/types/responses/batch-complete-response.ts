@@ -1,9 +1,9 @@
-import { DatedUntrashedDoneTaskResponseSchema } from '$lib/types/responses/dated-untrashed-done-task-response';
+import { DatedUntrashedTaskResponseSchema } from '$lib/types/responses/dated-untrashed-task-response';
 import { TrashedTaskResponseSchema } from '$lib/types/responses/trashed-task-response';
 import { z } from 'zod';
 
 export const BatchCompleteResponseSchema = z.object({
-	datedUntrashedDoneTasks: z.array(DatedUntrashedDoneTaskResponseSchema),
+	datedUntrashedDoneTasks: z.array(DatedUntrashedTaskResponseSchema),
 	trashedTasks: z.array(TrashedTaskResponseSchema)
 });
 

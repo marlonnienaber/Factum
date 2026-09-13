@@ -1,6 +1,7 @@
 import type { TrashedTaskResponse } from '$lib/types/responses/trashed-task-response';
 
 let trashedTasks: TrashedTaskResponse[] = $state<TrashedTaskResponse[]>([]);
+let hasMore = $state(false);
 
 function addOrUpdateTasks(tasks: TrashedTaskResponse[]) {
 	const taskIds = new Set(tasks.map((task) => task.id));
@@ -12,6 +13,11 @@ function addOrUpdateTask(task: TrashedTaskResponse): void {
 	addOrUpdateTasks([task]);
 }
 
+function addPage(tasks: TrashedTaskResponse[], pageHasMore: boolean): void {
+	addOrUpdateTasks(tasks);
+	hasMore = pageHasMore;
+}
+
 function compareTasksByTrashedDateAndId(first: TrashedTaskResponse, second: TrashedTaskResponse): number {
 	const trashedDateComparison = second.trashedDate.compare(first.trashedDate);
 	if (trashedDateComparison !== 0) return trashedDateComparison;
@@ -20,13 +26,18 @@ function compareTasksByTrashedDateAndId(first: TrashedTaskResponse, second: Tras
 
 function reset(): void {
 	trashedTasks = [];
+	hasMore = false;
 }
 
 export const trashedTaskStore = {
 	get trashedTasks(): TrashedTaskResponse[] {
 		return trashedTasks;
 	},
+	get hasMore(): boolean {
+		return hasMore;
+	},
 	addOrUpdateTasks,
 	addOrUpdateTask,
+	addPage,
 	reset
 };

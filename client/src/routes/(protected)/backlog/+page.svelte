@@ -8,12 +8,13 @@
 	import { undatedTaskStore } from '$lib/stores/undated-task-store.svelte';
 	import { taskService } from '$lib/services/task-service.svelte';
 	import type { TaskDragAndDropRequest } from '$lib/types/requests/task-drag-and-drop-request';
-	import { getLocalTimeZone, parseDate, today, type CalendarDate } from '@internationalized/date';
-	import type { DatedUntrashedOpenTaskResponse } from '$lib/types/responses/dated-untrashed-open-task-response';
+	import { getDateLabel } from '$lib/utils/date';
+	import { getLocalTimeZone, parseDate, today } from '@internationalized/date';
+	import type { DatedUntrashedTaskResponse } from '$lib/types/responses/dated-untrashed-task-response';
 	import type { UndatedTaskResponse } from '$lib/types/responses/undated-task-response';
 	import { dndzone, SHADOW_ITEM_MARKER_PROPERTY_NAME as isShadowTask, TRIGGERS, type DndEvent } from 'svelte-dnd-action';
 
-	type TaskDragItem = (DatedUntrashedOpenTaskResponse | UndatedTaskResponse) & {
+	type TaskDragItem = (DatedUntrashedTaskResponse | UndatedTaskResponse) & {
 		[isShadowTask]?: boolean;
 	};
 
@@ -26,7 +27,7 @@
 	let dragging = $state(false);
 	let selectionEnabled = $state(false);
 	let selectedTaskIds = $state<number[]>([]);
-	let taskDialogTask = $state<DatedUntrashedOpenTaskResponse | UndatedTaskResponse>();
+	let taskDialogTask = $state<DatedUntrashedTaskResponse | UndatedTaskResponse>();
 	let undatedTaskDragItems = $state<TaskDragItem[]>([...undatedTaskStore.undatedTasks]);
 	let todayTaskDragItems = $state<TaskDragItem[]>([...datedUntrashedOpenTaskStore.datedUntrashedOpenTodayTasks]);
 	let dateKeyToDatedTaskDragItemsRecord = $state<Record<string, TaskDragItem[]>>(createGroupKeyToDatedTaskItemsRecord());
@@ -92,17 +93,12 @@
 		return `${task.id}-${task[isShadowTask] ? 'shadow' : 'item'}`;
 	}
 
-	function formatDate(date: CalendarDate): string {
-		if (date.compare(todayDate) === 0) return 'Today';
-		return `${String(date.day).padStart(2, '0')}.${String(date.month).padStart(2, '0')}.${date.year}`;
-	}
-
 	function openCreateTaskDialog() {
 		taskDialogTask = undefined;
 		taskDialogOpen = true;
 	}
 
-	function openEditTaskDialog(task: DatedUntrashedOpenTaskResponse | UndatedTaskResponse) {
+	function openEditTaskDialog(task: DatedUntrashedTaskResponse | UndatedTaskResponse) {
 		taskDialogTask = task;
 		taskDialogOpen = true;
 	}
@@ -241,10 +237,10 @@
 				{#each Object.entries(dateKeyToDatedTaskDragItemsRecord) as [groupKey, taskDragItems] (groupKey)}
 					{@const groupDate = parseDate(groupKey)}
 					<div class="date-group">
-						<h2>{formatDate(groupDate)}</h2>
+						<h2>{getDateLabel(groupDate)}</h2>
 						<div
 							class="task-item-drop-zone"
-							aria-label={`Tasks dated ${formatDate(groupDate)}`}
+							aria-label={`Tasks dated ${getDateLabel(groupDate)}`}
 							use:dndzone={{
 								items: taskDragItems,
 								dragDisabled: selectionEnabled || taskService.taskMutationBlocked,

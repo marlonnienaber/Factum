@@ -9,12 +9,12 @@
 	import Textarea from '$lib/components/shared/textarea.svelte';
 	import { taskService } from '$lib/services/task-service.svelte.js';
 	import { taskInputSchema } from '$lib/types/inputs/task-input';
-	import type { DatedUntrashedOpenTaskResponse } from '$lib/types/responses/dated-untrashed-open-task-response';
+	import type { DatedUntrashedTaskResponse } from '$lib/types/responses/dated-untrashed-task-response';
 	import type { UndatedTaskResponse } from '$lib/types/responses/undated-task-response';
 
 	type Props = {
 		open: boolean;
-		task?: DatedUntrashedOpenTaskResponse | UndatedTaskResponse;
+		task?: DatedUntrashedTaskResponse | UndatedTaskResponse;
 	};
 
 	let { open = $bindable(), task = $bindable() }: Props = $props();

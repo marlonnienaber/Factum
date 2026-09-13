@@ -9,7 +9,7 @@ import { datedUntrashedDoneTaskStore } from '$lib/stores/dated-untrashed-done-ta
 import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-task-store.svelte';
 import { trashedTaskStore } from '$lib/stores/trashed-task-store.svelte';
 import { undatedTaskStore } from '$lib/stores/undated-task-store.svelte';
-import type { DatedUntrashedOpenTaskResponse } from '$lib/types/responses/dated-untrashed-open-task-response';
+import type { DatedUntrashedTaskResponse } from '$lib/types/responses/dated-untrashed-task-response';
 import type { UndatedTaskResponse } from '$lib/types/responses/undated-task-response';
 import {
 	expectInputToBeInvalid,
@@ -1458,7 +1458,7 @@ describe('backlog page tests', () => {
 			});
 
 			it('loads more tasks dated today', async () => {
-				const nextTask: DatedUntrashedOpenTaskResponse = {
+				const nextTask: DatedUntrashedTaskResponse = {
 					id: 13,
 					categoryId: category.id,
 					title: 'Pick up the parcel',
@@ -1497,7 +1497,7 @@ describe('backlog page tests', () => {
 			});
 
 			it('loads more tasks with a non-today date', async () => {
-				const nextTask: DatedUntrashedOpenTaskResponse = {
+				const nextTask: DatedUntrashedTaskResponse = {
 					id: 13,
 					categoryId: category.id,
 					title: 'Check in for the train',
@@ -1547,7 +1547,7 @@ describe('backlog page tests', () => {
 				const nonTodayLoadingSentinel = getLoadingSentinel(nonTodayColumn);
 
 				const todayTaskList = page.getByLabelText(`Tasks dated ${testData.todayPartitionLabel}`);
-				const event = new CustomEvent<DndEvent<DatedUntrashedOpenTaskResponse>>('consider', {
+				const event = new CustomEvent<DndEvent<DatedUntrashedTaskResponse>>('consider', {
 					detail: {
 						items: testData.todayPartition.tasks,
 						info: {
@@ -1605,7 +1605,7 @@ function createTestData() {
 		{ title: 'Water the balcony plants', description: 'Check the herbs and tomatoes before watering.' }
 	] as const;
 	const todayTaskRanks = generateNKeysBetween(undefined, undefined, todayTaskDetails.length);
-	const todayTasks: DatedUntrashedOpenTaskResponse[] = todayTaskDetails.map((details, index) => ({
+	const todayTasks: DatedUntrashedTaskResponse[] = todayTaskDetails.map((details, index) => ({
 		...details,
 		id: taskId++,
 		categoryId: category.id,
@@ -1619,7 +1619,7 @@ function createTestData() {
 		{ title: 'Back up the laptop' }
 	] as const;
 	const nonTodayPastTaskRanks = generateNKeysBetween(undefined, undefined, nonTodayPastTaskDetails.length);
-	const nonTodayPastTasks: DatedUntrashedOpenTaskResponse[] = nonTodayPastTaskDetails.map((details, index) => ({
+	const nonTodayPastTasks: DatedUntrashedTaskResponse[] = nonTodayPastTaskDetails.map((details, index) => ({
 		...details,
 		id: taskId++,
 		categoryId: category.id,
@@ -1633,7 +1633,7 @@ function createTestData() {
 		{ title: 'Download the city map', description: 'Save an offline map before leaving home.' }
 	] as const;
 	const nonTodayFutureTaskRanks = generateNKeysBetween(undefined, undefined, nonTodayFutureTaskDetails.length);
-	const nonTodayFutureTasks: DatedUntrashedOpenTaskResponse[] = nonTodayFutureTaskDetails.map((details, index) => ({
+	const nonTodayFutureTasks: DatedUntrashedTaskResponse[] = nonTodayFutureTaskDetails.map((details, index) => ({
 		...details,
 		id: taskId++,
 		categoryId: category.id,
@@ -1647,19 +1647,19 @@ function createTestData() {
 		thirdTask: noDateTasks[2]!,
 		tasks: noDateTasks
 	};
-	const todayPartition: TaskPartition<DatedUntrashedOpenTaskResponse> = {
+	const todayPartition: TaskPartition<DatedUntrashedTaskResponse> = {
 		firstTask: todayTasks[0]!,
 		secondTask: todayTasks[1]!,
 		thirdTask: todayTasks[2]!,
 		tasks: todayTasks
 	};
-	const nonTodayPastPartition: TaskPartition<DatedUntrashedOpenTaskResponse> = {
+	const nonTodayPastPartition: TaskPartition<DatedUntrashedTaskResponse> = {
 		firstTask: nonTodayPastTasks[0]!,
 		secondTask: nonTodayPastTasks[1]!,
 		thirdTask: nonTodayPastTasks[2]!,
 		tasks: nonTodayPastTasks
 	};
-	const nonTodayFuturePartition: TaskPartition<DatedUntrashedOpenTaskResponse> = {
+	const nonTodayFuturePartition: TaskPartition<DatedUntrashedTaskResponse> = {
 		firstTask: nonTodayFutureTasks[0]!,
 		secondTask: nonTodayFutureTasks[1]!,
 		thirdTask: nonTodayFutureTasks[2]!,
@@ -1757,10 +1757,10 @@ async function clickOnTask(page: RenderResult<typeof Page>, title: string): Prom
 
 async function dropTask(
 	taskList: HTMLElement,
-	newOrderedTasks: (UndatedTaskResponse | DatedUntrashedOpenTaskResponse)[],
+	newOrderedTasks: (UndatedTaskResponse | DatedUntrashedTaskResponse)[],
 	draggedTaskId: number
 ): Promise<void> {
-	const event = new CustomEvent<DndEvent<UndatedTaskResponse | DatedUntrashedOpenTaskResponse>>('finalize', {
+	const event = new CustomEvent<DndEvent<UndatedTaskResponse | DatedUntrashedTaskResponse>>('finalize', {
 		detail: {
 			items: newOrderedTasks,
 			info: { trigger: TRIGGERS.DROPPED_INTO_ZONE, id: String(draggedTaskId), source: SOURCES.POINTER }
@@ -1769,7 +1769,7 @@ async function dropTask(
 	await fireEvent(taskList, event);
 }
 
-function expectTaskOrder(taskList: HTMLElement, tasks: (UndatedTaskResponse | DatedUntrashedOpenTaskResponse)[]): void {
+function expectTaskOrder(taskList: HTMLElement, tasks: (UndatedTaskResponse | DatedUntrashedTaskResponse)[]): void {
 	const taskListContent = within(taskList);
 	const renderedTasks = taskListContent.getAllByRole('listitem');
 	const renderedTaskTitles = renderedTasks.map((task) => task.getAttribute('aria-label'));

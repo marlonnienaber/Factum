@@ -26,9 +26,11 @@
 		if (authentication) {
 			untrack(() => {
 				void categoryService.fetchCategories();
+				void taskService.fetchDatedUntrashedDoneTasks();
 				void taskService.fetchDatedUntrashedOpenTodayTasks();
 				void taskService.fetchDatedUntrashedOpenNonTodayTasks();
 				void taskService.fetchUndatedTasks();
+				void taskService.fetchTrashedTasks();
 			});
 		} else {
 			if (!loading) {
@@ -41,8 +43,8 @@
 			categoryStore.reset();
 			datedUntrashedDoneTaskStore.reset();
 			datedUntrashedOpenTaskStore.reset();
-			trashedTaskStore.reset();
 			undatedTaskStore.reset();
+			trashedTaskStore.reset();
 		}
 	});
 </script>

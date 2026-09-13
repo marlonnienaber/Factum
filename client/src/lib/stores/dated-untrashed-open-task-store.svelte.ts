@@ -1,12 +1,12 @@
-import type { DatedUntrashedOpenTaskResponse } from '$lib/types/responses/dated-untrashed-open-task-response';
+import type { DatedUntrashedTaskResponse } from '$lib/types/responses/dated-untrashed-task-response';
 import { getLocalTimeZone, today } from '@internationalized/date';
 
-let datedUntrashedOpenTodayTasks: DatedUntrashedOpenTaskResponse[] = $state<DatedUntrashedOpenTaskResponse[]>([]);
-let datedUntrashedOpenNonTodayTasks: DatedUntrashedOpenTaskResponse[] = $state<DatedUntrashedOpenTaskResponse[]>([]);
+let datedUntrashedOpenTodayTasks: DatedUntrashedTaskResponse[] = $state<DatedUntrashedTaskResponse[]>([]);
+let datedUntrashedOpenNonTodayTasks: DatedUntrashedTaskResponse[] = $state<DatedUntrashedTaskResponse[]>([]);
 let todayTasksHasMore = $state(false);
 let nonTodayTasksHasMore = $state(false);
 
-function addOrUpdateTasks(tasks: DatedUntrashedOpenTaskResponse[]): void {
+function addOrUpdateTasks(tasks: DatedUntrashedTaskResponse[]): void {
 	const taskIds = new Set(tasks.map((task) => task.id));
 	const currentDate = today(getLocalTimeZone());
 	const todayTasks = tasks.filter((task) => task.date.compare(currentDate) === 0);
@@ -21,18 +21,18 @@ function addOrUpdateTasks(tasks: DatedUntrashedOpenTaskResponse[]): void {
 	].sort(compareTasksByDateAndRank);
 }
 
-function addOrUpdateTask(task: DatedUntrashedOpenTaskResponse): void {
+function addOrUpdateTask(task: DatedUntrashedTaskResponse): void {
 	addOrUpdateTasks([task]);
 }
 
-function addTodayPage(tasks: DatedUntrashedOpenTaskResponse[], pageHasMore: boolean): void {
+function addTodayPage(tasks: DatedUntrashedTaskResponse[], pageHasMore: boolean): void {
 	const taskIds = tasks.map((task) => task.id);
 	removeTasks(taskIds);
 	datedUntrashedOpenTodayTasks = [...datedUntrashedOpenTodayTasks, ...tasks].sort(compareTasksByDateAndRank);
 	todayTasksHasMore = pageHasMore;
 }
 
-function addNonTodayPage(tasks: DatedUntrashedOpenTaskResponse[], pageHasMore: boolean): void {
+function addNonTodayPage(tasks: DatedUntrashedTaskResponse[], pageHasMore: boolean): void {
 	const taskIds = tasks.map((task) => task.id);
 	removeTasks(taskIds);
 	datedUntrashedOpenNonTodayTasks = [...datedUntrashedOpenNonTodayTasks, ...tasks].sort(compareTasksByDateAndRank);
@@ -49,7 +49,7 @@ function removeTasks(ids: number[]): void {
 	datedUntrashedOpenNonTodayTasks = datedUntrashedOpenNonTodayTasks.filter((task) => !taskIds.has(task.id));
 }
 
-function compareTasksByDateAndRank(first: DatedUntrashedOpenTaskResponse, second: DatedUntrashedOpenTaskResponse): number {
+function compareTasksByDateAndRank(first: DatedUntrashedTaskResponse, second: DatedUntrashedTaskResponse): number {
 	const dateComparison = first.date.compare(second.date);
 	if (dateComparison !== 0) return dateComparison;
 	return first.rank < second.rank ? -1 : first.rank > second.rank ? 1 : 0;
@@ -63,13 +63,13 @@ function reset(): void {
 }
 
 export const datedUntrashedOpenTaskStore = {
-	get datedUntrashedOpenTasks(): DatedUntrashedOpenTaskResponse[] {
+	get datedUntrashedOpenTasks(): DatedUntrashedTaskResponse[] {
 		return [...datedUntrashedOpenTodayTasks, ...datedUntrashedOpenNonTodayTasks].sort(compareTasksByDateAndRank);
 	},
-	get datedUntrashedOpenTodayTasks(): DatedUntrashedOpenTaskResponse[] {
+	get datedUntrashedOpenTodayTasks(): DatedUntrashedTaskResponse[] {
 		return datedUntrashedOpenTodayTasks;
 	},
-	get datedUntrashedOpenNonTodayTasks(): DatedUntrashedOpenTaskResponse[] {
+	get datedUntrashedOpenNonTodayTasks(): DatedUntrashedTaskResponse[] {
 		return datedUntrashedOpenNonTodayTasks;
 	},
 	get todayTasksHasMore(): boolean {

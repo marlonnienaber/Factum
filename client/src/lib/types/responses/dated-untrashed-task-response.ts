@@ -1,7 +1,7 @@
 import { parseDate } from '@internationalized/date';
 import { z } from 'zod';
 
-export const DatedUntrashedDoneTaskResponseSchema = z.object({
+export const DatedUntrashedTaskResponseSchema = z.object({
 	id: z.number().int().positive(),
 	categoryId: z.number().int().positive(),
 	title: z.string().min(1).max(100),
@@ -10,4 +10,4 @@ export const DatedUntrashedDoneTaskResponseSchema = z.object({
 	rank: z.string().min(1)
 });
 
-export type DatedUntrashedDoneTaskResponse = z.infer<typeof DatedUntrashedDoneTaskResponseSchema>;
+export type DatedUntrashedTaskResponse = z.infer<typeof DatedUntrashedTaskResponseSchema>;
