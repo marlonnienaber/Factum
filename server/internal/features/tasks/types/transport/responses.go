@@ -24,7 +24,6 @@ type DatedUntrashedTaskResponse struct {
 	Description *string     `db:"description" json:"description,omitempty"`
 	Date        shared.Date `db:"date" json:"date"`
 	Rank        string      `db:"rank" json:"rank"`
-	Done        bool        `db:"done" json:"done"`
 }
 
 type GetDatedUntrashedTasksResponse struct {

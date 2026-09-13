@@ -201,7 +201,6 @@ func PrepareDoneDatedUntrashedTasks(
 		var toggleResponse tasksTransport.ToggleTaskDoneResponse
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&toggleResponse), "failed to decode toggle task done response")
 		require.NotNil(t, toggleResponse.Rank, "expected toggled task to have a rank")
-		tasks[index].Done = true
 		tasks[index].Date = toggleResponse.Date
 		tasks[index].Rank = *toggleResponse.Rank
 	}
