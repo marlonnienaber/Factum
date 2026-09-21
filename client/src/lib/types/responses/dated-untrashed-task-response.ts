@@ -1,7 +1,7 @@
 import { parseDate } from '@internationalized/date';
 import { z } from 'zod';
 
-export const DatedUntrashedTaskResponseSchema = z.object({
+export const DatedUntrashedTaskResponseSchema = z.strictObject({
 	id: z.number().int().positive(),
 	categoryId: z.number().int().positive(),
 	title: z.string().min(1).max(100),

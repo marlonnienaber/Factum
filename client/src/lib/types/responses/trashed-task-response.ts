@@ -1,7 +1,7 @@
 import { parseAbsoluteToLocal, parseDate } from '@internationalized/date';
 import { z } from 'zod';
 
-export const TrashedTaskResponseSchema = z.object({
+export const TrashedTaskResponseSchema = z.strictObject({
 	id: z.number().int().positive(),
 	categoryId: z.number().int().positive(),
 	title: z.string().min(1).max(100),

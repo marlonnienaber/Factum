@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const AuthenticationResponseSchema = z.object({
+export const AuthenticationResponseSchema = z.strictObject({
 	userId: z.number()
 });
 

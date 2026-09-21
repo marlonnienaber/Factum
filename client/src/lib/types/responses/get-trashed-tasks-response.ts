@@ -1,7 +1,7 @@
 import { TrashedTaskResponseSchema } from '$lib/types/responses/trashed-task-response';
 import { z } from 'zod';
 
-export const GetTrashedTasksResponseSchema = z.object({
+export const GetTrashedTasksResponseSchema = z.strictObject({
 	tasks: z.array(TrashedTaskResponseSchema),
 	hasMore: z.boolean()
 });

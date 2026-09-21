@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const RestoreTaskResponseSchema = z.object({
+export const RestoreTaskResponseSchema = z.strictObject({
 	rank: z.string().min(1)
 });
 
