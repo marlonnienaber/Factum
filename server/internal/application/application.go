@@ -17,6 +17,7 @@ import (
 )
 
 func NewApplication(cfg configuration.Configuration, db *sqlx.DB) *gin.Engine {
+	gin.EnableJsonDecoderDisallowUnknownFields()
 	validation.RegisterJsonPropertyNames()
 	validation.RegisterRankValidation()
 
