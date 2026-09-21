@@ -57,7 +57,8 @@
 				<span class="name">actum</span>
 			</div>
 			<div class="account-actions">
-				<span class="user-label">User #{authentication.userId}</span>
+				<a href={resolve('/backlog')}>Backlog</a>
+				<a href={resolve('/archive')}>Archive</a>
 				<button class="theme-toggle-button" type="button" onclick={() => themeStore.toggleTheme()}>
 					{#if isDarkTheme}
 						<Sun size={18} aria-hidden={true} />
@@ -117,9 +118,14 @@
 				justify-self: end;
 				gap: 0.75rem;
 
-				.user-label {
-					font-size: 0.865rem;
+				a {
 					color: var(--text);
+					font-size: 0.865rem;
+					text-decoration: none;
+
+					&:hover {
+						text-decoration: underline;
+					}
 				}
 
 				.theme-toggle-button {

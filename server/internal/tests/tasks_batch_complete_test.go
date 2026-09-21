@@ -229,10 +229,8 @@ func TestTasksBatchCompleteTasksFromAllValidPartitions(t *testing.T) {
 		[]int64{respBody.DatedUntrashedDoneTasks[0].Id, respBody.DatedUntrashedDoneTasks[1].Id},
 	)
 	for _, task := range respBody.DatedUntrashedDoneTasks {
-		assert.True(t, task.Done, "expected task to be completed")
-		assert.NotNil(t, task.Date, "expected completed task to have a date")
-		assert.NotNil(t, task.Rank, "expected untrashed task to have a rank")
-		assert.Nil(t, task.TrashedDate, "expected task to be untrashed")
+		assert.False(t, task.Date.IsZero(), "expected completed task to have a date")
+		assert.NotEmpty(t, task.Rank, "expected untrashed task to have a rank")
 	}
 
 	assert.ElementsMatch(t,
@@ -242,7 +240,6 @@ func TestTasksBatchCompleteTasksFromAllValidPartitions(t *testing.T) {
 	for _, task := range respBody.TrashedTasks {
 		assert.True(t, task.Done, "expected task to be completed")
 		assert.NotNil(t, task.Date, "expected completed task to have a date")
-		assert.Nil(t, task.Rank, "expected trashed task not to have a rank")
-		assert.NotNil(t, task.TrashedDate, "expected task to remain trashed")
+		assert.False(t, task.TrashedDate.IsZero(), "expected task to remain trashed")
 	}
 }

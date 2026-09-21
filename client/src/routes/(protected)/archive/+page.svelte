@@ -1,15 +1,28 @@
 <script lang="ts">
 	import InfiniteScrollContainer from '$lib/components/shared/infinite-scroll-container.svelte';
+	import Popover from '$lib/components/shared/popover.svelte';
+	import TaskDialog from '$lib/components/taskCreation/task-dialog.svelte';
 	import Task from '$lib/components/taskDisplay/task.svelte';
 	import { taskService } from '$lib/services/task-service.svelte';
 	import { datedUntrashedDoneTaskStore } from '$lib/stores/dated-untrashed-done-task-store.svelte';
 	import { trashedTaskStore } from '$lib/stores/trashed-task-store.svelte';
 	import { getDateLabel } from '$lib/utils/date';
 	import { parseDate } from '@internationalized/date';
+	import type { DatedUntrashedDoneTaskResponse } from '$lib/types/responses/dated-untrashed-done-task-response';
+	import type { TrashedTaskResponse } from '$lib/types/responses/trashed-task-response';
+	import { Info, RotateCcw, SquarePen, Trash2 } from '@lucide/svelte';
 
-	const dateKeyToDatedUntrashedDoneTasksRecord = $derived(
-		Object.fromEntries(Map.groupBy(datedUntrashedDoneTaskStore.datedUntrashedDoneTasks, (task) => task.date.toString()))
-	);
+	let taskDialogOpen = $state(false);
+	let taskDialogTask = $state<DatedUntrashedDoneTaskResponse | TrashedTaskResponse>();
+	const dateKeyToDatedUntrashedDoneTasksRecord = $derived(createDateKeyToDatedUntrashedDoneTasksRecord());
+
+	function createDateKeyToDatedUntrashedDoneTasksRecord(): Record<string, DatedUntrashedDoneTaskResponse[]> {
+		const dateKeyToDatedUntrashedDoneTasksMap = Map.groupBy(
+			datedUntrashedDoneTaskStore.datedUntrashedDoneTasks,
+			(task) => task.date.toString()
+		);
+		return Object.fromEntries(dateKeyToDatedUntrashedDoneTasksMap);
+	}
 
 	function loadMoreDatedUntrashedDoneTasks(): Promise<void> | undefined {
 		const lastLoadedTask = datedUntrashedDoneTaskStore.datedUntrashedDoneTasks.at(-1);
@@ -23,6 +36,37 @@
 		if (lastLoadedTask !== undefined) {
 			return taskService.fetchTrashedTasks({ trashedDate: lastLoadedTask.trashedDate, id: lastLoadedTask.id });
 		}
+	}
+
+	function openEditTaskDialog(task: DatedUntrashedDoneTaskResponse | TrashedTaskResponse): void {
+		taskDialogTask = task;
+		taskDialogOpen = true;
+	}
+
+	function getTaskActions(task: DatedUntrashedDoneTaskResponse | TrashedTaskResponse) {
+		const editAction = { label: 'Edit', icon: SquarePen, onclick: () => openEditTaskDialog(task) };
+		if ('trashedDate' in task) {
+			return [
+				editAction,
+				{
+					label: 'Restore',
+					icon: RotateCcw,
+					variant: 'success' as const,
+					disabled: taskService.taskMutationBlocked,
+					onclick: () => taskService.restoreTask(task.id)
+				}
+			];
+		}
+		return [
+			editAction,
+			{
+				label: 'Trash',
+				icon: Trash2,
+				variant: 'danger' as const,
+				disabled: taskService.taskMutationBlocked,
+				onclick: () => taskService.trashTask(task.id)
+			}
+		];
 	}
 </script>
 
@@ -60,11 +104,11 @@
 							{#each tasks as task (task.id)}
 								<Task
 									{task}
+									actions={getTaskActions(task)}
 									isShadowItem={false}
 									selectionEnabled={false}
 									selected={false}
 									onSelectedChange={() => {}}
-									onedit={() => {}}
 								/>
 							{/each}
 						</div>
@@ -74,7 +118,13 @@
 		</InfiniteScrollContainer>
 	</section>
 	<section class="trash-section">
-		<h1>Trash</h1>
+		<div class="trash-heading">
+			<h1>Trash</h1>
+			<Popover openOnHover side="right" triggerAriaLabel="About automatic task deletion">
+				{#snippet trigger()}<Info size={17} aria-hidden="true" />{/snippet}
+				<span class="trash-information">Trashed tasks will be automatically deleted after 48 hours.</span>
+			</Popover>
+		</div>
 		<InfiniteScrollContainer
 			hasMore={trashedTaskStore.hasMore}
 			loading={taskService.trashedTasksLoading}
@@ -85,17 +135,19 @@
 				{#each trashedTaskStore.trashedTasks as task (task.id)}
 					<Task
 						{task}
+						actions={getTaskActions(task)}
 						isShadowItem={false}
 						selectionEnabled={false}
 						selected={false}
 						onSelectedChange={() => {}}
-						onedit={() => {}}
 					/>
 				{/each}
 			</div>
 		</InfiniteScrollContainer>
 	</section>
 </div>
+
+<TaskDialog bind:open={taskDialogOpen} bind:task={taskDialogTask} />
 
 <style lang="scss">
 	.frame {
@@ -205,6 +257,17 @@
 			border: 1px solid var(--border);
 			border-radius: 0.75rem;
 			gap: 0.75rem;
+
+			.trash-heading {
+				display: flex;
+				align-items: center;
+				gap: 0.375rem;
+
+				.trash-information {
+					font-size: 0.75rem;
+					white-space: nowrap;
+				}
+			}
 
 			.trashed-task-list {
 				display: flex;

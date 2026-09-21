@@ -19,8 +19,8 @@ type Task struct {
 	TrashedDate *time.Time   `db:"trashed_date"`
 }
 
-func (task *Task) ToTaskResponse() *transport.TaskResponse {
-	return &transport.TaskResponse{
+func (task *Task) ToUpdateTaskResponse() *transport.UpdateTaskResponse {
+	return &transport.UpdateTaskResponse{
 		Id:          task.Id,
 		CategoryId:  task.CategoryId,
 		Title:       task.Title,
@@ -29,5 +29,28 @@ func (task *Task) ToTaskResponse() *transport.TaskResponse {
 		Rank:        task.Rank,
 		Done:        task.Done,
 		TrashedDate: task.TrashedDate,
+	}
+}
+
+func (task *Task) ToDatedUntrashedTaskResponse() transport.DatedUntrashedTaskResponse {
+	return transport.DatedUntrashedTaskResponse{
+		Id:          task.Id,
+		CategoryId:  task.CategoryId,
+		Title:       task.Title,
+		Description: task.Description,
+		Date:        *task.Date,
+		Rank:        *task.Rank,
+	}
+}
+
+func (task *Task) ToTrashedTaskResponse() transport.TrashedTaskResponse {
+	return transport.TrashedTaskResponse{
+		Id:          task.Id,
+		CategoryId:  task.CategoryId,
+		Title:       task.Title,
+		Description: task.Description,
+		Date:        task.Date,
+		Done:        task.Done,
+		TrashedDate: *task.TrashedDate,
 	}
 }

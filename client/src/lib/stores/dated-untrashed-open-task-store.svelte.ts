@@ -1,38 +1,39 @@
-import type { DatedUntrashedTaskResponse } from '$lib/types/responses/dated-untrashed-task-response';
+import type { DatedUntrashedOpenTaskResponse } from '$lib/types/responses/dated-untrashed-open-task-response';
 import { getLocalTimeZone, today } from '@internationalized/date';
 
-let datedUntrashedOpenTodayTasks: DatedUntrashedTaskResponse[] = $state<DatedUntrashedTaskResponse[]>([]);
-let datedUntrashedOpenNonTodayTasks: DatedUntrashedTaskResponse[] = $state<DatedUntrashedTaskResponse[]>([]);
+let datedUntrashedOpenTodayTasks: DatedUntrashedOpenTaskResponse[] = $state<DatedUntrashedOpenTaskResponse[]>([]);
+let datedUntrashedOpenNonTodayTasks: DatedUntrashedOpenTaskResponse[] = $state<DatedUntrashedOpenTaskResponse[]>([]);
 let todayTasksHasMore = $state(false);
 let nonTodayTasksHasMore = $state(false);
 
-function addOrUpdateTasks(tasks: DatedUntrashedTaskResponse[]): void {
+function addOrUpdateTasks(tasks: DatedUntrashedOpenTaskResponse[]): void {
 	const taskIds = new Set(tasks.map((task) => task.id));
 	const currentDate = today(getLocalTimeZone());
 	const todayTasks = tasks.filter((task) => task.date.compare(currentDate) === 0);
 	const nonTodayTasks = tasks.filter((task) => task.date.compare(currentDate) !== 0);
 
-	datedUntrashedOpenTodayTasks = [...datedUntrashedOpenTodayTasks.filter((task) => !taskIds.has(task.id)), ...todayTasks].sort(
-		compareTasksByDateAndRank
-	);
+	datedUntrashedOpenTodayTasks = [
+		...datedUntrashedOpenTodayTasks.filter((task) => !taskIds.has(task.id)),
+		...todayTasks
+	].sort(compareTasksByDateAndRank);
 	datedUntrashedOpenNonTodayTasks = [
 		...datedUntrashedOpenNonTodayTasks.filter((task) => !taskIds.has(task.id)),
 		...nonTodayTasks
 	].sort(compareTasksByDateAndRank);
 }
 
-function addOrUpdateTask(task: DatedUntrashedTaskResponse): void {
+function addOrUpdateTask(task: DatedUntrashedOpenTaskResponse): void {
 	addOrUpdateTasks([task]);
 }
 
-function addTodayPage(tasks: DatedUntrashedTaskResponse[], pageHasMore: boolean): void {
+function addTodayPage(tasks: DatedUntrashedOpenTaskResponse[], pageHasMore: boolean): void {
 	const taskIds = tasks.map((task) => task.id);
 	removeTasks(taskIds);
 	datedUntrashedOpenTodayTasks = [...datedUntrashedOpenTodayTasks, ...tasks].sort(compareTasksByDateAndRank);
 	todayTasksHasMore = pageHasMore;
 }
 
-function addNonTodayPage(tasks: DatedUntrashedTaskResponse[], pageHasMore: boolean): void {
+function addNonTodayPage(tasks: DatedUntrashedOpenTaskResponse[], pageHasMore: boolean): void {
 	const taskIds = tasks.map((task) => task.id);
 	removeTasks(taskIds);
 	datedUntrashedOpenNonTodayTasks = [...datedUntrashedOpenNonTodayTasks, ...tasks].sort(compareTasksByDateAndRank);
@@ -49,7 +50,7 @@ function removeTasks(ids: number[]): void {
 	datedUntrashedOpenNonTodayTasks = datedUntrashedOpenNonTodayTasks.filter((task) => !taskIds.has(task.id));
 }
 
-function compareTasksByDateAndRank(first: DatedUntrashedTaskResponse, second: DatedUntrashedTaskResponse): number {
+function compareTasksByDateAndRank(first: DatedUntrashedOpenTaskResponse, second: DatedUntrashedOpenTaskResponse): number {
 	const dateComparison = first.date.compare(second.date);
 	if (dateComparison !== 0) return dateComparison;
 	return first.rank < second.rank ? -1 : first.rank > second.rank ? 1 : 0;
@@ -63,13 +64,13 @@ function reset(): void {
 }
 
 export const datedUntrashedOpenTaskStore = {
-	get datedUntrashedOpenTasks(): DatedUntrashedTaskResponse[] {
+	get datedUntrashedOpenTasks(): DatedUntrashedOpenTaskResponse[] {
 		return [...datedUntrashedOpenTodayTasks, ...datedUntrashedOpenNonTodayTasks].sort(compareTasksByDateAndRank);
 	},
-	get datedUntrashedOpenTodayTasks(): DatedUntrashedTaskResponse[] {
+	get datedUntrashedOpenTodayTasks(): DatedUntrashedOpenTaskResponse[] {
 		return datedUntrashedOpenTodayTasks;
 	},
-	get datedUntrashedOpenNonTodayTasks(): DatedUntrashedTaskResponse[] {
+	get datedUntrashedOpenNonTodayTasks(): DatedUntrashedOpenTaskResponse[] {
 		return datedUntrashedOpenNonTodayTasks;
 	},
 	get todayTasksHasMore(): boolean {

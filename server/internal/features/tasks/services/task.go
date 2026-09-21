@@ -83,10 +83,10 @@ func (service *TaskService) CreateTask(userId int64, request transport.CreateTas
 	return task, nil
 }
 
-func (service *TaskService) UpdateTask(userId int64, request transport.UpdateTaskRequest) (*transport.TaskResponse, error) {
+func (service *TaskService) UpdateTask(userId int64, request transport.UpdateTaskRequest) (*transport.UpdateTaskResponse, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("updating task failed")
 
-	taskResponse, err := shared.ExecuteAsSerializableTransaction(service.db, func(transaction *sqlx.Tx) (*transport.TaskResponse, error) {
+	taskResponse, err := shared.ExecuteAsSerializableTransaction(service.db, func(transaction *sqlx.Tx) (*transport.UpdateTaskResponse, error) {
 		task, err := service.taskStore.GetTaskByIdForUser(transaction, request.Id, userId)
 		if err != nil {
 			return nil, err
@@ -142,7 +142,7 @@ func (service *TaskService) UpdateTask(userId int64, request transport.UpdateTas
 			return nil, err
 		}
 
-		return task.ToTaskResponse(), nil
+		return task.ToUpdateTaskResponse(), nil
 	})
 	if err != nil {
 		switch {
@@ -584,17 +584,16 @@ func (service *TaskService) extractTrashedTasks(tasks []domain.Task) []*domain.T
 
 func (service *TaskService) createBatchCompleteTasksResponse(tasks []domain.Task) *transport.BatchCompleteResponse {
 	response := &transport.BatchCompleteResponse{
-		DatedUntrashedDoneTasks: make([]transport.TaskResponse, 0),
-		TrashedTasks:            make([]transport.TaskResponse, 0),
+		DatedUntrashedDoneTasks: make([]transport.DatedUntrashedTaskResponse, 0),
+		TrashedTasks:            make([]transport.TrashedTaskResponse, 0),
 	}
 	for index := range tasks {
 		task := &tasks[index]
-		taskResponse := *task.ToTaskResponse()
 		switch {
 		case task.TrashedDate != nil:
-			response.TrashedTasks = append(response.TrashedTasks, taskResponse)
+			response.TrashedTasks = append(response.TrashedTasks, task.ToTrashedTaskResponse())
 		default:
-			response.DatedUntrashedDoneTasks = append(response.DatedUntrashedDoneTasks, taskResponse)
+			response.DatedUntrashedDoneTasks = append(response.DatedUntrashedDoneTasks, task.ToDatedUntrashedTaskResponse())
 		}
 	}
 	return response
@@ -602,17 +601,16 @@ func (service *TaskService) createBatchCompleteTasksResponse(tasks []domain.Task
 
 func (service *TaskService) createBatchOpenTasksResponse(tasks []domain.Task) *transport.BatchOpenResponse {
 	response := &transport.BatchOpenResponse{
-		DatedUntrashedOpenTasks: make([]transport.TaskResponse, 0),
-		TrashedTasks:            make([]transport.TaskResponse, 0),
+		DatedUntrashedOpenTasks: make([]transport.DatedUntrashedTaskResponse, 0),
+		TrashedTasks:            make([]transport.TrashedTaskResponse, 0),
 	}
 	for index := range tasks {
 		task := &tasks[index]
-		taskResponse := *task.ToTaskResponse()
 		switch {
 		case task.TrashedDate != nil:
-			response.TrashedTasks = append(response.TrashedTasks, taskResponse)
+			response.TrashedTasks = append(response.TrashedTasks, task.ToTrashedTaskResponse())
 		default:
-			response.DatedUntrashedOpenTasks = append(response.DatedUntrashedOpenTasks, taskResponse)
+			response.DatedUntrashedOpenTasks = append(response.DatedUntrashedOpenTasks, task.ToDatedUntrashedTaskResponse())
 		}
 	}
 	return response

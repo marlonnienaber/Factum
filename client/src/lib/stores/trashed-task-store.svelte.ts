@@ -18,6 +18,10 @@ function addPage(tasks: TrashedTaskResponse[], pageHasMore: boolean): void {
 	hasMore = pageHasMore;
 }
 
+function removeTask(id: number): void {
+	trashedTasks = trashedTasks.filter((task) => task.id !== id);
+}
+
 function compareTasksByTrashedDateAndId(first: TrashedTaskResponse, second: TrashedTaskResponse): number {
 	const trashedDateComparison = second.trashedDate.compare(first.trashedDate);
 	if (trashedDateComparison !== 0) return trashedDateComparison;
@@ -39,5 +43,6 @@ export const trashedTaskStore = {
 	addOrUpdateTasks,
 	addOrUpdateTask,
 	addPage,
+	removeTask,
 	reset
 };

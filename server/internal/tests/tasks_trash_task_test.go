@@ -175,7 +175,7 @@ func TestTasksTrashTaskAlreadyTrashed(t *testing.T) {
 	)
 	require.Equal(t, http.StatusCreated, createTaskResp.Code)
 
-	var task tasksTransport.TaskResponse
+	var task tasksTransport.CreateTaskResponse
 	require.NoError(
 		t,
 		json.NewDecoder(createTaskResp.Body).Decode(&task),
@@ -249,7 +249,7 @@ func TestTasksTrashTask(t *testing.T) {
 	)
 	require.Equal(t, http.StatusCreated, createTaskResp.Code)
 
-	var task tasksTransport.TaskResponse
+	var task tasksTransport.CreateTaskResponse
 	require.NoError(
 		t,
 		json.NewDecoder(createTaskResp.Body).Decode(&task),

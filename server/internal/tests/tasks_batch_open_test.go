@@ -216,15 +216,12 @@ func TestTasksBatchOpenTasksFromAllValidPartitions(t *testing.T) {
 
 	openedUntrashedTask := respBody.DatedUntrashedOpenTasks[0]
 	assert.Equal(t, completedUntrashedTasks[0].Id, openedUntrashedTask.Id)
-	assert.False(t, openedUntrashedTask.Done, "expected task to be open")
-	assert.Equal(t, &completedUntrashedTasks[0].Date, openedUntrashedTask.Date, "expected date to remain unchanged")
-	assert.NotNil(t, openedUntrashedTask.Rank, "expected untrashed task to have a rank")
-	assert.Nil(t, openedUntrashedTask.TrashedDate, "expected task to be untrashed")
+	assert.Equal(t, completedUntrashedTasks[0].Date, openedUntrashedTask.Date, "expected date to remain unchanged")
+	assert.NotEmpty(t, openedUntrashedTask.Rank, "expected untrashed task to have a rank")
 
 	openedTrashedTask := respBody.TrashedTasks[0]
 	assert.Equal(t, completedTrashedTask.Id, openedTrashedTask.Id)
 	assert.False(t, openedTrashedTask.Done, "expected task to be open")
 	assert.Equal(t, completedTrashedTask.Date, openedTrashedTask.Date, "expected date to remain unchanged")
-	assert.Nil(t, openedTrashedTask.Rank, "expected trashed task not to have a rank")
-	assert.Equal(t, &completedTrashedTask.TrashedDate, openedTrashedTask.TrashedDate, "expected task to remain trashed")
+	assert.Equal(t, completedTrashedTask.TrashedDate, openedTrashedTask.TrashedDate, "expected task to remain trashed")
 }

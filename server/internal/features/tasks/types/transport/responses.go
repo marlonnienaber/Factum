@@ -6,7 +6,7 @@ import (
 	"github.com/marlonnienaber/Factum/server/internal/shared"
 )
 
-type TaskResponse struct {
+type UpdateTaskResponse struct {
 	Id          int64        `db:"id" json:"id"`
 	CategoryId  int64        `db:"category_id" json:"categoryId"`
 	Title       string       `db:"title" json:"title"`
@@ -78,11 +78,11 @@ type GetTrashedTasksResponse struct {
 }
 
 type BatchCompleteResponse struct {
-	DatedUntrashedDoneTasks []TaskResponse `json:"datedUntrashedDoneTasks"`
-	TrashedTasks            []TaskResponse `json:"trashedTasks"`
+	DatedUntrashedDoneTasks []DatedUntrashedTaskResponse `json:"datedUntrashedDoneTasks"`
+	TrashedTasks            []TrashedTaskResponse        `json:"trashedTasks"`
 }
 
 type BatchOpenResponse struct {
-	DatedUntrashedOpenTasks []TaskResponse `json:"datedUntrashedOpenTasks"`
-	TrashedTasks            []TaskResponse `json:"trashedTasks"`
+	DatedUntrashedOpenTasks []DatedUntrashedTaskResponse `json:"datedUntrashedOpenTasks"`
+	TrashedTasks            []TrashedTaskResponse        `json:"trashedTasks"`
 }
