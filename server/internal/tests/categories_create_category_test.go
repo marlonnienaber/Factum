@@ -2,6 +2,7 @@ package tests
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -190,6 +191,37 @@ func TestCategoriesCreateCategoryColorAlreadyInUse(t *testing.T) {
 	)
 }
 
+func TestCategoriesCreateCategoryMaximumCategoryCountReached(t *testing.T) {
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
+	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
+	})
+	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	cookies := signUpResp.Result().Cookies()
+
+	for index := range maximumCategoryCountPerUser {
+		resp := support.MakeCreateCategoryRequest(
+			t,
+			app,
+			fmt.Sprintf("Category %d", index+1),
+			fmt.Sprintf("#%06x", index+1),
+			cookies...,
+		)
+		require.Equal(t, http.StatusCreated, resp.Code)
+	}
+
+	resp := support.MakeCreateCategoryRequest(t, app, "One too many", "#ffffff", cookies...)
+
+	support.AssertErrorResponse(
+		t,
+		resp,
+		http.StatusConflict,
+		"maximum_category_count_reached",
+		"A maximum of 30 categories can be created per user.",
+	)
+}
+
 func TestCategoriesCreateCategoryTitleCanBeReusedByDifferentUser(t *testing.T) {
 	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(
 		t,
@@ -251,4 +283,7 @@ func TestCategoriesCreateCategory(t *testing.T) {
 	assert.Equal(t, int64(1), respBody.Id, "unexpected category id")
 }
 
-const maximumCategoryTitleLength = 50
+const (
+	maximumCategoryTitleLength  = 50
+	maximumCategoryCountPerUser = 30
+)
