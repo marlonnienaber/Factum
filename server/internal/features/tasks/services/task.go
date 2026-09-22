@@ -16,11 +16,14 @@ import (
 var (
 	ErrRequestDataRepresentInvalidDragAndDropGesture = errors.New("provided request data do not match a valid drag and drop gesture for the given task id")
 	ErrPreviousTaskNotFound                          = errors.New("previous task not found")
+	ErrMaximumTaskCountReached                       = errors.New("maximum task count reached")
 	ErrTaskAlreadyTrashed                            = errors.New("task is already trashed")
 	ErrTaskAlreadyRestored                           = errors.New("task is already restored")
 	ErrTaskAlreadyCompleted                          = errors.New("task is already completed")
 	ErrTaskAlreadyOpen                               = errors.New("task is already open")
 )
+
+const maximumTaskCountPerUser = 1_000
 
 type TaskService struct {
 	db            *sqlx.DB
@@ -44,6 +47,14 @@ func (service *TaskService) CreateTask(userId int64, request transport.CreateTas
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("creating task failed")
 
 	task, err := shared.ExecuteAsSerializableTransaction(service.db, func(transaction *sqlx.Tx) (*transport.CreateTaskResponse, error) {
+		taskCount, err := service.taskStore.CountTasksForUser(transaction, userId)
+		if err != nil {
+			return nil, err
+		}
+		if taskCount >= maximumTaskCountPerUser {
+			return nil, ErrMaximumTaskCountReached
+		}
+
 		categoryExists, err := service.categoryStore.DoesCategoryExistForUser(transaction, request.CategoryId, userId)
 		if err != nil {
 			return nil, err
@@ -74,7 +85,7 @@ func (service *TaskService) CreateTask(userId int64, request transport.CreateTas
 		return service.taskStore.InsertTask(transaction, userId, request, rank)
 	})
 	if err != nil {
-		if errors.Is(err, stores.ErrCategoryNotFound) {
+		if errors.Is(err, stores.ErrCategoryNotFound) || errors.Is(err, ErrMaximumTaskCountReached) {
 			return nil, err
 		}
 		return nil, wrapUnexpectedError(err)

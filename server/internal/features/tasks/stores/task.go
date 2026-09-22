@@ -492,6 +492,17 @@ func (store *TaskStore) GetHighestDatedUntrashedDoneTaskRank(transaction *sqlx.T
 	return &rank, nil
 }
 
+func (store *TaskStore) CountTasksForUser(transaction *sqlx.Tx, userId int64) (int64, error) {
+	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("counting tasks for user failed")
+
+	var taskCount int64
+	if err := transaction.Get(&taskCount, "SELECT COUNT(*) FROM tasks WHERE user_id = $1", userId); err != nil {
+		return 0, wrapUnexpectedError(err)
+	}
+
+	return taskCount, nil
+}
+
 func (store *TaskStore) InsertTask(
 	transaction *sqlx.Tx,
 	userId int64,
