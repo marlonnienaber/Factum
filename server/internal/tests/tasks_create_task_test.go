@@ -475,7 +475,38 @@ func TestTasksCreateTaskWithoutDescriptionWithoutDate(t *testing.T) {
 	assert.NoError(t, err, "expected a valid task rank")
 }
 
+func TestTasksCreateTaskMaximumTaskCountReached(t *testing.T) {
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
+	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
+	})
+	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	cookies := signUpResp.Result().Cookies()
+
+	createCategoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
+	require.Equal(t, http.StatusCreated, createCategoryResp.Code)
+	var category categoriesTransport.CreateCategoryResponse
+	require.NoError(t, json.NewDecoder(createCategoryResp.Body).Decode(&category), "failed to decode category response")
+
+	for range maximumTaskCountPerUser {
+		resp := support.MakeCreateTaskRequest(t, app, "Task", nil, nil, category.Id, cookies...)
+		require.Equal(t, http.StatusCreated, resp.Code)
+	}
+
+	resp := support.MakeCreateTaskRequest(t, app, "Task", nil, nil, category.Id, cookies...)
+
+	support.AssertErrorResponse(
+		t,
+		resp,
+		http.StatusConflict,
+		"maximum_task_count_reached",
+		"A maximum of 1000 tasks can be created per user.",
+	)
+}
+
 const (
 	maximumTaskTitleLength       = 100
 	maximumTaskDescriptionLength = 500
+	maximumTaskCountPerUser      = 1_000
 )
