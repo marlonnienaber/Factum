@@ -390,7 +390,8 @@ func TestTasksUpdateTaskChangeTitle(t *testing.T) {
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
 
 	assert.Equal(t, "New title", respBody.Title, "unexpected task title")
-	assert.Equal(t, task.Rank, respBody.Rank, "expected task rank to remain unchanged")
+	require.NotNil(t, respBody.Rank)
+	assert.Equal(t, task.Rank, *respBody.Rank, "expected task rank to remain unchanged")
 }
 
 func TestTasksUpdateTaskAddDescription(t *testing.T) {
@@ -426,7 +427,8 @@ func TestTasksUpdateTaskAddDescription(t *testing.T) {
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
 
 	assert.Equal(t, &description, respBody.Description, "unexpected task description")
-	assert.Equal(t, task.Rank, respBody.Rank, "expected task rank to remain unchanged")
+	require.NotNil(t, respBody.Rank)
+	assert.Equal(t, task.Rank, *respBody.Rank, "expected task rank to remain unchanged")
 }
 
 func TestTasksUpdateTaskRemoveDescription(t *testing.T) {
@@ -461,7 +463,8 @@ func TestTasksUpdateTaskRemoveDescription(t *testing.T) {
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
 
 	assert.Nil(t, respBody.Description, "expected task description to be removed")
-	assert.Equal(t, task.Rank, respBody.Rank, "expected task rank to remain unchanged")
+	require.NotNil(t, respBody.Rank)
+	assert.Equal(t, task.Rank, *respBody.Rank, "expected task rank to remain unchanged")
 }
 
 func TestTasksUpdateTaskChangeDescription(t *testing.T) {
@@ -498,7 +501,8 @@ func TestTasksUpdateTaskChangeDescription(t *testing.T) {
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
 
 	assert.Equal(t, &newDescription, respBody.Description, "unexpected task description")
-	assert.Equal(t, task.Rank, respBody.Rank, "expected task rank to remain unchanged")
+	require.NotNil(t, respBody.Rank)
+	assert.Equal(t, task.Rank, *respBody.Rank, "expected task rank to remain unchanged")
 }
 
 func TestTasksUpdateTaskFromOpenWithoutDateUntrashedToDate(t *testing.T) {
@@ -834,5 +838,6 @@ func TestTasksUpdateTaskChangeCategory(t *testing.T) {
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
 
 	assert.Equal(t, newCategory.Id, respBody.CategoryId, "unexpected category id")
-	assert.Equal(t, task.Rank, respBody.Rank, "expected task rank to remain unchanged")
+	require.NotNil(t, respBody.Rank)
+	assert.Equal(t, task.Rank, *respBody.Rank, "expected task rank to remain unchanged")
 }
