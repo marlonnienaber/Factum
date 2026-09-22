@@ -133,16 +133,20 @@ async function fetchDatedUntrashedOpenNonTodayTasks(cursor?: DatedUntrashedTasks
 	}
 }
 
-async function fetchTrashedTasks(cursor?: TrashedTasksCursor): Promise<void> {
+async function fetchTrashedTasks(cursor?: TrashedTasksCursor, categoryIds: number[] = []): Promise<void> {
 	const cursorUsedIncorrectly = cursor !== undefined && !trashedTaskStore.hasMore;
 	if (trashedTasksLoading || taskMutationLoading || cursorUsedIncorrectly) return;
 	trashedTasksLoading = true;
 	try {
-		const queryParameters = cursor
-			? `?trashedDate=${encodeURIComponent(cursor.trashedDate.toAbsoluteString())}&id=${cursor.id}`
-			: '';
+		const queryParameters = new SvelteURLSearchParams();
+		for (const categoryId of categoryIds) queryParameters.append('categoryId', String(categoryId));
+		if (cursor) {
+			queryParameters.set('trashedDate', cursor.trashedDate.toAbsoluteString());
+			queryParameters.set('id', String(cursor.id));
+		}
+		const encodedQueryParameters = queryParameters.toString();
 		const networkCall: NetworkCall<GetTrashedTasksResponse> = await jsonGetWithoutBodyWithResponse(
-			`/api/tasks/trashed${queryParameters}`,
+			`/api/tasks/trashed${encodedQueryParameters ? `?${encodedQueryParameters}` : ''}`,
 			GetTrashedTasksResponseSchema
 		);
 		if (networkCall.status === 'success') {

@@ -10,12 +10,13 @@ import (
 
 func NewGetTrashedTasksHandler(taskStore *stores.TaskStore) shared.AuthenticatedHandlerFunc {
 	return func(c *shared.AuthenticatedContext) {
+		categoryIds, categoryIdsErr := shared.GetOptionalIdQueryParameterList(c, "categoryId", maximumCategoryFilterCount)
 		trashedDate, trashedDateErr := shared.GetOptionalTimestampQueryParameter(c, "trashedDate")
 		id, idErr := shared.GetOptionalIdQueryParameter(c, "id")
 
 		unexpectedErrorLogMessage := "handling get trashed tasks failed"
 
-		if trashedDateErr != nil || idErr != nil {
+		if categoryIdsErr != nil || trashedDateErr != nil || idErr != nil {
 			c.JSON(http.StatusBadRequest, shared.InvalidQueryParameterErrorResponse)
 			return
 		}
@@ -26,7 +27,7 @@ func NewGetTrashedTasksHandler(taskStore *stores.TaskStore) shared.Authenticated
 			return
 		}
 
-		response, err := taskStore.GetTrashedTasks(c.UserId, trashedDate, id)
+		response, err := taskStore.GetTrashedTasks(c.UserId, categoryIds, trashedDate, id)
 		if err != nil {
 			slog.Error(unexpectedErrorLogMessage, "error", err)
 			c.JSON(http.StatusInternalServerError, shared.UnexpectedErrorResponse)
