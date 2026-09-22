@@ -131,7 +131,7 @@
 		.header {
 			display: flex;
 			justify-content: space-between;
-			align-items: center;
+			align-items: start;
 			min-height: 1.125rem;
 
 			.selection-toggle-and-title {
@@ -179,7 +179,8 @@
 
 		.metadata {
 			display: flex;
-			align-items: center;
+			justify-content: space-between;
+			align-items: end;
 			gap: 0.5rem;
 
 			.trashed-date {
