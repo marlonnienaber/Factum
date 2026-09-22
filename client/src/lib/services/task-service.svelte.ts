@@ -37,6 +37,7 @@ import { TaskDragAndDropResponseSchema, type TaskDragAndDropResponse } from '$li
 import { ToggleTaskDoneResponseSchema, type ToggleTaskDoneResponse } from '$lib/types/responses/toggle-task-done-response';
 import { UpdateTaskResponseSchema, type UpdateTaskResponse } from '$lib/types/responses/update-task-response';
 import { getLocalTimeZone, now, type ZonedDateTime } from '@internationalized/date';
+import { SvelteURLSearchParams } from 'svelte/reactivity';
 import { toast } from 'svelte-sonner';
 
 let undatedTasksLoading = $state(false);
@@ -54,16 +55,21 @@ const taskMutationBlocked = $derived(
 		trashedTasksLoading
 );
 
-async function fetchDatedUntrashedDoneTasks(cursor?: DatedUntrashedTasksCursor): Promise<void> {
+async function fetchDatedUntrashedDoneTasks(cursor?: DatedUntrashedTasksCursor, categoryIds: number[] = []): Promise<void> {
 	const cursorUsedIncorrectly = cursor !== undefined && !datedUntrashedDoneTaskStore.hasMore;
 	if (datedUntrashedDoneTasksLoading || taskMutationLoading || cursorUsedIncorrectly) return;
 	datedUntrashedDoneTasksLoading = true;
 	try {
-		const queryParameters = cursor
-			? `?date=${encodeURIComponent(cursor.date.toString())}&rank=${encodeURIComponent(cursor.rank)}`
-			: '';
+		const queryParameters = new SvelteURLSearchParams();
+		for (const categoryId of categoryIds) queryParameters.append('categoryId', String(categoryId));
+		if (cursor) {
+			queryParameters.set('date', cursor.date.toString());
+			queryParameters.set('rank', cursor.rank);
+		}
+		const encodedQueryParameters = queryParameters.toString();
+		const url = `/api/tasks/dated-untrashed-done${encodedQueryParameters ? `?${encodedQueryParameters}` : ''}`;
 		const networkCall: NetworkCall<GetDatedUntrashedDoneTasksResponse> = await jsonGetWithoutBodyWithResponse(
-			`/api/tasks/dated-untrashed-done${queryParameters}`,
+			url,
 			GetDatedUntrashedDoneTasksResponseSchema
 		);
 		if (networkCall.status === 'success') {

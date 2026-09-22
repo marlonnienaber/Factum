@@ -653,6 +653,7 @@ func (store *TaskStore) GetDatedUntrashedOpenNonTodayTasks(
 
 func (store *TaskStore) GetDatedUntrashedDoneTasks(
 	userId int64,
+	categoryIds []int64,
 	date *time.Time,
 	rank *string,
 ) (*transport.GetDatedUntrashedTasksResponse, error) {
@@ -671,20 +672,18 @@ func (store *TaskStore) GetDatedUntrashedDoneTasks(
 		  AND date IS NOT NULL
 		  AND trashed_date IS NULL
 		  AND done = TRUE
+		  AND (cardinality($2::BIGINT[]) = 0 OR category_id = ANY($2))
 		  AND (
-		      ($2::DATE IS NULL AND $3::TEXT IS NULL)
+		      ($3::DATE IS NULL AND $4::TEXT IS NULL)
 		      OR (
-		          $2::DATE IS NOT NULL
-		          AND $3::TEXT IS NOT NULL
-		          AND (
-		              date > $2
-		              OR (date = $2 AND rank > $3)
-		          )
+		          $3::DATE IS NOT NULL
+		          AND $4::TEXT IS NOT NULL
+		          AND (date, rank) > ($3, $4)
 		      )
 		  )
 		ORDER BY date ASC, rank ASC
-		LIMIT $4
-	`, userId, date, rank, tasksBatchSize+1)
+		LIMIT $5
+	`, userId, pq.Array(categoryIds), date, rank, tasksBatchSize+1)
 	if err != nil {
 		return nil, wrapUnexpectedError(err)
 	}

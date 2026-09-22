@@ -8,12 +8,15 @@ import (
 	"github.com/marlonnienaber/Factum/server/internal/shared"
 )
 
+const maximumCategoryFilterCount = 30
+
 func NewGetDatedUntrashedDoneTasksHandler(taskStore *stores.TaskStore) shared.AuthenticatedHandlerFunc {
 	return func(c *shared.AuthenticatedContext) {
+		categoryIds, categoryIdsErr := shared.GetOptionalIdQueryParameterList(c, "categoryId", maximumCategoryFilterCount)
 		date, dateErr := shared.GetOptionalDateQueryParameter(c, "date")
 		rank, rankErr := shared.GetOptionalRankQueryParameter(c, "rank")
 
-		if dateErr != nil || rankErr != nil {
+		if categoryIdsErr != nil || dateErr != nil || rankErr != nil {
 			c.JSON(http.StatusBadRequest, shared.InvalidQueryParameterErrorResponse)
 			return
 		}
@@ -23,7 +26,7 @@ func NewGetDatedUntrashedDoneTasksHandler(taskStore *stores.TaskStore) shared.Au
 			return
 		}
 
-		response, err := taskStore.GetDatedUntrashedDoneTasks(c.UserId, date, rank)
+		response, err := taskStore.GetDatedUntrashedDoneTasks(c.UserId, categoryIds, date, rank)
 		if err != nil {
 			slog.Error("handling get dated untrashed done tasks failed", "error", err)
 			c.JSON(http.StatusInternalServerError, shared.UnexpectedErrorResponse)

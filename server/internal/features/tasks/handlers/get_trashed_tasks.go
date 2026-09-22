@@ -11,7 +11,7 @@ import (
 func NewGetTrashedTasksHandler(taskStore *stores.TaskStore) shared.AuthenticatedHandlerFunc {
 	return func(c *shared.AuthenticatedContext) {
 		trashedDate, trashedDateErr := shared.GetOptionalTimestampQueryParameter(c, "trashedDate")
-		id, idErr := shared.GetOptionalInt64QueryParameter(c, "id")
+		id, idErr := shared.GetOptionalIdQueryParameter(c, "id")
 
 		unexpectedErrorLogMessage := "handling get trashed tasks failed"
 

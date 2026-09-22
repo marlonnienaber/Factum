@@ -2,6 +2,7 @@ package shared
 
 import (
 	"errors"
+	"slices"
 	"strconv"
 	"time"
 
@@ -34,7 +35,7 @@ func GetOptionalRankQueryParameter(c *AuthenticatedContext, key string) (*string
 	return rank, nil
 }
 
-func GetOptionalInt64QueryParameter(c *AuthenticatedContext, key string) (*int64, error) {
+func GetOptionalIdQueryParameter(c *AuthenticatedContext, key string) (*int64, error) {
 	value, exists := c.GetQuery(key)
 	if !exists {
 		return nil, nil
@@ -46,6 +47,33 @@ func GetOptionalInt64QueryParameter(c *AuthenticatedContext, key string) (*int64
 	}
 
 	return &integer, nil
+}
+
+func GetOptionalIdQueryParameterList(c *AuthenticatedContext, key string, maxLength int) ([]int64, error) {
+	values, exists := c.GetQueryArray(key)
+	if !exists {
+		return []int64{}, nil
+	}
+	if len(values) == 0 {
+		return nil, InvalidQueryParameterErr
+	}
+	if len(values) > maxLength {
+		return nil, InvalidQueryParameterErr
+	}
+
+	integers := make([]int64, 0, len(values))
+	for _, value := range values {
+		integer, err := strconv.ParseInt(value, 10, 64)
+		if err != nil || integer <= 0 {
+			return nil, InvalidQueryParameterErr
+		}
+		if slices.Contains(integers, integer) {
+			return nil, InvalidQueryParameterErr
+		}
+		integers = append(integers, integer)
+	}
+
+	return integers, nil
 }
 
 func GetOptionalDateQueryParameter(c *AuthenticatedContext, key string) (*time.Time, error) {
