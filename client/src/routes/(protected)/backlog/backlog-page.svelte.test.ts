@@ -9,7 +9,7 @@ import { datedUntrashedDoneTaskStore } from '$lib/stores/dated-untrashed-done-ta
 import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-task-store.svelte';
 import { trashedTaskStore } from '$lib/stores/trashed-task-store.svelte';
 import { undatedTaskStore } from '$lib/stores/undated-task-store.svelte';
-import type { DatedUntrashedTaskResponse } from '$lib/types/responses/dated-untrashed-task-response';
+import type { DatedUntrashedOpenTaskResponse } from '$lib/types/responses/dated-untrashed-open-task-response';
 import type { UndatedTaskResponse } from '$lib/types/responses/undated-task-response';
 import {
 	expectInputToBeInvalid,
@@ -297,6 +297,7 @@ describe('backlog page tests', () => {
 					categoryId: category.id,
 					title: newTitle,
 					description: newDescription,
+					done: false,
 					rank: task.rank
 				});
 				fetchMock.mockResolvedValue(response);
@@ -338,6 +339,7 @@ describe('backlog page tests', () => {
 					title: newTitle,
 					description: newDescription,
 					date: taskDate.toString(),
+					done: false,
 					rank: task.rank
 				});
 				fetchMock.mockResolvedValue(response);
@@ -381,6 +383,7 @@ describe('backlog page tests', () => {
 					title: newTitle,
 					description: newDescription,
 					date: taskDate.toString(),
+					done: false,
 					rank: task.rank
 				});
 				fetchMock.mockResolvedValue(response);
@@ -438,7 +441,8 @@ describe('backlog page tests', () => {
 				expect(datedUntrashedDoneTaskStore.datedUntrashedDoneTasks).toContainEqual({
 					...task,
 					date: completedTaskDate,
-					rank: completedTaskRank
+					rank: completedTaskRank,
+					done: true
 				});
 			});
 
@@ -464,7 +468,8 @@ describe('backlog page tests', () => {
 				expectTaskNotToBePresent(page, task.title);
 				expect(datedUntrashedDoneTaskStore.datedUntrashedDoneTasks).toContainEqual({
 					...task,
-					rank: completedTaskRank
+					rank: completedTaskRank,
+					done: true
 				});
 			});
 
@@ -490,7 +495,8 @@ describe('backlog page tests', () => {
 				expectTaskNotToBePresent(page, task.title);
 				expect(datedUntrashedDoneTaskStore.datedUntrashedDoneTasks).toContainEqual({
 					...task,
-					rank: completedTaskRank
+					rank: completedTaskRank,
+					done: true
 				});
 			});
 
@@ -619,9 +625,30 @@ describe('backlog page tests', () => {
 				const taskIds = tasks.map((task) => task.id);
 				const completedTaskRanks = generateNKeysBetween(undefined, undefined, tasks.length);
 				const completedTasks = [
-					{ ...tasks[0], date: testData.todayPartitionDate.toString(), rank: completedTaskRanks[0] },
-					{ ...tasks[1], date: testData.nonTodayPastPartitionDate.toString(), rank: completedTaskRanks[1] },
-					{ ...tasks[2], date: testData.todayPartitionDate.toString(), rank: completedTaskRanks[2] }
+					{
+						id: tasks[0].id,
+						categoryId: tasks[0].categoryId,
+						title: tasks[0].title,
+						description: tasks[0].description,
+						date: testData.todayPartitionDate.toString(),
+						rank: completedTaskRanks[0]
+					},
+					{
+						id: tasks[1].id,
+						categoryId: tasks[1].categoryId,
+						title: tasks[1].title,
+						description: tasks[1].description,
+						date: testData.nonTodayPastPartitionDate.toString(),
+						rank: completedTaskRanks[1]
+					},
+					{
+						id: tasks[2].id,
+						categoryId: tasks[2].categoryId,
+						title: tasks[2].title,
+						description: tasks[2].description,
+						date: testData.todayPartitionDate.toString(),
+						rank: completedTaskRanks[2]
+					}
 				];
 
 				const response = getResponse({ datedUntrashedDoneTasks: completedTasks, trashedTasks: [] });
@@ -1424,12 +1451,13 @@ describe('backlog page tests', () => {
 
 		describe('infinite scroll', () => {
 			it('loads more tasks without a date', async () => {
-				const nextTask: UndatedTaskResponse = {
+				const nextTaskResponse = {
 					id: 13,
 					categoryId: category.id,
 					title: 'Buy train tickets',
 					rank: generateKeyBetween(testData.noDatePartition.thirdTask.rank, undefined)
 				};
+				const nextTask: UndatedTaskResponse = { ...nextTaskResponse, done: false };
 				const existingDatedTasks = [...datedUntrashedOpenTaskStore.datedUntrashedOpenTasks];
 				const resolveFetch = mockPendingFetch(fetchMock);
 
@@ -1448,7 +1476,7 @@ describe('backlog page tests', () => {
 				expect(within(getTaskColumn(page, 'Today')).queryByLabelText('Loading more items')).not.toBeInTheDocument();
 				expect(within(getTaskColumn(page, 'Date Assigned')).queryByLabelText('Loading more items')).not.toBeInTheDocument();
 
-				resolveFetch(getResponse({ tasks: [nextTask], hasMore: false }));
+				resolveFetch(getResponse({ tasks: [nextTaskResponse], hasMore: false }));
 
 				await waitFor(() => expect(undatedTaskStore.undatedTasks).toContainEqual(nextTask));
 				expect(undatedTaskStore.hasMore).toBe(false);
@@ -1458,12 +1486,17 @@ describe('backlog page tests', () => {
 			});
 
 			it('loads more tasks dated today', async () => {
-				const nextTask: DatedUntrashedTaskResponse = {
+				const nextTaskResponse = {
 					id: 13,
 					categoryId: category.id,
 					title: 'Pick up the parcel',
-					date: testData.todayPartitionDate,
+					date: testData.todayPartitionDate.toString(),
 					rank: generateKeyBetween(testData.todayPartition.thirdTask.rank, undefined)
+				};
+				const nextTask: DatedUntrashedOpenTaskResponse = {
+					...nextTaskResponse,
+					date: testData.todayPartitionDate,
+					done: false
 				};
 				const existingNonTodayTasks = [...datedUntrashedOpenTaskStore.datedUntrashedOpenNonTodayTasks];
 				const resolveFetch = mockPendingFetch(fetchMock);
@@ -1482,12 +1515,7 @@ describe('backlog page tests', () => {
 				expect(within(todayColumn).getByLabelText('Loading more items')).toBeInTheDocument();
 				expect(within(getTaskColumn(page, 'Date Assigned')).queryByLabelText('Loading more items')).not.toBeInTheDocument();
 
-				resolveFetch(
-					getResponse({
-						tasks: [{ ...nextTask, date: nextTask.date.toString() }],
-						hasMore: false
-					})
-				);
+				resolveFetch(getResponse({ tasks: [nextTaskResponse], hasMore: false }));
 
 				await waitFor(() => expect(datedUntrashedOpenTaskStore.datedUntrashedOpenTodayTasks).toContainEqual(nextTask));
 				expect(datedUntrashedOpenTaskStore.todayTasksHasMore).toBe(false);
@@ -1497,12 +1525,17 @@ describe('backlog page tests', () => {
 			});
 
 			it('loads more tasks with a non-today date', async () => {
-				const nextTask: DatedUntrashedTaskResponse = {
+				const nextTaskResponse = {
 					id: 13,
 					categoryId: category.id,
 					title: 'Check in for the train',
-					date: testData.nonTodayFuturePartitionDate,
+					date: testData.nonTodayFuturePartitionDate.toString(),
 					rank: generateKeyBetween(testData.nonTodayFuturePartition.thirdTask.rank, undefined)
+				};
+				const nextTask: DatedUntrashedOpenTaskResponse = {
+					...nextTaskResponse,
+					date: testData.nonTodayFuturePartitionDate,
+					done: false
 				};
 				const existingTodayTasks = [...datedUntrashedOpenTaskStore.datedUntrashedOpenTodayTasks];
 				const resolveFetch = mockPendingFetch(fetchMock);
@@ -1522,12 +1555,7 @@ describe('backlog page tests', () => {
 				expect(within(nonTodayColumn).getByLabelText('Loading more items')).toBeInTheDocument();
 				expect(within(getTaskColumn(page, 'Today')).queryByLabelText('Loading more items')).not.toBeInTheDocument();
 
-				resolveFetch(
-					getResponse({
-						tasks: [{ ...nextTask, date: nextTask.date.toString() }],
-						hasMore: false
-					})
-				);
+				resolveFetch(getResponse({ tasks: [nextTaskResponse], hasMore: false }));
 
 				await waitFor(() => expect(datedUntrashedOpenTaskStore.datedUntrashedOpenNonTodayTasks).toContainEqual(nextTask));
 				expect(datedUntrashedOpenTaskStore.nonTodayTasksHasMore).toBe(false);
@@ -1547,7 +1575,7 @@ describe('backlog page tests', () => {
 				const nonTodayLoadingSentinel = getLoadingSentinel(nonTodayColumn);
 
 				const todayTaskList = page.getByLabelText(`Tasks dated ${testData.todayPartitionLabel}`);
-				const event = new CustomEvent<DndEvent<DatedUntrashedTaskResponse>>('consider', {
+				const event = new CustomEvent<DndEvent<DatedUntrashedOpenTaskResponse>>('consider', {
 					detail: {
 						items: testData.todayPartition.tasks,
 						info: {
@@ -1596,7 +1624,8 @@ function createTestData() {
 		...details,
 		id: taskId++,
 		categoryId: category.id,
-		rank: noDateTaskRanks[index]
+		rank: noDateTaskRanks[index],
+		done: false
 	}));
 
 	const todayTaskDetails = [
@@ -1605,12 +1634,13 @@ function createTestData() {
 		{ title: 'Water the balcony plants', description: 'Check the herbs and tomatoes before watering.' }
 	] as const;
 	const todayTaskRanks = generateNKeysBetween(undefined, undefined, todayTaskDetails.length);
-	const todayTasks: DatedUntrashedTaskResponse[] = todayTaskDetails.map((details, index) => ({
+	const todayTasks: DatedUntrashedOpenTaskResponse[] = todayTaskDetails.map((details, index) => ({
 		...details,
 		id: taskId++,
 		categoryId: category.id,
 		date: todayDate,
-		rank: todayTaskRanks[index]
+		rank: todayTaskRanks[index],
+		done: false
 	}));
 
 	const nonTodayPastTaskDetails = [
@@ -1619,12 +1649,13 @@ function createTestData() {
 		{ title: 'Back up the laptop' }
 	] as const;
 	const nonTodayPastTaskRanks = generateNKeysBetween(undefined, undefined, nonTodayPastTaskDetails.length);
-	const nonTodayPastTasks: DatedUntrashedTaskResponse[] = nonTodayPastTaskDetails.map((details, index) => ({
+	const nonTodayPastTasks: DatedUntrashedOpenTaskResponse[] = nonTodayPastTaskDetails.map((details, index) => ({
 		...details,
 		id: taskId++,
 		categoryId: category.id,
 		date: nonTodayPastDate,
-		rank: nonTodayPastTaskRanks[index]
+		rank: nonTodayPastTaskRanks[index],
+		done: false
 	}));
 
 	const nonTodayFutureTaskDetails = [
@@ -1633,12 +1664,13 @@ function createTestData() {
 		{ title: 'Download the city map', description: 'Save an offline map before leaving home.' }
 	] as const;
 	const nonTodayFutureTaskRanks = generateNKeysBetween(undefined, undefined, nonTodayFutureTaskDetails.length);
-	const nonTodayFutureTasks: DatedUntrashedTaskResponse[] = nonTodayFutureTaskDetails.map((details, index) => ({
+	const nonTodayFutureTasks: DatedUntrashedOpenTaskResponse[] = nonTodayFutureTaskDetails.map((details, index) => ({
 		...details,
 		id: taskId++,
 		categoryId: category.id,
 		date: nonTodayFutureDate,
-		rank: nonTodayFutureTaskRanks[index]
+		rank: nonTodayFutureTaskRanks[index],
+		done: false
 	}));
 
 	const noDatePartition: TaskPartition<UndatedTaskResponse> = {
@@ -1647,19 +1679,19 @@ function createTestData() {
 		thirdTask: noDateTasks[2]!,
 		tasks: noDateTasks
 	};
-	const todayPartition: TaskPartition<DatedUntrashedTaskResponse> = {
+	const todayPartition: TaskPartition<DatedUntrashedOpenTaskResponse> = {
 		firstTask: todayTasks[0]!,
 		secondTask: todayTasks[1]!,
 		thirdTask: todayTasks[2]!,
 		tasks: todayTasks
 	};
-	const nonTodayPastPartition: TaskPartition<DatedUntrashedTaskResponse> = {
+	const nonTodayPastPartition: TaskPartition<DatedUntrashedOpenTaskResponse> = {
 		firstTask: nonTodayPastTasks[0]!,
 		secondTask: nonTodayPastTasks[1]!,
 		thirdTask: nonTodayPastTasks[2]!,
 		tasks: nonTodayPastTasks
 	};
-	const nonTodayFuturePartition: TaskPartition<DatedUntrashedTaskResponse> = {
+	const nonTodayFuturePartition: TaskPartition<DatedUntrashedOpenTaskResponse> = {
 		firstTask: nonTodayFutureTasks[0]!,
 		secondTask: nonTodayFutureTasks[1]!,
 		thirdTask: nonTodayFutureTasks[2]!,
@@ -1739,7 +1771,8 @@ function addTasksExceedingMaximumBatchSize(): string[] {
 		categoryId: category.id,
 		title: `Review project note ${index + 1}`,
 		description: `Review and organize project note ${index + 1}.`,
-		rank
+		rank,
+		done: false as const
 	}));
 	undatedTaskStore.addOrUpdateTasks(tasks);
 	return tasks.map((task) => task.title);
@@ -1757,10 +1790,10 @@ async function clickOnTask(page: RenderResult<typeof Page>, title: string): Prom
 
 async function dropTask(
 	taskList: HTMLElement,
-	newOrderedTasks: (UndatedTaskResponse | DatedUntrashedTaskResponse)[],
+	newOrderedTasks: (UndatedTaskResponse | DatedUntrashedOpenTaskResponse)[],
 	draggedTaskId: number
 ): Promise<void> {
-	const event = new CustomEvent<DndEvent<UndatedTaskResponse | DatedUntrashedTaskResponse>>('finalize', {
+	const event = new CustomEvent<DndEvent<UndatedTaskResponse | DatedUntrashedOpenTaskResponse>>('finalize', {
 		detail: {
 			items: newOrderedTasks,
 			info: { trigger: TRIGGERS.DROPPED_INTO_ZONE, id: String(draggedTaskId), source: SOURCES.POINTER }
@@ -1769,7 +1802,7 @@ async function dropTask(
 	await fireEvent(taskList, event);
 }
 
-function expectTaskOrder(taskList: HTMLElement, tasks: (UndatedTaskResponse | DatedUntrashedTaskResponse)[]): void {
+function expectTaskOrder(taskList: HTMLElement, tasks: (UndatedTaskResponse | DatedUntrashedOpenTaskResponse)[]): void {
 	const taskListContent = within(taskList);
 	const renderedTasks = taskListContent.getAllByRole('listitem');
 	const renderedTaskTitles = renderedTasks.map((task) => task.getAttribute('aria-label'));
