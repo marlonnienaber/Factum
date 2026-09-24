@@ -43,7 +43,7 @@
 	},
 	"dependencies": {
 		"@internationalized/date": "^3.12.3",
-		"bits-ui": "^2.18.1",
+		"bits-ui": "^2.19.3",
 		"fractional-indexing": "^4.0.0",
 		"svelte-sonner": "^1.1.1",
 		"zod": "^4.4.3"
