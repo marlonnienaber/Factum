@@ -703,6 +703,8 @@ func (store *TaskStore) GetDatedUntrashedDoneTasks(
 func (store *TaskStore) GetTrashedTasks(
 	userId int64,
 	categoryIds []int64,
+	startDate *time.Time,
+	endDate *time.Time,
 	trashedTimestamp *time.Time,
 	id *int64,
 ) (*transport.GetTrashedTasksResponse, error) {
@@ -721,17 +723,19 @@ func (store *TaskStore) GetTrashedTasks(
 		WHERE user_id = $1
 		  AND trashed_date IS NOT NULL
 		  AND (cardinality($2::BIGINT[]) = 0 OR category_id = ANY($2))
+		  AND ($3::DATE IS NULL OR date >= $3)
+		  AND ($4::DATE IS NULL OR date <= $4)
 		  AND (
-		      ($3::TIMESTAMPTZ IS NULL AND $4::BIGINT IS NULL)
+		      ($5::TIMESTAMPTZ IS NULL AND $6::BIGINT IS NULL)
 		      OR (
-		          $3::TIMESTAMPTZ IS NOT NULL
-		          AND $4::BIGINT IS NOT NULL
-		          AND (trashed_date, id) < ($3, $4)
+		          $5::TIMESTAMPTZ IS NOT NULL
+		          AND $6::BIGINT IS NOT NULL
+		          AND (trashed_date, id) < ($5, $6)
 		      )
 		  )
 		ORDER BY trashed_date DESC, id DESC
-		LIMIT $5
-	`, userId, pq.Array(categoryIds), trashedTimestamp, id, tasksBatchSize+1)
+		LIMIT $7
+	`, userId, pq.Array(categoryIds), startDate, endDate, trashedTimestamp, id, tasksBatchSize+1)
 	if err != nil {
 		return nil, wrapUnexpectedError(err)
 	}

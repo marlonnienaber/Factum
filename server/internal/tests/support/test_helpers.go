@@ -211,12 +211,11 @@ func PrepareTrashedTasks(
 	t *testing.T,
 	app *gin.Engine,
 	categoryId int64,
+	date shared.Date,
 	cookies ...*http.Cookie,
 ) []tasksTransport.TrashedTaskResponse {
 	t.Helper()
 
-	date, err := shared.ParseDate("2026-03-25")
-	require.NoError(t, err, "parsing test date failed")
 	trashedDate := time.Date(2026, time.March, 26, 10, 30, 0, 0, time.UTC)
 
 	trashTask := func(task tasksTransport.TrashedTaskResponse) tasksTransport.TrashedTaskResponse {

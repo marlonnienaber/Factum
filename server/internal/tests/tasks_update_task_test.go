@@ -621,7 +621,7 @@ func TestTasksUpdateTaskFromDoneWithDateTrashedToNoDateTrashed(t *testing.T) {
 	var category categoriesTransport.CategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
 
-	trashedTasks := support.PrepareTrashedTasks(t, app, category.Id, cookies...)
+	trashedTasks := support.PrepareTrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 	var task tasksTransport.TrashedTaskResponse
 	for _, candidate := range trashedTasks {
 		if candidate.Done && candidate.Date != nil {
@@ -661,7 +661,7 @@ func TestTasksUpdateTaskFromOpenWithDateTrashedToNoDateTrashed(t *testing.T) {
 	var category categoriesTransport.CategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
 
-	trashedTasks := support.PrepareTrashedTasks(t, app, category.Id, cookies...)
+	trashedTasks := support.PrepareTrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 	var task tasksTransport.TrashedTaskResponse
 	for _, candidate := range trashedTasks {
 		if !candidate.Done && candidate.Date != nil {
@@ -701,7 +701,7 @@ func TestTasksUpdateTaskFromOpenWithoutDateTrashedToDateTrashed(t *testing.T) {
 	var category categoriesTransport.CategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
 
-	trashedTasks := support.PrepareTrashedTasks(t, app, category.Id, cookies...)
+	trashedTasks := support.PrepareTrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 	var task tasksTransport.TrashedTaskResponse
 	for _, candidate := range trashedTasks {
 		if !candidate.Done && candidate.Date == nil {

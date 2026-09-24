@@ -322,7 +322,7 @@ func TestTasksGetDatedUntrashedDoneTasksWithoutCursor(t *testing.T) {
 	expectedTasks := append(append(pastTasks, todayTasks...), futureTasks...)
 	support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, pastDate, cookies...)
 	support.PrepareOpenUndatedUntrashedTasks(t, app, category.Id, cookies...)
-	support.PrepareTrashedTasks(t, app, category.Id, cookies...)
+	support.PrepareTrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 
 	resp := support.MakeJsonRequest(t, app, http.MethodGet, "/api/tasks/dated-untrashed-done", nil, cookies...)
 	require.Equal(t, http.StatusOK, resp.Code)
@@ -357,7 +357,7 @@ func TestTasksGetDatedUntrashedDoneTasksWithCursor(t *testing.T) {
 	expectedTasks := append(append(pastTasks[1:], todayTasks...), futureTasks...)
 	support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, pastDate, cookies...)
 	support.PrepareOpenUndatedUntrashedTasks(t, app, category.Id, cookies...)
-	support.PrepareTrashedTasks(t, app, category.Id, cookies...)
+	support.PrepareTrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 
 	resp := support.MakeJsonRequest(
 		t,

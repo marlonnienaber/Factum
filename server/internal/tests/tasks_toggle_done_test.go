@@ -154,7 +154,7 @@ func TestTasksToggleDoneForUndatedOpenTrashedTask(t *testing.T) {
 	require.Equal(t, http.StatusCreated, categoryResp.Code)
 	var category categoriesTransport.CreateCategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
-	tasks := support.PrepareTrashedTasks(t, app, category.Id, cookies...)
+	tasks := support.PrepareTrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 	var task tasksTransport.TrashedTaskResponse
 	for _, candidate := range tasks {
 		if !candidate.Done && candidate.Date == nil {
@@ -185,7 +185,7 @@ func TestTasksToggleDoneForDatedDoneTrashedTask(t *testing.T) {
 	require.Equal(t, http.StatusCreated, categoryResp.Code)
 	var category categoriesTransport.CreateCategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
-	tasks := support.PrepareTrashedTasks(t, app, category.Id, cookies...)
+	tasks := support.PrepareTrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 	var task tasksTransport.TrashedTaskResponse
 	for _, candidate := range tasks {
 		if candidate.Done && candidate.Date != nil {
@@ -216,7 +216,7 @@ func TestTasksToggleDoneForDatedOpenTrashedTask(t *testing.T) {
 	require.Equal(t, http.StatusCreated, categoryResp.Code)
 	var category categoriesTransport.CreateCategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
-	tasks := support.PrepareTrashedTasks(t, app, category.Id, cookies...)
+	tasks := support.PrepareTrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 	var task tasksTransport.TrashedTaskResponse
 	for _, candidate := range tasks {
 		if !candidate.Done && candidate.Date != nil {

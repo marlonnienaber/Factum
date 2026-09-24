@@ -220,7 +220,7 @@ func TestTasksDragAndDropTrashedTask(t *testing.T) {
 	require.Equal(t, http.StatusCreated, categoryResp.Code)
 	var category categoriesTransport.CreateCategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
-	tasks := support.PrepareTrashedTasks(t, app, category.Id, cookies...)
+	tasks := support.PrepareTrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 
 	payload, err := json.Marshal(tasksTransport.TaskDragAndDropRequest{Date: tasks[1].Date})
 	require.NoError(t, err, "serializing request failed")

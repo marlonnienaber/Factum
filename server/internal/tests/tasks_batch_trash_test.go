@@ -167,7 +167,7 @@ func TestTasksBatchTrashOneTaskAlreadyTrashed(t *testing.T) {
 	var category categoriesTransport.CategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
 
-	trashedTasks := support.PrepareTrashedTasks(t, app, category.Id, cookies...)
+	trashedTasks := support.PrepareTrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 	untrashedTasks := support.PrepareOpenUndatedUntrashedTasks(t, app, category.Id, cookies...)
 
 	payload, err := json.Marshal(tasksTransport.BatchTrashTasksRequest{

@@ -190,7 +190,7 @@ func TestTasksBatchCompleteTasksFromAllValidPartitions(t *testing.T) {
 
 	undatedUntrashedTasks := support.PrepareOpenUndatedUntrashedTasks(t, app, category.Id, cookies...)
 	datedUntrashedTasks := support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
-	trashedTasks := support.PrepareTrashedTasks(t, app, category.Id, cookies...)
+	trashedTasks := support.PrepareTrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 
 	var undatedTrashedTask tasksTransport.TrashedTaskResponse
 	var datedTrashedTask tasksTransport.TrashedTaskResponse

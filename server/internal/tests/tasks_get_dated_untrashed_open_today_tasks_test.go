@@ -78,7 +78,7 @@ func TestTasksGetDatedUntrashedOpenTodayTasksWithoutCursor(t *testing.T) {
 	support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, nonToday, cookies...)
 	support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, today, cookies...)
 	support.PrepareOpenUndatedUntrashedTasks(t, app, category.Id, cookies...)
-	support.PrepareTrashedTasks(t, app, category.Id, cookies...)
+	support.PrepareTrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 
 	resp := support.MakeJsonRequest(t, app, http.MethodGet, "/api/tasks/dated-untrashed-open-today", nil, cookies...)
 	require.Equal(t, http.StatusOK, resp.Code)
