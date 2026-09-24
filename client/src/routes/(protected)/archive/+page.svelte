@@ -1,6 +1,7 @@
 <script lang="ts">
 	import InfiniteScrollContainer from '$lib/components/shared/infinite-scroll-container.svelte';
 	import CategoryFilter from '$lib/components/archive/category-filter.svelte';
+	import TimeFilter from '$lib/components/archive/time-filter.svelte';
 	import Popover from '$lib/components/shared/popover.svelte';
 	import TaskDialog from '$lib/components/taskCreation/task-dialog.svelte';
 	import Task from '$lib/components/taskDisplay/task.svelte';
@@ -9,7 +10,7 @@
 	import { datedUntrashedDoneTaskStore } from '$lib/stores/dated-untrashed-done-task-store.svelte';
 	import { trashedTaskStore } from '$lib/stores/trashed-task-store.svelte';
 	import { getDateLabel } from '$lib/utils/date';
-	import { parseDate } from '@internationalized/date';
+	import { parseDate, type DateValue } from '@internationalized/date';
 	import type { DatedUntrashedDoneTaskResponse } from '$lib/types/responses/dated-untrashed-done-task-response';
 	import type { TrashedTaskResponse } from '$lib/types/responses/trashed-task-response';
 	import { Info, RotateCcw, SquarePen, Trash2 } from '@lucide/svelte';
@@ -17,6 +18,8 @@
 	let taskDialogOpen = $state(false);
 	let taskDialogTask = $state<DatedUntrashedDoneTaskResponse | TrashedTaskResponse>();
 	let unselectedCategoryIds = $state<number[]>([]);
+	let startDate = $state<DateValue>();
+	let endDate = $state<DateValue>();
 	const dateKeyToDatedUntrashedDoneTasksRecord = $derived(createDateKeyToDatedUntrashedDoneTasksRecord());
 
 	function createDateKeyToDatedUntrashedDoneTasksRecord(): Record<string, DatedUntrashedDoneTaskResponse[]> {
@@ -31,7 +34,7 @@
 		if (lastLoadedTask !== undefined) {
 			const cursor = { date: lastLoadedTask.date, rank: lastLoadedTask.rank };
 			const selectedCategoryIds = getSelectedCategoryIds();
-			return taskService.fetchDatedUntrashedDoneTasks(cursor, selectedCategoryIds);
+			return taskService.fetchDatedUntrashedDoneTasks(cursor, selectedCategoryIds, startDate, endDate);
 		}
 	}
 
@@ -40,7 +43,7 @@
 		if (lastLoadedTask !== undefined) {
 			const cursor = { trashedDate: lastLoadedTask.trashedDate, id: lastLoadedTask.id };
 			const selectedCategoryIds = getSelectedCategoryIds();
-			return taskService.fetchTrashedTasks(cursor, selectedCategoryIds);
+			return taskService.fetchTrashedTasks(cursor, selectedCategoryIds, startDate, endDate);
 		}
 	}
 
@@ -51,8 +54,21 @@
 			datedUntrashedDoneTaskStore.reset();
 			trashedTaskStore.reset();
 		} else {
-			void taskService.fetchDatedUntrashedDoneTasks(undefined, selectedCategoryIds);
-			void taskService.fetchTrashedTasks(undefined, selectedCategoryIds);
+			void taskService.fetchDatedUntrashedDoneTasks(undefined, selectedCategoryIds, startDate, endDate);
+			void taskService.fetchTrashedTasks(undefined, selectedCategoryIds, startDate, endDate);
+		}
+	}
+
+	function handleTimeSelectionChange(nextStartDate: DateValue | undefined, nextEndDate: DateValue | undefined): void {
+		startDate = nextStartDate;
+		endDate = nextEndDate;
+		const selectedCategoryIds = getSelectedCategoryIds();
+		if (selectedCategoryIds.length === 0) {
+			datedUntrashedDoneTaskStore.reset();
+			trashedTaskStore.reset();
+		} else {
+			void taskService.fetchDatedUntrashedDoneTasks(undefined, selectedCategoryIds, startDate, endDate);
+			void taskService.fetchTrashedTasks(undefined, selectedCategoryIds, startDate, endDate);
 		}
 	}
 
@@ -102,17 +118,20 @@
 	<div class="left-column-container">
 		<div class="controls-section" aria-hidden="true"></div>
 		<section class="category-selection-section">
-			<h1>Category Selection</h1>
+			<h1>Category Filter</h1>
 			<div class="category-filter-container">
 				<CategoryFilter {unselectedCategoryIds} onSelectionChange={handleCategorySelectionChange} />
 			</div>
 		</section>
 		<section class="time-scope-section">
-			<h1>Time Scope</h1>
+			<h1>Date Filter</h1>
+			<div class="time-scope-container">
+				<TimeFilter onSelectionChange={handleTimeSelectionChange} />
+			</div>
 		</section>
 	</div>
 	<section class="completed-tasks-section">
-		<h1>Completed Tasks</h1>
+		<h1>Completed</h1>
 		<InfiniteScrollContainer
 			hasMore={datedUntrashedDoneTaskStore.hasMore}
 			loading={taskService.datedUntrashedDoneTasksLoading}
@@ -143,10 +162,10 @@
 	</section>
 	<section class="trash-section">
 		<div class="trash-heading">
-			<h1>Trash</h1>
+			<h1>Trashed</h1>
 			<Popover openOnHover side="right" triggerAriaLabel="About automatic task deletion">
 				{#snippet trigger()}<Info size={17} aria-hidden="true" />{/snippet}
-				<span class="trash-information">Trashed tasks will be automatically deleted after 48 hours.</span>
+				<span class="trash-information">Trashed tasks are automatically deleted every day at midnight German time.</span>
 			</Popover>
 		</div>
 		<InfiniteScrollContainer
@@ -163,6 +182,7 @@
 						isShadowItem={false}
 						selectionEnabled={false}
 						selected={false}
+						displayDate
 						onSelectedChange={() => {}}
 					/>
 				{/each}
@@ -179,11 +199,12 @@
 		min-height: 0;
 		width: 100%;
 		display: grid;
-		grid-template-columns: repeat(3, minmax(0, 1fr));
+		grid-template-columns: repeat(3, minmax(min-content, 1fr));
 		box-sizing: border-box;
 		padding: 1rem;
 		gap: 1rem;
-		overflow: hidden;
+		overflow-x: auto;
+		overflow-y: hidden;
 
 		h1 {
 			font-size: 1.25rem;
@@ -229,13 +250,22 @@
 			}
 
 			.time-scope-section {
-				display: flex;
-				flex-direction: column;
+				display: grid;
+				grid-template-rows: auto minmax(0, 1fr);
 				min-height: 0;
 				box-sizing: border-box;
 				padding: 0.75rem;
+				row-gap: 0.75rem;
 				border: 1px solid var(--border);
 				border-radius: 0.75rem;
+
+				.time-scope-container {
+					display: flex;
+					align-items: safe center;
+					justify-content: center;
+					min-height: 0;
+					overflow: auto;
+				}
 			}
 		}
 

@@ -10,8 +10,8 @@
 	import type { DatedUntrashedOpenTaskResponse } from '$lib/types/responses/dated-untrashed-open-task-response';
 	import type { UndatedTaskResponse } from '$lib/types/responses/undated-task-response';
 	import type { TrashedTaskResponse } from '$lib/types/responses/trashed-task-response';
-	import type { ZonedDateTime } from '@internationalized/date';
-	import { Ellipsis, Trash2, type LucideIcon } from '@lucide/svelte';
+	import type { DateValue } from '@internationalized/date';
+	import { Ellipsis, type LucideIcon } from '@lucide/svelte';
 
 	type TaskAction = {
 		label: string;
@@ -27,13 +27,14 @@
 		isShadowItem: boolean;
 		selectionEnabled: boolean;
 		selected: boolean;
+		displayDate?: boolean;
 		onSelectedChange: (taskId: number, selected: boolean) => void;
 	};
 
-	const { task, actions, isShadowItem, selectionEnabled, selected, onSelectedChange }: Props = $props();
+	const { task, actions, isShadowItem, selectionEnabled, selected, displayDate = false, onSelectedChange }: Props = $props();
 	let menuOpen = $state(false);
 	const category = $derived(categoryStore.categories.find((category) => category.id === task.categoryId));
-	const trashedDateLabel = $derived('trashedDate' in task ? formatTrashedDate(task.trashedDate) : undefined);
+	const dateLabel = $derived(displayDate && 'date' in task && task.date !== undefined ? formatDate(task.date) : undefined);
 
 	function handleAction(action: TaskAction): void {
 		menuOpen = false;
@@ -48,12 +49,8 @@
 		if (selectionEnabled) onSelectedChange(task.id, !selected);
 	}
 
-	function formatTrashedDate(trashedDate: ZonedDateTime): string {
-		const day = String(trashedDate.day).padStart(2, '0');
-		const month = String(trashedDate.month).padStart(2, '0');
-		const hour = String(trashedDate.hour).padStart(2, '0');
-		const minute = String(trashedDate.minute).padStart(2, '0');
-		return `${day}.${month}.${trashedDate.year}, ${hour}:${minute}`;
+	function formatDate(date: DateValue): string {
+		return `${date.day.toString().padStart(2, '0')}.${date.month.toString().padStart(2, '0')}.${date.year}`;
 	}
 </script>
 
@@ -94,16 +91,13 @@
 	{#if task.description}
 		<span class="description">{task.description}</span>
 	{/if}
-	{#if category || trashedDateLabel}
+	{#if category || dateLabel}
 		<div class="metadata">
 			{#if category}
 				<Category {category} />
 			{/if}
-			{#if trashedDateLabel}
-				<span class="trashed-date" aria-label={`Trashed ${trashedDateLabel}`}>
-					<Trash2 size={12} aria-hidden="true" />
-					{trashedDateLabel}
-				</span>
+			{#if dateLabel}
+				<span class="date">{dateLabel}</span>
 			{/if}
 		</div>
 	{/if}
@@ -183,10 +177,7 @@
 			align-items: end;
 			gap: 0.5rem;
 
-			.trashed-date {
-				display: flex;
-				align-items: center;
-				gap: 0.25rem;
+			.date {
 				color: var(--text-subtle);
 				font-size: 0.75rem;
 			}

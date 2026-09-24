@@ -86,6 +86,7 @@
 		max-height: 100%;
 		min-height: 0;
 		overflow: hidden;
+		margin-bottom: 1rem;
 
 		.separator {
 			width: 1px;

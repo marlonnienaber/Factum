@@ -36,7 +36,7 @@ import { RestoreTaskResponseSchema, type RestoreTaskResponse } from '$lib/types/
 import { TaskDragAndDropResponseSchema, type TaskDragAndDropResponse } from '$lib/types/responses/task-drag-and-drop-response';
 import { ToggleTaskDoneResponseSchema, type ToggleTaskDoneResponse } from '$lib/types/responses/toggle-task-done-response';
 import { UpdateTaskResponseSchema, type UpdateTaskResponse } from '$lib/types/responses/update-task-response';
-import { getLocalTimeZone, now, type ZonedDateTime } from '@internationalized/date';
+import { getLocalTimeZone, now, type DateValue, type ZonedDateTime } from '@internationalized/date';
 import { SvelteURLSearchParams } from 'svelte/reactivity';
 import { toast } from 'svelte-sonner';
 
@@ -55,16 +55,23 @@ const taskMutationBlocked = $derived(
 		trashedTasksLoading
 );
 
-async function fetchDatedUntrashedDoneTasks(cursor?: DatedUntrashedTasksCursor, categoryIds: number[] = []): Promise<void> {
+async function fetchDatedUntrashedDoneTasks(
+	cursor?: DatedUntrashedTasksCursor,
+	categoryIds: number[] = [],
+	startDate?: DateValue,
+	endDate?: DateValue
+): Promise<void> {
 	const cursorUsedIncorrectly = cursor !== undefined && !datedUntrashedDoneTaskStore.hasMore;
 	if (datedUntrashedDoneTasksLoading || taskMutationLoading || cursorUsedIncorrectly) return;
 	datedUntrashedDoneTasksLoading = true;
 	try {
 		const queryParameters = new SvelteURLSearchParams();
 		for (const categoryId of categoryIds) queryParameters.append('categoryId', String(categoryId));
+		if (startDate !== undefined) queryParameters.set('startDate', startDate.toString());
+		if (endDate !== undefined) queryParameters.set('endDate', endDate.toString());
 		if (cursor) {
-			queryParameters.set('date', cursor.date.toString());
-			queryParameters.set('rank', cursor.rank);
+			queryParameters.set('cursorDate', cursor.date.toString());
+			queryParameters.set('cursorRank', cursor.rank);
 		}
 		const encodedQueryParameters = queryParameters.toString();
 		const url = `/api/tasks/dated-untrashed-done${encodedQueryParameters ? `?${encodedQueryParameters}` : ''}`;
@@ -136,13 +143,20 @@ async function fetchDatedUntrashedOpenNonTodayTasks(cursor?: DatedUntrashedTasks
 	}
 }
 
-async function fetchTrashedTasks(cursor?: TrashedTasksCursor, categoryIds: number[] = []): Promise<void> {
+async function fetchTrashedTasks(
+	cursor?: TrashedTasksCursor,
+	categoryIds: number[] = [],
+	startDate?: DateValue,
+	endDate?: DateValue
+): Promise<void> {
 	const cursorUsedIncorrectly = cursor !== undefined && !trashedTaskStore.hasMore;
 	if (trashedTasksLoading || taskMutationLoading || cursorUsedIncorrectly) return;
 	trashedTasksLoading = true;
 	try {
 		const queryParameters = new SvelteURLSearchParams();
 		for (const categoryId of categoryIds) queryParameters.append('categoryId', String(categoryId));
+		if (startDate !== undefined) queryParameters.set('startDate', startDate.toString());
+		if (endDate !== undefined) queryParameters.set('endDate', endDate.toString());
 		if (cursor) {
 			queryParameters.set('trashedDate', cursor.trashedDate.toAbsoluteString());
 			queryParameters.set('id', String(cursor.id));
