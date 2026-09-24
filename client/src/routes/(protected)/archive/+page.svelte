@@ -1,9 +1,11 @@
 <script lang="ts">
 	import InfiniteScrollContainer from '$lib/components/shared/infinite-scroll-container.svelte';
+	import CategoryFilter from '$lib/components/archive/category-filter.svelte';
 	import Popover from '$lib/components/shared/popover.svelte';
 	import TaskDialog from '$lib/components/taskCreation/task-dialog.svelte';
 	import Task from '$lib/components/taskDisplay/task.svelte';
 	import { taskService } from '$lib/services/task-service.svelte';
+	import { categoryStore } from '$lib/stores/category-store.svelte';
 	import { datedUntrashedDoneTaskStore } from '$lib/stores/dated-untrashed-done-task-store.svelte';
 	import { trashedTaskStore } from '$lib/stores/trashed-task-store.svelte';
 	import { getDateLabel } from '$lib/utils/date';
@@ -14,12 +16,12 @@
 
 	let taskDialogOpen = $state(false);
 	let taskDialogTask = $state<DatedUntrashedDoneTaskResponse | TrashedTaskResponse>();
+	let unselectedCategoryIds = $state<number[]>([]);
 	const dateKeyToDatedUntrashedDoneTasksRecord = $derived(createDateKeyToDatedUntrashedDoneTasksRecord());
 
 	function createDateKeyToDatedUntrashedDoneTasksRecord(): Record<string, DatedUntrashedDoneTaskResponse[]> {
-		const dateKeyToDatedUntrashedDoneTasksMap = Map.groupBy(
-			datedUntrashedDoneTaskStore.datedUntrashedDoneTasks,
-			(task) => task.date.toString()
+		const dateKeyToDatedUntrashedDoneTasksMap = Map.groupBy(datedUntrashedDoneTaskStore.datedUntrashedDoneTasks, (task) =>
+			task.date.toString()
 		);
 		return Object.fromEntries(dateKeyToDatedUntrashedDoneTasksMap);
 	}
@@ -27,14 +29,30 @@
 	function loadMoreDatedUntrashedDoneTasks(): Promise<void> | undefined {
 		const lastLoadedTask = datedUntrashedDoneTaskStore.datedUntrashedDoneTasks.at(-1);
 		if (lastLoadedTask !== undefined) {
-			return taskService.fetchDatedUntrashedDoneTasks({ date: lastLoadedTask.date, rank: lastLoadedTask.rank });
+			const cursor = { date: lastLoadedTask.date, rank: lastLoadedTask.rank };
+			const selectedCategoryIds = getSelectedCategoryIds();
+			return taskService.fetchDatedUntrashedDoneTasks(cursor, selectedCategoryIds);
 		}
 	}
 
 	function loadMoreTrashedTasks(): Promise<void> | undefined {
 		const lastLoadedTask = trashedTaskStore.trashedTasks.at(-1);
 		if (lastLoadedTask !== undefined) {
-			return taskService.fetchTrashedTasks({ trashedDate: lastLoadedTask.trashedDate, id: lastLoadedTask.id });
+			const cursor = { trashedDate: lastLoadedTask.trashedDate, id: lastLoadedTask.id };
+			const selectedCategoryIds = getSelectedCategoryIds();
+			return taskService.fetchTrashedTasks(cursor, selectedCategoryIds);
+		}
+	}
+
+	function handleCategorySelectionChange(nextUnselectedCategoryIds: number[]): void {
+		unselectedCategoryIds = nextUnselectedCategoryIds;
+		const selectedCategoryIds = getSelectedCategoryIds();
+		if (selectedCategoryIds.length === 0) {
+			datedUntrashedDoneTaskStore.reset();
+			trashedTaskStore.reset();
+		} else {
+			void taskService.fetchDatedUntrashedDoneTasks(undefined, selectedCategoryIds);
+			void taskService.fetchTrashedTasks(undefined, selectedCategoryIds);
 		}
 	}
 
@@ -68,6 +86,12 @@
 			}
 		];
 	}
+
+	function getSelectedCategoryIds(): number[] {
+		return categoryStore.categories
+			.filter((category) => !unselectedCategoryIds.includes(category.id))
+			.map((category) => category.id);
+	}
 </script>
 
 <svelte:head>
@@ -79,12 +103,12 @@
 		<div class="controls-section" aria-hidden="true"></div>
 		<section class="category-selection-section">
 			<h1>Category Selection</h1>
+			<div class="category-filter-container">
+				<CategoryFilter {unselectedCategoryIds} onSelectionChange={handleCategorySelectionChange} />
+			</div>
 		</section>
 		<section class="time-scope-section">
 			<h1>Time Scope</h1>
-		</section>
-		<section class="activity-section">
-			<h1>Activity</h1>
 		</section>
 	</div>
 	<section class="completed-tasks-section">
@@ -175,7 +199,7 @@
 
 		.left-column-container {
 			display: grid;
-			grid-template-rows: 3.75rem repeat(3, minmax(0, 1fr));
+			grid-template-rows: 3.75rem repeat(2, minmax(0, 1fr));
 			min-height: 0;
 			gap: 1rem;
 
@@ -187,26 +211,24 @@
 			}
 
 			.category-selection-section {
-				display: flex;
-				flex-direction: column;
+				display: grid;
+				grid-template-rows: auto minmax(0, 1fr);
 				min-height: 0;
 				box-sizing: border-box;
 				padding: 0.75rem;
+				row-gap: 0.75rem;
 				border: 1px solid var(--border);
 				border-radius: 0.75rem;
+
+				.category-filter-container {
+					display: flex;
+					align-items: safe center;
+					justify-content: center;
+					min-height: 0;
+				}
 			}
 
 			.time-scope-section {
-				display: flex;
-				flex-direction: column;
-				min-height: 0;
-				box-sizing: border-box;
-				padding: 0.75rem;
-				border: 1px solid var(--border);
-				border-radius: 0.75rem;
-			}
-
-			.activity-section {
 				display: flex;
 				flex-direction: column;
 				min-height: 0;

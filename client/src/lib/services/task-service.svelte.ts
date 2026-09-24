@@ -73,6 +73,9 @@ async function fetchDatedUntrashedDoneTasks(cursor?: DatedUntrashedTasksCursor, 
 			GetDatedUntrashedDoneTasksResponseSchema
 		);
 		if (networkCall.status === 'success') {
+			if (cursor === undefined) {
+				datedUntrashedDoneTaskStore.reset();
+			}
 			datedUntrashedDoneTaskStore.addPage(networkCall.result.tasks, networkCall.result.hasMore);
 		}
 	} finally {
@@ -150,6 +153,9 @@ async function fetchTrashedTasks(cursor?: TrashedTasksCursor, categoryIds: numbe
 			GetTrashedTasksResponseSchema
 		);
 		if (networkCall.status === 'success') {
+			if (cursor === undefined) {
+				trashedTaskStore.reset();
+			}
 			trashedTaskStore.addPage(networkCall.result.tasks, networkCall.result.hasMore);
 		}
 	} finally {
@@ -187,7 +193,11 @@ async function updateTask(request: UpdateTaskRequest): Promise<void> {
 	if (taskMutationBlocked) return;
 	taskMutationLoading = true;
 	try {
-		const networkCall: NetworkCall<UpdateTaskResponse> = await jsonPutWithBodyWithResponse('/api/tasks', request, UpdateTaskResponseSchema);
+		const networkCall: NetworkCall<UpdateTaskResponse> = await jsonPutWithBodyWithResponse(
+			'/api/tasks',
+			request,
+			UpdateTaskResponseSchema
+		);
 		if (networkCall.status !== 'success') return;
 
 		const updatedTask = networkCall.result;
