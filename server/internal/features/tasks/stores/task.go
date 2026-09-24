@@ -654,8 +654,10 @@ func (store *TaskStore) GetDatedUntrashedOpenNonTodayTasks(
 func (store *TaskStore) GetDatedUntrashedDoneTasks(
 	userId int64,
 	categoryIds []int64,
-	date *time.Time,
-	rank *string,
+	startDate *time.Time,
+	endDate *time.Time,
+	cursorDate *time.Time,
+	cursorRank *string,
 ) (*transport.GetDatedUntrashedTasksResponse, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("retrieving dated untrashed done tasks failed")
 
@@ -673,17 +675,19 @@ func (store *TaskStore) GetDatedUntrashedDoneTasks(
 		  AND trashed_date IS NULL
 		  AND done = TRUE
 		  AND (cardinality($2::BIGINT[]) = 0 OR category_id = ANY($2))
+		  AND ($3::DATE IS NULL OR date >= $3)
+		  AND ($4::DATE IS NULL OR date <= $4)
 		  AND (
-		      ($3::DATE IS NULL AND $4::TEXT IS NULL)
+		      ($5::DATE IS NULL AND $6::TEXT IS NULL)
 		      OR (
-		          $3::DATE IS NOT NULL
-		          AND $4::TEXT IS NOT NULL
-		          AND (date, rank) > ($3, $4)
+		          $5::DATE IS NOT NULL
+		          AND $6::TEXT IS NOT NULL
+		          AND (date, rank) > ($5, $6)
 		      )
 		  )
 		ORDER BY date ASC, rank ASC
-		LIMIT $5
-	`, userId, pq.Array(categoryIds), date, rank, tasksBatchSize+1)
+		LIMIT $7
+	`, userId, pq.Array(categoryIds), startDate, endDate, cursorDate, cursorRank, tasksBatchSize+1)
 	if err != nil {
 		return nil, wrapUnexpectedError(err)
 	}

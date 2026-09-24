@@ -31,7 +31,7 @@ func TestTasksGetDatedUntrashedDoneTasksUnauthenticated(t *testing.T) {
 	)
 }
 
-func TestTasksGetDatedUntrashedDoneTasksInvalidDateProvided(t *testing.T) {
+func TestTasksGetDatedUntrashedDoneTasksInvalidCursorDateProvided(t *testing.T) {
 	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
 		Email:    support.TestUser1Email,
@@ -45,8 +45,8 @@ func TestTasksGetDatedUntrashedDoneTasksInvalidDateProvided(t *testing.T) {
 		app,
 		http.MethodGet,
 		"/api/tasks/dated-untrashed-done?"+url.Values{
-			"date": {"invalid"},
-			"rank": {"a0"},
+			"cursorDate": {"invalid"},
+			"cursorRank": {"a0"},
 		}.Encode(),
 		nil,
 		cookies...,
@@ -61,7 +61,7 @@ func TestTasksGetDatedUntrashedDoneTasksInvalidDateProvided(t *testing.T) {
 	)
 }
 
-func TestTasksGetDatedUntrashedDoneTasksInvalidRankProvided(t *testing.T) {
+func TestTasksGetDatedUntrashedDoneTasksInvalidCursorRankProvided(t *testing.T) {
 	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
 		Email:    support.TestUser1Email,
@@ -75,8 +75,8 @@ func TestTasksGetDatedUntrashedDoneTasksInvalidRankProvided(t *testing.T) {
 		app,
 		http.MethodGet,
 		"/api/tasks/dated-untrashed-done?"+url.Values{
-			"date": {"2026-03-25"},
-			"rank": {"!"},
+			"cursorDate": {"2026-03-25"},
+			"cursorRank": {"!"},
 		}.Encode(),
 		nil,
 		cookies...,
@@ -88,6 +88,90 @@ func TestTasksGetDatedUntrashedDoneTasksInvalidRankProvided(t *testing.T) {
 		http.StatusBadRequest,
 		"invalid_query_parameter",
 		"URL contains an invalid query parameter",
+	)
+}
+
+func TestTasksGetDatedUntrashedDoneTasksInvalidStartDateProvided(t *testing.T) {
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
+	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
+	})
+	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	cookies := signUpResp.Result().Cookies()
+
+	resp := support.MakeJsonRequest(
+		t,
+		app,
+		http.MethodGet,
+		"/api/tasks/dated-untrashed-done?"+url.Values{"startDate": {"invalid"}}.Encode(),
+		nil,
+		cookies...,
+	)
+
+	support.AssertErrorResponse(
+		t,
+		resp,
+		http.StatusBadRequest,
+		"invalid_query_parameter",
+		"URL contains an invalid query parameter",
+	)
+}
+
+func TestTasksGetDatedUntrashedDoneTasksInvalidEndDateProvided(t *testing.T) {
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
+	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
+	})
+	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	cookies := signUpResp.Result().Cookies()
+
+	resp := support.MakeJsonRequest(
+		t,
+		app,
+		http.MethodGet,
+		"/api/tasks/dated-untrashed-done?"+url.Values{"endDate": {"invalid"}}.Encode(),
+		nil,
+		cookies...,
+	)
+
+	support.AssertErrorResponse(
+		t,
+		resp,
+		http.StatusBadRequest,
+		"invalid_query_parameter",
+		"URL contains an invalid query parameter",
+	)
+}
+
+func TestTasksGetDatedUntrashedDoneTasksStartDateAfterEndDate(t *testing.T) {
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
+	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
+	})
+	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	cookies := signUpResp.Result().Cookies()
+
+	resp := support.MakeJsonRequest(
+		t,
+		app,
+		http.MethodGet,
+		"/api/tasks/dated-untrashed-done?"+url.Values{
+			"startDate": {"2026-03-26"},
+			"endDate":   {"2026-03-25"},
+		}.Encode(),
+		nil,
+		cookies...,
+	)
+
+	support.AssertErrorResponse(
+		t,
+		resp,
+		http.StatusBadRequest,
+		"invalid_query_parameter_combination",
+		"URL contains an invalid query parameter combination.",
 	)
 }
 
@@ -161,7 +245,7 @@ func TestTasksGetDatedUntrashedDoneTasksTooManyCategoryIdsProvided(t *testing.T)
 	support.AssertErrorResponse(t, resp, http.StatusBadRequest, "invalid_query_parameter", "URL contains an invalid query parameter")
 }
 
-func TestTasksGetDatedUntrashedDoneTasksDateWithoutRank(t *testing.T) {
+func TestTasksGetDatedUntrashedDoneTasksCursorDateWithoutCursorRank(t *testing.T) {
 	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
 		Email:    support.TestUser1Email,
@@ -174,7 +258,7 @@ func TestTasksGetDatedUntrashedDoneTasksDateWithoutRank(t *testing.T) {
 		t,
 		app,
 		http.MethodGet,
-		"/api/tasks/dated-untrashed-done?"+url.Values{"date": {"2026-03-25"}}.Encode(),
+		"/api/tasks/dated-untrashed-done?"+url.Values{"cursorDate": {"2026-03-25"}}.Encode(),
 		nil,
 		cookies...,
 	)
@@ -188,7 +272,7 @@ func TestTasksGetDatedUntrashedDoneTasksDateWithoutRank(t *testing.T) {
 	)
 }
 
-func TestTasksGetDatedUntrashedDoneTasksRankWithoutDate(t *testing.T) {
+func TestTasksGetDatedUntrashedDoneTasksCursorRankWithoutCursorDate(t *testing.T) {
 	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
 		Email:    support.TestUser1Email,
@@ -201,7 +285,7 @@ func TestTasksGetDatedUntrashedDoneTasksRankWithoutDate(t *testing.T) {
 		t,
 		app,
 		http.MethodGet,
-		"/api/tasks/dated-untrashed-done?"+url.Values{"rank": {"a0"}}.Encode(),
+		"/api/tasks/dated-untrashed-done?"+url.Values{"cursorRank": {"a0"}}.Encode(),
 		nil,
 		cookies...,
 	)
@@ -280,8 +364,8 @@ func TestTasksGetDatedUntrashedDoneTasksWithCursor(t *testing.T) {
 		app,
 		http.MethodGet,
 		"/api/tasks/dated-untrashed-done?"+url.Values{
-			"date": {cursor.Date.Format(time.DateOnly)},
-			"rank": {cursor.Rank},
+			"cursorDate": {cursor.Date.Format(time.DateOnly)},
+			"cursorRank": {cursor.Rank},
 		}.Encode(),
 		nil,
 		cookies...,
@@ -342,6 +426,122 @@ func TestTasksGetDatedUntrashedDoneTasksFiltersByCategoryIds(t *testing.T) {
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
 
 	assert.Equal(t, expectedTasks, respBody.Tasks, "unexpected tasks")
+	assert.False(t, respBody.HasMore, "unexpected additional page")
+}
+
+func TestTasksGetDatedUntrashedDoneTasksFiltersByStartDate(t *testing.T) {
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
+	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
+	})
+	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	cookies := signUpResp.Result().Cookies()
+
+	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
+	require.Equal(t, http.StatusCreated, categoryResp.Code)
+	var category categoriesTransport.CreateCategoryResponse
+	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
+
+	today := shared.NewDate(time.Now())
+	pastDate := shared.NewDate(today.AddDate(0, 0, -1))
+	futureDate := shared.NewDate(today.AddDate(0, 0, 1))
+	support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, pastDate, cookies...)
+	todayTasks := support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, today, cookies...)
+	futureTasks := support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, futureDate, cookies...)
+	expectedTasks := append(todayTasks, futureTasks...)
+
+	resp := support.MakeJsonRequest(
+		t,
+		app,
+		http.MethodGet,
+		"/api/tasks/dated-untrashed-done?"+url.Values{"startDate": {today.Format(time.DateOnly)}}.Encode(),
+		nil,
+		cookies...,
+	)
+	require.Equal(t, http.StatusOK, resp.Code)
+	var respBody tasksTransport.GetDatedUntrashedTasksResponse
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
+
+	assert.Equal(t, expectedTasks, respBody.Tasks, "unexpected tasks")
+	assert.False(t, respBody.HasMore, "unexpected additional page")
+}
+
+func TestTasksGetDatedUntrashedDoneTasksFiltersByEndDate(t *testing.T) {
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
+	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
+	})
+	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	cookies := signUpResp.Result().Cookies()
+
+	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
+	require.Equal(t, http.StatusCreated, categoryResp.Code)
+	var category categoriesTransport.CreateCategoryResponse
+	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
+
+	today := shared.NewDate(time.Now())
+	pastDate := shared.NewDate(today.AddDate(0, 0, -1))
+	futureDate := shared.NewDate(today.AddDate(0, 0, 1))
+	pastTasks := support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, pastDate, cookies...)
+	todayTasks := support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, today, cookies...)
+	support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, futureDate, cookies...)
+	expectedTasks := append(pastTasks, todayTasks...)
+
+	resp := support.MakeJsonRequest(
+		t,
+		app,
+		http.MethodGet,
+		"/api/tasks/dated-untrashed-done?"+url.Values{"endDate": {today.Format(time.DateOnly)}}.Encode(),
+		nil,
+		cookies...,
+	)
+	require.Equal(t, http.StatusOK, resp.Code)
+	var respBody tasksTransport.GetDatedUntrashedTasksResponse
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
+
+	assert.Equal(t, expectedTasks, respBody.Tasks, "unexpected tasks")
+	assert.False(t, respBody.HasMore, "unexpected additional page")
+}
+
+func TestTasksGetDatedUntrashedDoneTasksFiltersByInclusiveDateRange(t *testing.T) {
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
+	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
+	})
+	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	cookies := signUpResp.Result().Cookies()
+
+	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
+	require.Equal(t, http.StatusCreated, categoryResp.Code)
+	var category categoriesTransport.CreateCategoryResponse
+	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
+
+	today := shared.NewDate(time.Now())
+	pastDate := shared.NewDate(today.AddDate(0, 0, -1))
+	futureDate := shared.NewDate(today.AddDate(0, 0, 1))
+	support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, pastDate, cookies...)
+	todayTasks := support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, today, cookies...)
+	support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, futureDate, cookies...)
+
+	resp := support.MakeJsonRequest(
+		t,
+		app,
+		http.MethodGet,
+		"/api/tasks/dated-untrashed-done?"+url.Values{
+			"startDate": {today.Format(time.DateOnly)},
+			"endDate":   {today.Format(time.DateOnly)},
+		}.Encode(),
+		nil,
+		cookies...,
+	)
+	require.Equal(t, http.StatusOK, resp.Code)
+	var respBody tasksTransport.GetDatedUntrashedTasksResponse
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
+
+	assert.Equal(t, todayTasks, respBody.Tasks, "unexpected tasks")
 	assert.False(t, respBody.HasMore, "unexpected additional page")
 }
 
