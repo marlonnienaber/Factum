@@ -627,31 +627,22 @@ describe('backlog page tests', () => {
 				const completedTasks = [
 					{
 						id: tasks[0].id,
-						categoryId: tasks[0].categoryId,
-						title: tasks[0].title,
-						description: tasks[0].description,
 						date: testData.todayPartitionDate.toString(),
 						rank: completedTaskRanks[0]
 					},
 					{
 						id: tasks[1].id,
-						categoryId: tasks[1].categoryId,
-						title: tasks[1].title,
-						description: tasks[1].description,
 						date: testData.nonTodayPastPartitionDate.toString(),
 						rank: completedTaskRanks[1]
 					},
 					{
 						id: tasks[2].id,
-						categoryId: tasks[2].categoryId,
-						title: tasks[2].title,
-						description: tasks[2].description,
 						date: testData.todayPartitionDate.toString(),
 						rank: completedTaskRanks[2]
 					}
 				];
 
-				const response = getResponse({ datedUntrashedDoneTasks: completedTasks, trashedTasks: [] });
+				const response = getResponse(completedTasks);
 				fetchMock.mockResolvedValue(response);
 
 				const page = render(Page);

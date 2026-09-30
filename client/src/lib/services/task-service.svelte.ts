@@ -308,6 +308,15 @@ async function toggleTaskDone(id: number): Promise<void> {
 async function completeTasks(taskIds: number[]): Promise<boolean> {
 	if (taskMutationBlocked) return false;
 
+	const tasks = taskIds
+		.map((taskId) => {
+			const datedTask = datedUntrashedOpenTaskStore.datedUntrashedOpenTasks.find((task) => task.id === taskId);
+			const undatedTask = undatedTaskStore.undatedTasks.find((task) => task.id === taskId);
+			return datedTask ?? undatedTask;
+		})
+		.filter((task) => task !== undefined);
+	if (tasks.length !== taskIds.length) return false;
+
 	const request: BatchUpdateDoneRequest = { taskIds };
 	taskMutationLoading = true;
 	try {
@@ -318,9 +327,18 @@ async function completeTasks(taskIds: number[]): Promise<boolean> {
 		);
 		if (networkCall.status !== 'success') return false;
 
+		const completedTasks = networkCall.result
+			.map((completedTask) => {
+				const task = tasks.find((task) => task.id === completedTask.id);
+				if (task === undefined) return undefined;
+				return { ...task, date: completedTask.date, rank: completedTask.rank, done: true as const };
+			})
+			.filter((task) => task !== undefined);
+		if (completedTasks.length !== taskIds.length) return false;
+
 		undatedTaskStore.removeTasks(taskIds);
 		datedUntrashedOpenTaskStore.removeTasks(taskIds);
-		datedUntrashedDoneTaskStore.addOrUpdateTasks(networkCall.result.datedUntrashedDoneTasks);
+		datedUntrashedDoneTaskStore.addOrUpdateTasks(completedTasks);
 		return true;
 	} finally {
 		taskMutationLoading = false;
