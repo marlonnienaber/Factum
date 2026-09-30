@@ -1,5 +1,6 @@
 <script lang="ts">
 	import InfiniteScrollContainer from '$lib/components/shared/infinite-scroll-container.svelte';
+	import Button from '$lib/components/shared/button.svelte';
 	import CategoryFilter from '$lib/components/archive/category-filter.svelte';
 	import TimeFilter from '$lib/components/archive/time-filter.svelte';
 	import Popover from '$lib/components/shared/popover.svelte';
@@ -13,10 +14,14 @@
 	import { parseDate, type DateValue } from '@internationalized/date';
 	import type { DatedUntrashedDoneTaskResponse } from '$lib/types/responses/dated-untrashed-done-task-response';
 	import type { TrashedTaskResponse } from '$lib/types/responses/trashed-task-response';
-	import { Info, RotateCcw, SquarePen, Trash2 } from '@lucide/svelte';
+	import { Info, MousePointer2, RotateCcw, SquarePen, Trash2, XCircle } from '@lucide/svelte';
+
+	const maximumBatchSize = 50;
 
 	let taskDialogOpen = $state(false);
 	let taskDialogTask = $state<DatedUntrashedDoneTaskResponse | TrashedTaskResponse>();
+	let selectionEnabled = $state(false);
+	let selectedTaskIds = $state<number[]>([]);
 	let unselectedCategoryIds = $state<number[]>([]);
 	let startDate = $state<DateValue>();
 	let endDate = $state<DateValue>();
@@ -108,6 +113,28 @@
 			.filter((category) => !unselectedCategoryIds.includes(category.id))
 			.map((category) => category.id);
 	}
+
+	function startTaskSelection(): void {
+		selectionEnabled = true;
+	}
+
+	function cancelTaskSelection(): void {
+		selectionEnabled = false;
+		selectedTaskIds = [];
+	}
+
+	async function openSelectedTasks(): Promise<void> {
+		const opened = await taskService.openTasks(selectedTaskIds);
+		if (opened) cancelTaskSelection();
+	}
+
+	function updateTaskSelection(taskId: number, selected: boolean): void {
+		if (selected && !selectedTaskIds.includes(taskId)) {
+			selectedTaskIds = [...selectedTaskIds, taskId];
+		} else if (!selected) {
+			selectedTaskIds = selectedTaskIds.filter((selectedTaskId) => selectedTaskId !== taskId);
+		}
+	}
 </script>
 
 <svelte:head>
@@ -116,7 +143,30 @@
 
 <div class="frame">
 	<div class="left-column-container">
-		<div class="controls-section" aria-hidden="true"></div>
+		<div class="controls-section">
+			{#if selectionEnabled}
+				<Button onclick={cancelTaskSelection}>
+					Cancel Selection
+					{#snippet trailingIcon()}<XCircle size={17} aria-hidden="true" />{/snippet}
+				</Button>
+				<Button
+					variant="success"
+					disabled={selectedTaskIds.length === 0 || selectedTaskIds.length > maximumBatchSize || taskService.taskMutationBlocked}
+					onclick={openSelectedTasks}
+				>
+					Open All
+					{#snippet trailingIcon()}<RotateCcw size={17} aria-hidden="true" />{/snippet}
+				</Button>
+				<span class:limit-exceeded={selectedTaskIds.length > maximumBatchSize} class="selection-count">
+					{selectedTaskIds.length} / {maximumBatchSize}
+				</span>
+			{:else}
+				<Button onclick={startTaskSelection}>
+					Select Tasks
+					{#snippet trailingIcon()}<MousePointer2 size={17} aria-hidden="true" />{/snippet}
+				</Button>
+			{/if}
+		</div>
 		<section class="category-selection-section">
 			<h1>Category Filter</h1>
 			<div class="category-filter-container">
@@ -149,9 +199,9 @@
 									{task}
 									actions={getTaskActions(task)}
 									isShadowItem={false}
-									selectionEnabled={false}
-									selected={false}
-									onSelectedChange={() => {}}
+									{selectionEnabled}
+									selected={selectedTaskIds.includes(task.id)}
+									onSelectedChange={updateTaskSelection}
 								/>
 							{/each}
 						</div>
@@ -225,10 +275,23 @@
 			gap: 1rem;
 
 			.controls-section {
+				display: flex;
+				align-items: center;
+				gap: 0.75rem;
 				box-sizing: border-box;
 				padding: 0.75rem;
 				border: 1px solid var(--border);
 				border-radius: 0.75rem;
+
+				.selection-count {
+					margin-left: auto;
+					color: var(--text-subtle);
+					font-size: 0.865rem;
+
+					&.limit-exceeded {
+						color: var(--danger);
+					}
+				}
 			}
 
 			.category-selection-section {

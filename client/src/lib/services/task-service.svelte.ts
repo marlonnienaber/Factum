@@ -20,6 +20,7 @@ import type { TaskDragAndDropRequest } from '$lib/types/requests/task-drag-and-d
 import type { TrashedTasksCursor } from '$lib/types/requests/trashed-tasks-cursor';
 import type { UpdateTaskRequest } from '$lib/types/requests/update-task-request';
 import { BatchCompleteResponseSchema, type BatchCompleteResponse } from '$lib/types/responses/batch-complete-response';
+import { BatchOpenResponseSchema, type BatchOpenResponse } from '$lib/types/responses/batch-open-response';
 import { CreateTaskResponseSchema, type CreateTaskResponse } from '$lib/types/responses/create-task-response';
 import {
 	GetDatedUntrashedDoneTasksResponseSchema,
@@ -345,6 +346,41 @@ async function completeTasks(taskIds: number[]): Promise<boolean> {
 	}
 }
 
+async function openTasks(taskIds: number[]): Promise<boolean> {
+	if (taskMutationBlocked) return false;
+
+	const tasks = taskIds
+		.map((taskId) => datedUntrashedDoneTaskStore.datedUntrashedDoneTasks.find((task) => task.id === taskId))
+		.filter((task) => task !== undefined);
+	if (tasks.length !== taskIds.length) return false;
+
+	const request: BatchUpdateDoneRequest = { taskIds };
+	taskMutationLoading = true;
+	try {
+		const networkCall: NetworkCall<BatchOpenResponse> = await jsonPatchWithBodyWithResponse(
+			'/api/tasks/batch-open',
+			request,
+			BatchOpenResponseSchema
+		);
+		if (networkCall.status !== 'success') return false;
+
+		const openedTasks = networkCall.result
+			.map((openedTask) => {
+				const task = tasks.find((task) => task.id === openedTask.id);
+				if (task === undefined) return undefined;
+				return { ...task, rank: openedTask.rank, done: false as const };
+			})
+			.filter((task) => task !== undefined);
+		if (openedTasks.length !== taskIds.length) return false;
+
+		datedUntrashedDoneTaskStore.removeTasks(taskIds);
+		datedUntrashedOpenTaskStore.addOrUpdateTasks(openedTasks);
+		return true;
+	} finally {
+		taskMutationLoading = false;
+	}
+}
+
 async function trashTask(id: number): Promise<void> {
 	if (taskMutationBlocked) return;
 	const datedTask = datedUntrashedOpenTaskStore.datedUntrashedOpenTasks.find((task) => task.id === id);
@@ -531,6 +567,7 @@ export const taskService = {
 	updateTask,
 	toggleTaskDone,
 	completeTasks,
+	openTasks,
 	trashTask,
 	trashTasks,
 	restoreTask,

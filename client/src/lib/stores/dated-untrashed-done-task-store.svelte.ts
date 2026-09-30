@@ -19,7 +19,12 @@ function addPage(tasks: DatedUntrashedDoneTaskResponse[], pageHasMore: boolean):
 }
 
 function removeTask(id: number): void {
-	datedUntrashedDoneTasks = datedUntrashedDoneTasks.filter((task) => task.id !== id);
+	removeTasks([id]);
+}
+
+function removeTasks(ids: number[]): void {
+	const taskIds = new Set(ids);
+	datedUntrashedDoneTasks = datedUntrashedDoneTasks.filter((task) => !taskIds.has(task.id));
 }
 
 function reset(): void {
@@ -44,5 +49,6 @@ export const datedUntrashedDoneTaskStore = {
 	addOrUpdateTask,
 	addPage,
 	removeTask,
+	removeTasks,
 	reset
 };
