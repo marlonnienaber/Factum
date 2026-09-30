@@ -23,6 +23,7 @@ var (
 	ErrCategoryNotFound      = errors.New("no category exists for the given id")
 	ErrTaskNotFound          = errors.New("no task exists for the given id and user id")
 	ErrTaskRankAlreadyExists = errors.New("task rank already exists in the target task list")
+	ErrNoTrashedTasks        = errors.New("no trashed tasks exist for the given user id")
 )
 
 type TaskStore struct {
@@ -33,6 +34,28 @@ func NewTaskStore(db *sqlx.DB) *TaskStore {
 	return &TaskStore{
 		db: db,
 	}
+}
+
+func (store *TaskStore) DeleteTrashedTasks(userId int64) error {
+	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("deleting trashed tasks failed")
+
+	result, err := store.db.Exec(`
+		DELETE FROM tasks
+		WHERE user_id = $1
+		  AND trashed_date IS NOT NULL
+	`, userId)
+	if err != nil {
+		return wrapUnexpectedError(err)
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return wrapUnexpectedError(err)
+	}
+	if rowsAffected == 0 {
+		return ErrNoTrashedTasks
+	}
+
+	return nil
 }
 
 func (store *TaskStore) GetTaskByIdForUser(transaction *sqlx.Tx, id int64, userId int64) (*domain.Task, error) {
