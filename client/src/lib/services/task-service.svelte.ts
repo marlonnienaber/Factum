@@ -1,5 +1,6 @@
 import {
 	type NetworkCall,
+	jsonDeleteWithoutBodyWithoutResponse,
 	jsonGetWithoutBodyWithResponse,
 	jsonPatchWithBodyWithResponse,
 	jsonPatchWithBodyWithoutResponse,
@@ -505,6 +506,20 @@ async function restoreTask(id: number): Promise<void> {
 	}
 }
 
+async function deleteTrashedTasks(): Promise<void> {
+	if (taskMutationBlocked || trashedTaskStore.trashedTasks.length === 0) return;
+
+	taskMutationLoading = true;
+	try {
+		const networkCall = await jsonDeleteWithoutBodyWithoutResponse('/api/tasks/trashed');
+		if (networkCall.status !== 'success') return;
+
+		trashedTaskStore.reset();
+	} finally {
+		taskMutationLoading = false;
+	}
+}
+
 async function dragAndDropTask(id: number, request: TaskDragAndDropRequest): Promise<void> {
 	if (taskMutationBlocked) return;
 
@@ -570,5 +585,6 @@ export const taskService = {
 	trashTask,
 	trashTasks,
 	restoreTask,
+	deleteTrashedTasks,
 	dragAndDropTask
 };

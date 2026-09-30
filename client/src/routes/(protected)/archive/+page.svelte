@@ -133,6 +133,10 @@
 		if (trashed) cancelTaskSelection();
 	}
 
+	function emptyTrash(): void {
+		void taskService.deleteTrashedTasks();
+	}
+
 	function updateTaskSelection(taskId: number, selected: boolean): void {
 		if (selected && !selectedTaskIds.includes(taskId)) {
 			selectedTaskIds = [...selectedTaskIds, taskId];
@@ -177,6 +181,14 @@
 				<Button onclick={startTaskSelection}>
 					Select Tasks
 					{#snippet trailingIcon()}<MousePointer2 size={17} aria-hidden="true" />{/snippet}
+				</Button>
+				<Button
+					variant="danger"
+					disabled={trashedTaskStore.trashedTasks.length === 0 || taskService.taskMutationBlocked}
+					onclick={emptyTrash}
+				>
+					Empty Trash
+					{#snippet trailingIcon()}<Trash2 size={17} aria-hidden="true" />{/snippet}
 				</Button>
 			{/if}
 		</div>
