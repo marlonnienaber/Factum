@@ -37,6 +37,9 @@ func NewBatchCompleteTasksHandler(taskService *services.TaskService) shared.Auth
 			case errors.Is(err, services.ErrTaskAlreadyCompleted):
 				c.JSON(http.StatusBadRequest, oneOfProvidedTasksAlreadyCompletedErrorResponse)
 				return
+			case errors.Is(err, services.ErrTaskIsTrashed):
+				c.JSON(http.StatusBadRequest, oneOfProvidedTasksIsTrashedErrorResponse)
+				return
 			default:
 				slog.Error(unexpectedErrorLogMessage, "error", err)
 				c.JSON(http.StatusInternalServerError, shared.UnexpectedErrorResponse)

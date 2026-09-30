@@ -63,10 +63,10 @@ func (store *TaskStore) GetTaskByIdForUser(transaction *sqlx.Tx, id int64, userI
 	return &task, nil
 }
 
-func (store *TaskStore) GetTasksByIdsForUser(transaction *sqlx.Tx, ids []int64, userId int64) ([]domain.Task, error) {
+func (store *TaskStore) GetTasksByIdsForUser(transaction *sqlx.Tx, ids []int64, userId int64) ([]*domain.Task, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("retrieving tasks by ids and user id failed")
 
-	tasks := make([]domain.Task, 0, len(ids))
+	tasks := make([]*domain.Task, 0, len(ids))
 	err := transaction.Select(&tasks, `
 		SELECT id,
 		       user_id,
@@ -165,50 +165,6 @@ func (store *TaskStore) BatchUpdateDoneForUntrashedTasks(
 		if errors.As(err, &postgresError) && postgresError.Constraint == "tasks_untrashed_user_id_done_date_rank_unique" {
 			return ErrTaskRankAlreadyExists
 		}
-		return wrapUnexpectedError(err)
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return wrapUnexpectedError(err)
-	}
-	if rowsAffected != int64(len(tasks)) {
-		return ErrTaskNotFound
-	}
-	return nil
-}
-
-func (store *TaskStore) BatchUpdateDoneForTrashedTasks(
-	transaction *sqlx.Tx,
-	userId int64,
-	tasks []*domain.Task,
-	done bool,
-) error {
-	if len(tasks) == 0 {
-		return nil
-	}
-
-	ids := make([]int64, 0, len(tasks))
-	dates := make([]shared.Date, 0, len(tasks))
-	for _, task := range tasks {
-		ids = append(ids, task.Id)
-		dates = append(dates, *task.Date)
-	}
-
-	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("updating trashed tasks done state failed")
-	result, err := transaction.Exec(`
-		UPDATE tasks
-		SET date = updates.date,
-		    done = $3
-		FROM UNNEST(
-			$1::BIGINT[],
-			$2::DATE[]
-		) AS updates(id, date)
-		WHERE tasks.id = updates.id
-		  AND tasks.user_id = $4
-		  AND tasks.trashed_date IS NOT NULL
-	`, pq.Array(ids), pq.Array(dates), done, userId)
-	if err != nil {
 		return wrapUnexpectedError(err)
 	}
 

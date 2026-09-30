@@ -77,12 +77,13 @@ type GetTrashedTasksResponse struct {
 	HasMore bool                  `json:"hasMore"`
 }
 
-type BatchCompleteResponse struct {
-	DatedUntrashedDoneTasks []DatedUntrashedTaskResponse `json:"datedUntrashedDoneTasks"`
-	TrashedTasks            []TrashedTaskResponse        `json:"trashedTasks"`
+type BatchCompleteTaskResponse struct {
+	Id   int64       `json:"id"`
+	Date shared.Date `json:"date"`
+	Rank string      `json:"rank"`
 }
 
-type BatchOpenResponse struct {
-	DatedUntrashedOpenTasks []DatedUntrashedTaskResponse `json:"datedUntrashedOpenTasks"`
-	TrashedTasks            []TrashedTaskResponse        `json:"trashedTasks"`
+type BatchOpenTaskResponse struct {
+	Id   int64  `json:"id"`
+	Rank string `json:"rank"`
 }
