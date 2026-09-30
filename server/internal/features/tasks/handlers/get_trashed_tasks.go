@@ -13,24 +13,21 @@ func NewGetTrashedTasksHandler(taskStore *stores.TaskStore) shared.Authenticated
 		categoryIds, categoryIdsErr := shared.GetOptionalIdQueryParameterList(c, "categoryId", maximumCategoryFilterCount)
 		startDate, startDateErr := shared.GetOptionalDateQueryParameter(c, "startDate")
 		endDate, endDateErr := shared.GetOptionalDateQueryParameter(c, "endDate")
-		trashedDate, trashedDateErr := shared.GetOptionalTimestampQueryParameter(c, "trashedDate")
-		id, idErr := shared.GetOptionalIdQueryParameter(c, "id")
+		rank, rankErr := shared.GetOptionalRankQueryParameter(c, "rank")
 
 		unexpectedErrorLogMessage := "handling get trashed tasks failed"
 
-		if categoryIdsErr != nil || startDateErr != nil || endDateErr != nil || trashedDateErr != nil || idErr != nil {
+		if categoryIdsErr != nil || startDateErr != nil || endDateErr != nil || rankErr != nil {
 			c.JSON(http.StatusBadRequest, shared.InvalidQueryParameterErrorResponse)
 			return
 		}
 		hasValidDateRange := startDate == nil || endDate == nil || !startDate.After(*endDate)
-		hasValidCursor := trashedDate == nil && id == nil ||
-			trashedDate != nil && id != nil
-		if !hasValidCursor || !hasValidDateRange {
+		if !hasValidDateRange {
 			c.JSON(http.StatusBadRequest, invalidQueryParameterCombinationErrorResponse)
 			return
 		}
 
-		response, err := taskStore.GetTrashedTasks(c.UserId, categoryIds, startDate, endDate, trashedDate, id)
+		response, err := taskStore.GetTrashedTasks(c.UserId, categoryIds, startDate, endDate, rank)
 		if err != nil {
 			slog.Error(unexpectedErrorLogMessage, "error", err)
 			c.JSON(http.StatusInternalServerError, shared.UnexpectedErrorResponse)

@@ -1,20 +1,16 @@
 package transport
 
-import (
-	"time"
-
-	"github.com/marlonnienaber/Factum/server/internal/shared"
-)
+import "github.com/marlonnienaber/Factum/server/internal/shared"
 
 type UpdateTaskResponse struct {
-	Id          int64        `db:"id" json:"id"`
-	CategoryId  int64        `db:"category_id" json:"categoryId"`
-	Title       string       `db:"title" json:"title"`
-	Description *string      `db:"description" json:"description,omitempty"`
-	Date        *shared.Date `db:"date" json:"date,omitempty"`
-	Rank        *string      `db:"rank" json:"rank,omitempty"`
-	Done        bool         `db:"done" json:"done"`
-	TrashedDate *time.Time   `db:"trashed_date" json:"trashedDate,omitempty"`
+	Id          int64        `json:"id"`
+	CategoryId  int64        `json:"categoryId"`
+	Title       string       `json:"title"`
+	Description *string      `json:"description,omitempty"`
+	Date        *shared.Date `json:"date,omitempty"`
+	Rank        string       `json:"rank"`
+	Done        bool         `json:"done"`
+	Trashed     bool         `json:"trashed"`
 }
 
 type DatedUntrashedTaskResponse struct {
@@ -37,6 +33,10 @@ type CreateTaskResponse struct {
 }
 
 type TaskDragAndDropResponse struct {
+	Rank string `json:"rank"`
+}
+
+type TrashTaskResponse struct {
 	Rank string `json:"rank"`
 }
 
@@ -69,7 +69,7 @@ type TrashedTaskResponse struct {
 	Description *string      `db:"description" json:"description,omitempty"`
 	Date        *shared.Date `db:"date" json:"date,omitempty"`
 	Done        bool         `db:"done" json:"done"`
-	TrashedDate time.Time    `db:"trashed_date" json:"trashedDate"`
+	Rank        string       `db:"rank" json:"rank"`
 }
 
 type GetTrashedTasksResponse struct {
@@ -84,6 +84,11 @@ type BatchCompleteTaskResponse struct {
 }
 
 type BatchOpenTaskResponse struct {
+	Id   int64  `json:"id"`
+	Rank string `json:"rank"`
+}
+
+type BatchTrashTaskResponse struct {
 	Id   int64  `json:"id"`
 	Rank string `json:"rank"`
 }

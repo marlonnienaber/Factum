@@ -15,18 +15,7 @@ import (
 
 func NewBatchTrashTasksHandler(taskService *services.TaskService) shared.AuthenticatedHandlerFunc {
 	return func(c *shared.AuthenticatedContext) {
-		trashedDate, trashedDateErr := shared.GetRequiredTimestampQueryParameter(c, "trashedDate")
-
 		unexpectedErrorLogMessage := "handling batch trash tasks failed"
-
-		if errors.Is(trashedDateErr, shared.MissingQueryParameterErr) {
-			c.JSON(http.StatusBadRequest, shared.MissingQueryParameterErrorResponse)
-			return
-		}
-		if trashedDateErr != nil {
-			c.JSON(http.StatusBadRequest, shared.InvalidQueryParameterErrorResponse)
-			return
-		}
 
 		var request transport.BatchTrashTasksRequest
 		if err := c.ShouldBindJSON(&request); err != nil {
@@ -39,7 +28,8 @@ func NewBatchTrashTasksHandler(taskService *services.TaskService) shared.Authent
 			return
 		}
 
-		if err := taskService.BatchTrashTasks(c.UserId, request.TaskIds, trashedDate); err != nil {
+		response, err := taskService.BatchTrashTasks(c.UserId, request.TaskIds)
+		if err != nil {
 			switch {
 			case errors.Is(err, stores.ErrTaskNotFound):
 				c.JSON(http.StatusNotFound, oneOfProvidedTasksNotFoundErrorResponse)
@@ -54,7 +44,7 @@ func NewBatchTrashTasksHandler(taskService *services.TaskService) shared.Authent
 			}
 		}
 
-		c.Status(http.StatusNoContent)
+		c.JSON(http.StatusOK, response)
 	}
 }
 
