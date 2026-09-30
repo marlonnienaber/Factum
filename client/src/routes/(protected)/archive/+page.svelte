@@ -128,6 +128,11 @@
 		if (opened) cancelTaskSelection();
 	}
 
+	async function trashSelectedTasks(): Promise<void> {
+		const trashed = await taskService.trashTasks(selectedTaskIds);
+		if (trashed) cancelTaskSelection();
+	}
+
 	function updateTaskSelection(taskId: number, selected: boolean): void {
 		if (selected && !selectedTaskIds.includes(taskId)) {
 			selectedTaskIds = [...selectedTaskIds, taskId];
@@ -156,6 +161,14 @@
 				>
 					Open All
 					{#snippet trailingIcon()}<RotateCcw size={17} aria-hidden="true" />{/snippet}
+				</Button>
+				<Button
+					variant="danger"
+					disabled={selectedTaskIds.length === 0 || selectedTaskIds.length > maximumBatchSize || taskService.taskMutationBlocked}
+					onclick={trashSelectedTasks}
+				>
+					Trash All
+					{#snippet trailingIcon()}<Trash2 size={17} aria-hidden="true" />{/snippet}
 				</Button>
 				<span class:limit-exceeded={selectedTaskIds.length > maximumBatchSize} class="selection-count">
 					{selectedTaskIds.length} / {maximumBatchSize}

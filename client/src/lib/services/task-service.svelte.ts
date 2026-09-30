@@ -418,9 +418,10 @@ async function trashTasks(taskIds: number[]): Promise<boolean> {
 
 	const tasks = taskIds
 		.map((taskId) => {
-			const datedTask = datedUntrashedOpenTaskStore.datedUntrashedOpenTasks.find((task) => task.id === taskId);
-			const undatedTask = undatedTaskStore.undatedTasks.find((task) => task.id === taskId);
-			return datedTask ?? undatedTask;
+			const datedOpenTask = datedUntrashedOpenTaskStore.datedUntrashedOpenTasks.find((task) => task.id === taskId);
+			const undatedOpenTask = undatedTaskStore.undatedTasks.find((task) => task.id === taskId);
+			const datedDoneTask = datedUntrashedDoneTaskStore.datedUntrashedDoneTasks.find((task) => task.id === taskId);
+			return datedOpenTask ?? undatedOpenTask ?? datedDoneTask;
 		})
 		.filter((task) => task !== undefined);
 	if (tasks.length !== taskIds.length) return false;
@@ -436,20 +437,18 @@ async function trashTasks(taskIds: number[]): Promise<boolean> {
 		);
 		if (networkCall.status !== 'success') return false;
 
-		const trashedTasks: TrashedTaskResponse[] = tasks.map((task) => {
-			const datedTask = datedUntrashedOpenTaskStore.datedUntrashedOpenTasks.find((datedTask) => datedTask.id === task.id);
-			return {
-				id: task.id,
-				categoryId: task.categoryId,
-				title: task.title,
-				description: task.description,
-				date: datedTask?.date,
-				done: false,
-				trashedDate
-			};
-		});
+		const trashedTasks: TrashedTaskResponse[] = tasks.map((task) => ({
+			id: task.id,
+			categoryId: task.categoryId,
+			title: task.title,
+			description: task.description,
+			date: 'date' in task ? task.date : undefined,
+			done: task.done,
+			trashedDate
+		}));
 		undatedTaskStore.removeTasks(taskIds);
 		datedUntrashedOpenTaskStore.removeTasks(taskIds);
+		datedUntrashedDoneTaskStore.removeTasks(taskIds);
 		trashedTaskStore.addOrUpdateTasks(trashedTasks);
 		return true;
 	} finally {
