@@ -46,9 +46,8 @@
 	function loadMoreTrashedTasks(): Promise<void> | undefined {
 		const lastLoadedTask = trashedTaskStore.trashedTasks.at(-1);
 		if (lastLoadedTask !== undefined) {
-			const cursor = { trashedDate: lastLoadedTask.trashedDate, id: lastLoadedTask.id };
 			const selectedCategoryIds = getSelectedCategoryIds();
-			return taskService.fetchTrashedTasks(cursor, selectedCategoryIds, startDate, endDate);
+			return taskService.fetchTrashedTasks(lastLoadedTask.rank, selectedCategoryIds, startDate, endDate);
 		}
 	}
 
@@ -82,9 +81,9 @@
 		taskDialogOpen = true;
 	}
 
-	function getTaskActions(task: DatedUntrashedDoneTaskResponse | TrashedTaskResponse) {
+	function getTaskActions(task: DatedUntrashedDoneTaskResponse | TrashedTaskResponse, trashed: boolean) {
 		const editAction = { label: 'Edit', icon: SquarePen, onclick: () => openEditTaskDialog(task) };
-		if ('trashedDate' in task) {
+		if (trashed) {
 			return [
 				editAction,
 				{
@@ -222,7 +221,7 @@
 							{#each tasks as task (task.id)}
 								<Task
 									{task}
-									actions={getTaskActions(task)}
+									actions={getTaskActions(task, false)}
 									isShadowItem={false}
 									{selectionEnabled}
 									selected={selectedTaskIds.includes(task.id)}
@@ -253,7 +252,7 @@
 				{#each trashedTaskStore.trashedTasks as task (task.id)}
 					<Task
 						{task}
-						actions={getTaskActions(task)}
+						actions={getTaskActions(task, true)}
 						isShadowItem={false}
 						selectionEnabled={false}
 						selected={false}

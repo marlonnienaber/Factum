@@ -3,9 +3,7 @@ import {
 	jsonDeleteWithoutBodyWithoutResponse,
 	jsonGetWithoutBodyWithResponse,
 	jsonPatchWithBodyWithResponse,
-	jsonPatchWithBodyWithoutResponse,
 	jsonPatchWithoutBodyWithResponse,
-	jsonPatchWithoutBodyWithoutResponse,
 	jsonPostWithBodyWithResponse,
 	jsonPutWithBodyWithResponse
 } from '$lib/utils/networking';
@@ -18,10 +16,10 @@ import type { BatchUpdateDoneRequest } from '$lib/types/requests/batch-update-do
 import type { CreateTaskRequest } from '$lib/types/requests/create-task-request';
 import type { DatedUntrashedTasksCursor } from '$lib/types/requests/dated-untrashed-tasks-cursor';
 import type { TaskDragAndDropRequest } from '$lib/types/requests/task-drag-and-drop-request';
-import type { TrashedTasksCursor } from '$lib/types/requests/trashed-tasks-cursor';
 import type { UpdateTaskRequest } from '$lib/types/requests/update-task-request';
 import { BatchCompleteResponseSchema, type BatchCompleteResponse } from '$lib/types/responses/batch-complete-response';
 import { BatchOpenResponseSchema, type BatchOpenResponse } from '$lib/types/responses/batch-open-response';
+import { BatchTrashResponseSchema, type BatchTrashResponse } from '$lib/types/responses/batch-trash-response';
 import { CreateTaskResponseSchema, type CreateTaskResponse } from '$lib/types/responses/create-task-response';
 import {
 	GetDatedUntrashedDoneTasksResponseSchema,
@@ -34,11 +32,12 @@ import {
 import { GetUndatedTasksResponseSchema, type GetUndatedTasksResponse } from '$lib/types/responses/get-undated-tasks-response';
 import { GetTrashedTasksResponseSchema, type GetTrashedTasksResponse } from '$lib/types/responses/get-trashed-tasks-response';
 import type { TrashedTaskResponse } from '$lib/types/responses/trashed-task-response';
+import { TrashTaskResponseSchema, type TrashTaskResponse } from '$lib/types/responses/trash-task-response';
 import { RestoreTaskResponseSchema, type RestoreTaskResponse } from '$lib/types/responses/restore-task-response';
 import { TaskDragAndDropResponseSchema, type TaskDragAndDropResponse } from '$lib/types/responses/task-drag-and-drop-response';
 import { ToggleTaskDoneResponseSchema, type ToggleTaskDoneResponse } from '$lib/types/responses/toggle-task-done-response';
 import { UpdateTaskResponseSchema, type UpdateTaskResponse } from '$lib/types/responses/update-task-response';
-import { getLocalTimeZone, now, type DateValue, type ZonedDateTime } from '@internationalized/date';
+import type { DateValue } from '@internationalized/date';
 import { SvelteURLSearchParams } from 'svelte/reactivity';
 import { toast } from 'svelte-sonner';
 
@@ -146,12 +145,12 @@ async function fetchDatedUntrashedOpenNonTodayTasks(cursor?: DatedUntrashedTasks
 }
 
 async function fetchTrashedTasks(
-	cursor?: TrashedTasksCursor,
+	rank?: string,
 	categoryIds: number[] = [],
 	startDate?: DateValue,
 	endDate?: DateValue
 ): Promise<void> {
-	const cursorUsedIncorrectly = cursor !== undefined && !trashedTaskStore.hasMore;
+	const cursorUsedIncorrectly = rank !== undefined && !trashedTaskStore.hasMore;
 	if (trashedTasksLoading || taskMutationLoading || cursorUsedIncorrectly) return;
 	trashedTasksLoading = true;
 	try {
@@ -159,17 +158,14 @@ async function fetchTrashedTasks(
 		for (const categoryId of categoryIds) queryParameters.append('categoryId', String(categoryId));
 		if (startDate !== undefined) queryParameters.set('startDate', startDate.toString());
 		if (endDate !== undefined) queryParameters.set('endDate', endDate.toString());
-		if (cursor) {
-			queryParameters.set('trashedDate', cursor.trashedDate.toAbsoluteString());
-			queryParameters.set('id', String(cursor.id));
-		}
+		if (rank !== undefined) queryParameters.set('rank', rank);
 		const encodedQueryParameters = queryParameters.toString();
 		const networkCall: NetworkCall<GetTrashedTasksResponse> = await jsonGetWithoutBodyWithResponse(
 			`/api/tasks/trashed${encodedQueryParameters ? `?${encodedQueryParameters}` : ''}`,
 			GetTrashedTasksResponseSchema
 		);
 		if (networkCall.status === 'success') {
-			if (cursor === undefined) {
+			if (rank === undefined) {
 				trashedTaskStore.reset();
 			}
 			trashedTaskStore.addPage(networkCall.result.tasks, networkCall.result.hasMore);
@@ -217,11 +213,7 @@ async function updateTask(request: UpdateTaskRequest): Promise<void> {
 		if (networkCall.status !== 'success') return;
 
 		const updatedTask = networkCall.result;
-		if (updatedTask.trashedDate === undefined && updatedTask.rank === undefined) {
-			toast.error('An unexpected error occurred. Your data might be inconsistent. Please reload the page to resolve the issue.');
-			return;
-		}
-		if (updatedTask.trashedDate === undefined && updatedTask.done && updatedTask.date === undefined) {
+		if (updatedTask.done && updatedTask.date === undefined) {
 			toast.error('An unexpected error occurred. Your data might be inconsistent. Please reload the page to resolve the issue.');
 			return;
 		}
@@ -230,24 +222,14 @@ async function updateTask(request: UpdateTaskRequest): Promise<void> {
 		datedUntrashedOpenTaskStore.removeTask(request.id);
 		datedUntrashedDoneTaskStore.removeTask(request.id);
 		trashedTaskStore.removeTask(request.id);
-		if (updatedTask.trashedDate !== undefined) {
-			trashedTaskStore.addOrUpdateTask({
-				...updatedTask,
-				trashedDate: updatedTask.trashedDate
-			});
-		} else if (updatedTask.done && updatedTask.date !== undefined && updatedTask.rank !== undefined) {
-			datedUntrashedDoneTaskStore.addOrUpdateTask({ ...updatedTask, date: updatedTask.date, rank: updatedTask.rank, done: true });
-		} else if (updatedTask.date !== undefined && updatedTask.rank !== undefined) {
-			datedUntrashedOpenTaskStore.addOrUpdateTask({
-				...updatedTask,
-				date: updatedTask.date,
-				rank: updatedTask.rank,
-				done: false
-			});
-		} else if (updatedTask.rank !== undefined) {
-			undatedTaskStore.addOrUpdateTask({ ...updatedTask, rank: updatedTask.rank, done: false });
+		if (updatedTask.trashed) {
+			trashedTaskStore.addOrUpdateTask(updatedTask);
+		} else if (updatedTask.done && updatedTask.date !== undefined) {
+			datedUntrashedDoneTaskStore.addOrUpdateTask({ ...updatedTask, date: updatedTask.date, done: true });
+		} else if (updatedTask.date !== undefined) {
+			datedUntrashedOpenTaskStore.addOrUpdateTask({ ...updatedTask, date: updatedTask.date, done: false });
 		} else {
-			toast.error('An unexpected error occurred. Your data might be inconsistent. Please reload the page to resolve the issue.');
+			undatedTaskStore.addOrUpdateTask({ ...updatedTask, done: false });
 		}
 	} finally {
 		taskMutationLoading = false;
@@ -392,9 +374,10 @@ async function trashTask(id: number): Promise<void> {
 
 	taskMutationLoading = true;
 	try {
-		const trashedDate = now(getLocalTimeZone());
-		const encodedTrashedDate = encodeURIComponent(trashedDate.toAbsoluteString());
-		const networkCall = await jsonPatchWithoutBodyWithoutResponse(`/api/tasks/${id}/trash?trashedDate=${encodedTrashedDate}`);
+		const networkCall: NetworkCall<TrashTaskResponse> = await jsonPatchWithoutBodyWithResponse(
+			`/api/tasks/${id}/trash`,
+			TrashTaskResponseSchema
+		);
 		if (networkCall.status !== 'success') return;
 
 		undatedTaskStore.removeTask(id);
@@ -407,7 +390,7 @@ async function trashTask(id: number): Promise<void> {
 			description: task.description,
 			date: datedTask?.date ?? completedTask?.date,
 			done: completedTask !== undefined,
-			trashedDate
+			rank: networkCall.result.rank
 		});
 	} finally {
 		taskMutationLoading = false;
@@ -427,26 +410,32 @@ async function trashTasks(taskIds: number[]): Promise<boolean> {
 		.filter((task) => task !== undefined);
 	if (tasks.length !== taskIds.length) return false;
 
-	const trashedDate: ZonedDateTime = now(getLocalTimeZone());
-	const encodedTrashedDate: string = encodeURIComponent(trashedDate.toAbsoluteString());
 	const request: BatchTrashTasksRequest = { taskIds };
 	taskMutationLoading = true;
 	try {
-		const networkCall: NetworkCall<void> = await jsonPatchWithBodyWithoutResponse(
-			`/api/tasks/batch-trash?trashedDate=${encodedTrashedDate}`,
-			request
+		const networkCall: NetworkCall<BatchTrashResponse> = await jsonPatchWithBodyWithResponse(
+			'/api/tasks/batch-trash',
+			request,
+			BatchTrashResponseSchema
 		);
 		if (networkCall.status !== 'success') return false;
 
-		const trashedTasks: TrashedTaskResponse[] = tasks.map((task) => ({
-			id: task.id,
-			categoryId: task.categoryId,
-			title: task.title,
-			description: task.description,
-			date: 'date' in task ? task.date : undefined,
-			done: task.done,
-			trashedDate
-		}));
+		const trashedTasks: TrashedTaskResponse[] = networkCall.result
+			.map((trashedTask) => {
+				const task = tasks.find((task) => task.id === trashedTask.id);
+				if (task === undefined) return undefined;
+				return {
+					id: task.id,
+					categoryId: task.categoryId,
+					title: task.title,
+					description: task.description,
+					date: 'date' in task ? task.date : undefined,
+					done: task.done,
+					rank: trashedTask.rank
+				};
+			})
+			.filter((task) => task !== undefined);
+		if (trashedTasks.length !== taskIds.length) return false;
 		undatedTaskStore.removeTasks(taskIds);
 		datedUntrashedOpenTaskStore.removeTasks(taskIds);
 		datedUntrashedDoneTaskStore.removeTasks(taskIds);

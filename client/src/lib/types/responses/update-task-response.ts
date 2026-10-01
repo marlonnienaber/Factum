@@ -1,4 +1,4 @@
-import { parseAbsoluteToLocal, parseDate } from '@internationalized/date';
+import { parseDate } from '@internationalized/date';
 import { z } from 'zod';
 
 export const UpdateTaskResponseSchema = z.strictObject({
@@ -10,12 +10,9 @@ export const UpdateTaskResponseSchema = z.strictObject({
 		.date()
 		.transform((date) => parseDate(date))
 		.optional(),
-	rank: z.string().min(1).optional(),
+	rank: z.string().min(1),
 	done: z.boolean(),
-	trashedDate: z.iso
-		.datetime()
-		.transform((trashedDate) => parseAbsoluteToLocal(trashedDate))
-		.optional()
+	trashed: z.boolean()
 });
 
 export type UpdateTaskResponse = z.infer<typeof UpdateTaskResponseSchema>;

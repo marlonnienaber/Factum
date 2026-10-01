@@ -6,7 +6,7 @@ let hasMore = $state(false);
 function addOrUpdateTasks(tasks: TrashedTaskResponse[]) {
 	const taskIds = new Set(tasks.map((task) => task.id));
 	const deduplicatedTasks = trashedTasks.filter((task) => !taskIds.has(task.id));
-	trashedTasks = [...deduplicatedTasks, ...tasks].sort(compareTasksByTrashedDateAndId);
+	trashedTasks = [...deduplicatedTasks, ...tasks].sort(compareTasksByRank);
 }
 
 function addOrUpdateTask(task: TrashedTaskResponse): void {
@@ -22,10 +22,8 @@ function removeTask(id: number): void {
 	trashedTasks = trashedTasks.filter((task) => task.id !== id);
 }
 
-function compareTasksByTrashedDateAndId(first: TrashedTaskResponse, second: TrashedTaskResponse): number {
-	const trashedDateComparison = second.trashedDate.compare(first.trashedDate);
-	if (trashedDateComparison !== 0) return trashedDateComparison;
-	return second.id - first.id;
+function compareTasksByRank(first: TrashedTaskResponse, second: TrashedTaskResponse): number {
+	return first.rank < second.rank ? -1 : first.rank > second.rank ? 1 : 0;
 }
 
 function reset(): void {
