@@ -32,7 +32,7 @@ func TestTasksGetTrashedTasksUnauthenticated(t *testing.T) {
 	)
 }
 
-func TestTasksGetTrashedTasksInvalidTrashedDate(t *testing.T) {
+func TestTasksGetTrashedTasksInvalidRank(t *testing.T) {
 	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
 		Email:    support.TestUser1Email,
@@ -45,7 +45,7 @@ func TestTasksGetTrashedTasksInvalidTrashedDate(t *testing.T) {
 		t,
 		app,
 		http.MethodGet,
-		"/api/tasks/trashed?"+url.Values{"trashedDate": {"invalid"}}.Encode(),
+		"/api/tasks/trashed?"+url.Values{"rank": {"!"}}.Encode(),
 		nil,
 		cookies...,
 	)
@@ -143,33 +143,6 @@ func TestTasksGetTrashedTasksStartDateAfterEndDate(t *testing.T) {
 	)
 }
 
-func TestTasksGetTrashedTasksInvalidId(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
-	cookies := signUpResp.Result().Cookies()
-
-	resp := support.MakeJsonRequest(
-		t,
-		app,
-		http.MethodGet,
-		"/api/tasks/trashed?"+url.Values{"id": {"invalid"}}.Encode(),
-		nil,
-		cookies...,
-	)
-
-	support.AssertErrorResponse(
-		t,
-		resp,
-		http.StatusBadRequest,
-		"invalid_query_parameter",
-		"URL contains an invalid query parameter",
-	)
-}
-
 func TestTasksGetTrashedTasksEmptyCategoryIdProvided(t *testing.T) {
 	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{Email: support.TestUser1Email, Password: support.TestUser1Password})
@@ -238,63 +211,6 @@ func TestTasksGetTrashedTasksTooManyCategoryIdsProvided(t *testing.T) {
 	resp := support.MakeJsonRequest(t, app, http.MethodGet, "/api/tasks/trashed?"+url.Values{"categoryId": categoryIds}.Encode(), nil, cookies...)
 
 	support.AssertErrorResponse(t, resp, http.StatusBadRequest, "invalid_query_parameter", "URL contains an invalid query parameter")
-}
-
-func TestTasksGetTrashedTasksIncompleteCursor(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
-	cookies := signUpResp.Result().Cookies()
-
-	resp := support.MakeJsonRequest(
-		t,
-		app,
-		http.MethodGet,
-		"/api/tasks/trashed?"+url.Values{
-			"trashedDate": {time.Now().UTC().Format(time.RFC3339Nano)},
-		}.Encode(),
-		nil,
-		cookies...,
-	)
-
-	support.AssertErrorResponse(
-		t,
-		resp,
-		http.StatusBadRequest,
-		"invalid_query_parameter_combination",
-		"URL contains an invalid query parameter combination.",
-	)
-}
-
-func TestTasksGetTrashedTasksNoCursor(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
-	cookies := signUpResp.Result().Cookies()
-
-	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
-	require.Equal(t, http.StatusCreated, categoryResp.Code)
-	var category categoriesTransport.CreateCategoryResponse
-	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
-
-	expectedTasks := support.PrepareTrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
-	support.PrepareOpenUndatedUntrashedTasks(t, app, category.Id, cookies...)
-	support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
-	support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
-
-	resp := support.MakeJsonRequest(t, app, http.MethodGet, "/api/tasks/trashed", nil, cookies...)
-	require.Equal(t, http.StatusOK, resp.Code)
-	var respBody tasksTransport.GetTrashedTasksResponse
-	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
-
-	assert.Equal(t, expectedTasks, respBody.Tasks, "unexpected tasks")
-	assert.False(t, respBody.HasMore, "expected no additional tasks")
 }
 
 func TestTasksGetTrashedTasksFiltersByCategoryIds(t *testing.T) {
@@ -367,7 +283,7 @@ func TestTasksGetTrashedTasksFiltersByStartDate(t *testing.T) {
 	support.PrepareTrashedTasks(t, app, category.Id, pastDate, cookies...)
 	todayTasks := support.PrepareTrashedTasks(t, app, category.Id, today, cookies...)
 	futureTasks := support.PrepareTrashedTasks(t, app, category.Id, futureDate, cookies...)
-	expectedTasks := append(futureTasks[:2], todayTasks[:2]...)
+	expectedTasks := append(futureTasks[1:], todayTasks[1:]...)
 
 	resp := support.MakeJsonRequest(
 		t,
@@ -405,7 +321,7 @@ func TestTasksGetTrashedTasksFiltersByEndDate(t *testing.T) {
 	pastTasks := support.PrepareTrashedTasks(t, app, category.Id, pastDate, cookies...)
 	todayTasks := support.PrepareTrashedTasks(t, app, category.Id, today, cookies...)
 	support.PrepareTrashedTasks(t, app, category.Id, futureDate, cookies...)
-	expectedTasks := append(todayTasks[:2], pastTasks[:2]...)
+	expectedTasks := append(todayTasks[1:], pastTasks[1:]...)
 
 	resp := support.MakeJsonRequest(
 		t,
@@ -443,7 +359,7 @@ func TestTasksGetTrashedTasksFiltersByInclusiveDateRange(t *testing.T) {
 	support.PrepareTrashedTasks(t, app, category.Id, pastDate, cookies...)
 	todayTasks := support.PrepareTrashedTasks(t, app, category.Id, today, cookies...)
 	support.PrepareTrashedTasks(t, app, category.Id, futureDate, cookies...)
-	expectedTasks := todayTasks[:2]
+	expectedTasks := todayTasks[1:]
 
 	resp := support.MakeJsonRequest(
 		t,
@@ -464,6 +380,34 @@ func TestTasksGetTrashedTasksFiltersByInclusiveDateRange(t *testing.T) {
 	assert.False(t, respBody.HasMore, "unexpected additional page")
 }
 
+func TestTasksGetTrashedTasksNoCursor(t *testing.T) {
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
+	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
+	})
+	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	cookies := signUpResp.Result().Cookies()
+
+	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
+	require.Equal(t, http.StatusCreated, categoryResp.Code)
+	var category categoriesTransport.CreateCategoryResponse
+	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
+
+	expectedTasks := support.PrepareTrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
+	support.PrepareOpenUndatedUntrashedTasks(t, app, category.Id, cookies...)
+	support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
+	support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
+
+	resp := support.MakeJsonRequest(t, app, http.MethodGet, "/api/tasks/trashed", nil, cookies...)
+	require.Equal(t, http.StatusOK, resp.Code)
+	var respBody tasksTransport.GetTrashedTasksResponse
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
+
+	assert.Equal(t, expectedTasks, respBody.Tasks, "unexpected tasks")
+	assert.False(t, respBody.HasMore, "expected no additional tasks")
+}
+
 func TestTasksGetTrashedTasksCursor(t *testing.T) {
 	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
@@ -479,15 +423,13 @@ func TestTasksGetTrashedTasksCursor(t *testing.T) {
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
 
 	tasks := support.PrepareTrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
-	cursor := tasks[0]
 
 	resp := support.MakeJsonRequest(
 		t,
 		app,
 		http.MethodGet,
 		"/api/tasks/trashed?"+url.Values{
-			"trashedDate": {cursor.TrashedDate.Format(time.RFC3339Nano)},
-			"id":          {strconv.FormatInt(cursor.Id, 10)},
+			"rank": {tasks[0].Rank},
 		}.Encode(),
 		nil,
 		cookies...,
@@ -525,12 +467,14 @@ func TestTasksGetTrashedTasksHasMore(t *testing.T) {
 		require.NoError(t, json.NewDecoder(createTaskResp.Body).Decode(&task), "failed to decode task response")
 
 		trashTaskResp := support.MakeTrashTaskRequest(t, app, task.Id, trashedDate, cookies...)
-		require.Equal(t, http.StatusNoContent, trashTaskResp.Code)
+		require.Equal(t, http.StatusOK, trashTaskResp.Code)
+		var trashTask tasksTransport.TrashTaskResponse
+		require.NoError(t, json.NewDecoder(trashTaskResp.Body).Decode(&trashTask), "failed to decode trash task response")
 		createdTasks = append(createdTasks, tasksTransport.TrashedTaskResponse{
-			Id:          task.Id,
-			CategoryId:  category.Id,
-			Title:       title,
-			TrashedDate: trashedDate,
+			Id:         task.Id,
+			CategoryId: category.Id,
+			Title:      title,
+			Rank:       trashTask.Rank,
 		})
 	}
 

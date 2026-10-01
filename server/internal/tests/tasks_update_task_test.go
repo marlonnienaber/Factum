@@ -391,7 +391,7 @@ func TestTasksUpdateTaskChangeTitle(t *testing.T) {
 
 	assert.Equal(t, "New title", respBody.Title, "unexpected task title")
 	require.NotNil(t, respBody.Rank)
-	assert.Equal(t, task.Rank, *respBody.Rank, "expected task rank to remain unchanged")
+	assert.Equal(t, task.Rank, respBody.Rank, "expected task rank to remain unchanged")
 }
 
 func TestTasksUpdateTaskAddDescription(t *testing.T) {
@@ -428,7 +428,7 @@ func TestTasksUpdateTaskAddDescription(t *testing.T) {
 
 	assert.Equal(t, &description, respBody.Description, "unexpected task description")
 	require.NotNil(t, respBody.Rank)
-	assert.Equal(t, task.Rank, *respBody.Rank, "expected task rank to remain unchanged")
+	assert.Equal(t, task.Rank, respBody.Rank, "expected task rank to remain unchanged")
 }
 
 func TestTasksUpdateTaskRemoveDescription(t *testing.T) {
@@ -464,7 +464,7 @@ func TestTasksUpdateTaskRemoveDescription(t *testing.T) {
 
 	assert.Nil(t, respBody.Description, "expected task description to be removed")
 	require.NotNil(t, respBody.Rank)
-	assert.Equal(t, task.Rank, *respBody.Rank, "expected task rank to remain unchanged")
+	assert.Equal(t, task.Rank, respBody.Rank, "expected task rank to remain unchanged")
 }
 
 func TestTasksUpdateTaskChangeDescription(t *testing.T) {
@@ -502,7 +502,7 @@ func TestTasksUpdateTaskChangeDescription(t *testing.T) {
 
 	assert.Equal(t, &newDescription, respBody.Description, "unexpected task description")
 	require.NotNil(t, respBody.Rank)
-	assert.Equal(t, task.Rank, *respBody.Rank, "expected task rank to remain unchanged")
+	assert.Equal(t, task.Rank, respBody.Rank, "expected task rank to remain unchanged")
 }
 
 func TestTasksUpdateTaskFromOpenWithoutDateUntrashedToDate(t *testing.T) {
@@ -644,7 +644,8 @@ func TestTasksUpdateTaskFromDoneWithDateTrashedToNoDateTrashed(t *testing.T) {
 
 	assert.Nil(t, respBody.Date, "expected task date to be removed")
 	assert.False(t, respBody.Done, "expected task to become open")
-	assert.Nil(t, respBody.Rank, "expected trashed task not to have a rank")
+	assert.Equal(t, task.Rank, respBody.Rank, "expected trash rank to remain unchanged")
+	assert.True(t, respBody.Trashed, "expected task to remain trashed")
 }
 
 func TestTasksUpdateTaskFromOpenWithDateTrashedToNoDateTrashed(t *testing.T) {
@@ -684,7 +685,8 @@ func TestTasksUpdateTaskFromOpenWithDateTrashedToNoDateTrashed(t *testing.T) {
 
 	assert.Nil(t, respBody.Date, "expected task date to be removed")
 	assert.False(t, respBody.Done, "expected task to remain open")
-	assert.Nil(t, respBody.Rank, "expected trashed task not to have a rank")
+	assert.Equal(t, task.Rank, respBody.Rank, "expected trash rank to remain unchanged")
+	assert.True(t, respBody.Trashed, "expected task to remain trashed")
 }
 
 func TestTasksUpdateTaskFromOpenWithoutDateTrashedToDateTrashed(t *testing.T) {
@@ -727,7 +729,8 @@ func TestTasksUpdateTaskFromOpenWithoutDateTrashedToDateTrashed(t *testing.T) {
 
 	assert.Equal(t, &targetDate, respBody.Date, "unexpected task date")
 	assert.False(t, respBody.Done, "expected task to remain open")
-	assert.Nil(t, respBody.Rank, "expected trashed task not to have a rank")
+	assert.Equal(t, task.Rank, respBody.Rank, "expected trash rank to remain unchanged")
+	assert.True(t, respBody.Trashed, "expected task to remain trashed")
 }
 
 func TestTasksUpdateTaskFromOpenWithDateToOtherDate(t *testing.T) {
@@ -839,5 +842,5 @@ func TestTasksUpdateTaskChangeCategory(t *testing.T) {
 
 	assert.Equal(t, newCategory.Id, respBody.CategoryId, "unexpected category id")
 	require.NotNil(t, respBody.Rank)
-	assert.Equal(t, task.Rank, *respBody.Rank, "expected task rank to remain unchanged")
+	assert.Equal(t, task.Rank, respBody.Rank, "expected task rank to remain unchanged")
 }

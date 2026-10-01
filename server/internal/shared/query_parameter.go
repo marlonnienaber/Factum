@@ -35,20 +35,6 @@ func GetOptionalRankQueryParameter(c *AuthenticatedContext, key string) (*string
 	return rank, nil
 }
 
-func GetOptionalIdQueryParameter(c *AuthenticatedContext, key string) (*int64, error) {
-	value, exists := c.GetQuery(key)
-	if !exists {
-		return nil, nil
-	}
-
-	integer, err := strconv.ParseInt(value, 10, 64)
-	if err != nil || integer <= 0 {
-		return nil, InvalidQueryParameterErr
-	}
-
-	return &integer, nil
-}
-
 func GetOptionalIdQueryParameterList(c *AuthenticatedContext, key string, maxLength int) ([]int64, error) {
 	values, exists := c.GetQueryArray(key)
 	if !exists {
@@ -88,32 +74,4 @@ func GetOptionalDateQueryParameter(c *AuthenticatedContext, key string) (*time.T
 	}
 
 	return &date, nil
-}
-
-func GetOptionalTimestampQueryParameter(c *AuthenticatedContext, key string) (*time.Time, error) {
-	value, exists := c.GetQuery(key)
-	if !exists {
-		return nil, nil
-	}
-
-	timestamp, err := time.Parse(time.RFC3339, value)
-	if err != nil {
-		return nil, InvalidQueryParameterErr
-	}
-
-	return &timestamp, nil
-}
-
-func GetRequiredTimestampQueryParameter(c *AuthenticatedContext, key string) (time.Time, error) {
-	value, exists := c.GetQuery(key)
-	if !exists {
-		return time.Time{}, MissingQueryParameterErr
-	}
-
-	timestamp, err := time.Parse(time.RFC3339, value)
-	if err != nil {
-		return time.Time{}, InvalidQueryParameterErr
-	}
-
-	return timestamp, nil
 }

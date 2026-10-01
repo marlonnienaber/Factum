@@ -36,51 +36,6 @@ func TestTasksBatchTrashUnauthenticated(t *testing.T) {
 	)
 }
 
-func TestTasksBatchTrashNoTrashedDate(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
-	cookies := signUpResp.Result().Cookies()
-
-	payload, err := json.Marshal(tasksTransport.BatchTrashTasksRequest{TaskIds: []int64{1}})
-	require.NoError(t, err, "serializing request failed")
-	resp := support.MakeJsonRequest(t, app, http.MethodPatch, "/api/tasks/batch-trash", payload, cookies...)
-
-	support.AssertErrorResponse(
-		t,
-		resp,
-		http.StatusBadRequest,
-		"missing_query_parameter",
-		"URL is missing a required query parameter.",
-	)
-}
-
-func TestTasksBatchTrashInvalidTrashedDate(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
-	cookies := signUpResp.Result().Cookies()
-
-	payload, err := json.Marshal(tasksTransport.BatchTrashTasksRequest{TaskIds: []int64{1}})
-	require.NoError(t, err, "serializing request failed")
-	path := "/api/tasks/batch-trash?" + url.Values{"trashedDate": {"invalid"}}.Encode()
-	resp := support.MakeJsonRequest(t, app, http.MethodPatch, path, payload, cookies...)
-
-	support.AssertErrorResponse(
-		t,
-		resp,
-		http.StatusBadRequest,
-		"invalid_query_parameter",
-		"URL contains an invalid query parameter",
-	)
-}
-
 func TestTasksBatchTrashEmptyTaskIds(t *testing.T) {
 	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
@@ -252,13 +207,21 @@ func TestTasksBatchTrashMultipleTasks(t *testing.T) {
 	datedOpenTasks := support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 	datedDoneTasks := support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 
-	payload, err := json.Marshal(tasksTransport.BatchTrashTasksRequest{
-		TaskIds: []int64{undatedTasks[0].Id, datedOpenTasks[0].Id, datedDoneTasks[0].Id},
-	})
+	taskIds := []int64{undatedTasks[0].Id, datedOpenTasks[0].Id, datedDoneTasks[0].Id}
+	payload, err := json.Marshal(tasksTransport.BatchTrashTasksRequest{TaskIds: taskIds})
 	require.NoError(t, err, "serializing request failed")
-	path := "/api/tasks/batch-trash?" + batchTrashEncodedTrashedDate
-	resp := support.MakeJsonRequest(t, app, http.MethodPatch, path, payload, cookies...)
+	resp := support.MakeJsonRequest(t, app, http.MethodPatch, "/api/tasks/batch-trash", payload, cookies...)
 
-	require.Equal(t, http.StatusNoContent, resp.Code)
-	assert.Empty(t, resp.Body.String(), "expected an empty response body")
+	require.Equal(t, http.StatusOK, resp.Code)
+	var respBody []tasksTransport.BatchTrashTaskResponse
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
+	require.Len(t, respBody, len(taskIds))
+
+	for index, task := range respBody {
+		assert.Equal(t, taskIds[index], task.Id, "unexpected task id")
+		assert.NotEmpty(t, task.Rank, "expected trashed task to have a rank")
+		if index > 0 {
+			assert.Less(t, respBody[index-1].Rank, task.Rank, "expected tasks to retain client order")
+		}
+	}
 }

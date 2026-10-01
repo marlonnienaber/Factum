@@ -220,8 +220,10 @@ func PrepareTrashedTasks(
 
 	trashTask := func(task tasksTransport.TrashedTaskResponse) tasksTransport.TrashedTaskResponse {
 		resp := MakeTrashTaskRequest(t, app, task.Id, trashedDate, cookies...)
-		require.Equal(t, http.StatusNoContent, resp.Code)
-		task.TrashedDate = trashedDate
+		require.Equal(t, http.StatusOK, resp.Code)
+		var trashTaskResponse tasksTransport.TrashTaskResponse
+		require.NoError(t, json.NewDecoder(resp.Body).Decode(&trashTaskResponse), "failed to decode trash task response")
+		task.Rank = trashTaskResponse.Rank
 		return task
 	}
 
@@ -272,10 +274,14 @@ func PrepareTrashedTasks(
 	require.Equal(t, http.StatusOK, toggleDoneResp.Code)
 	doneDatedTask.Done = true
 
+	doneDatedTask = trashTask(doneDatedTask)
+	openDatedTask = trashTask(openDatedTask)
+	openUndatedTask = trashTask(openUndatedTask)
+
 	return []tasksTransport.TrashedTaskResponse{
-		trashTask(doneDatedTask),
-		trashTask(openDatedTask),
-		trashTask(openUndatedTask),
+		openUndatedTask,
+		openDatedTask,
+		doneDatedTask,
 	}
 }
 
