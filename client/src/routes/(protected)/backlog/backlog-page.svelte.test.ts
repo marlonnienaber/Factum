@@ -1,6 +1,6 @@
 import { fireEvent, render, type RenderResult, waitFor, within } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
-import { getLocalTimeZone, now, parseAbsolute, today } from '@internationalized/date';
+import { getLocalTimeZone, today } from '@internationalized/date';
 import { generateKeyBetween, generateNKeysBetween } from 'fractional-indexing';
 import { toast } from 'svelte-sonner';
 import { type DndEvent, SOURCES, TRIGGERS } from 'svelte-dnd-action';
@@ -298,7 +298,8 @@ describe('backlog page tests', () => {
 					title: newTitle,
 					description: newDescription,
 					done: false,
-					rank: task.rank
+					rank: task.rank,
+					trashed: false
 				});
 				fetchMock.mockResolvedValue(response);
 
@@ -340,7 +341,8 @@ describe('backlog page tests', () => {
 					description: newDescription,
 					date: taskDate.toString(),
 					done: false,
-					rank: task.rank
+					rank: task.rank,
+					trashed: false
 				});
 				fetchMock.mockResolvedValue(response);
 
@@ -384,7 +386,8 @@ describe('backlog page tests', () => {
 					description: newDescription,
 					date: taskDate.toString(),
 					done: false,
-					rank: task.rank
+					rank: task.rank,
+					trashed: false
 				});
 				fetchMock.mockResolvedValue(response);
 
@@ -530,7 +533,7 @@ describe('backlog page tests', () => {
 			it('successfully trashes a task without a date', async () => {
 				const task = testData.noDatePartition.firstTask;
 
-				const response = new Response(null, { status: 204 });
+				const response = getResponse({ rank: generateKeyBetween(undefined, undefined) });
 				fetchMock.mockResolvedValue(response);
 
 				const page = render(Page);
@@ -543,13 +546,6 @@ describe('backlog page tests', () => {
 
 				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 				expectRequestPath(fetchMock, `/api/tasks/${task.id}/trash`);
-				const trashedDate = getRequestSearchParameter(fetchMock, 'trashedDate');
-				expect(trashedDate).not.toBeNull();
-				if (trashedDate === null) throw new Error('Expected the trash request to contain a trashedDate.');
-				const parsedTrashedDate = parseAbsolute(trashedDate, localTimeZone);
-				const currentDate = now(localTimeZone);
-				const dateDifference = Math.abs(parsedTrashedDate.compare(currentDate));
-				expect(dateDifference).toBeLessThanOrEqual(maximumTrashTimestampDifferenceMilliseconds);
 				expectRequestMethod(fetchMock, 'PATCH');
 				expectRequestCredentialsMode(fetchMock, 'same-origin');
 				expectRequestBody(fetchMock, undefined);
@@ -559,7 +555,7 @@ describe('backlog page tests', () => {
 			it('successfully trashes a task with a non-today date', async () => {
 				const task = testData.nonTodayPastPartition.firstTask;
 
-				const response = new Response(null, { status: 204 });
+				const response = getResponse({ rank: generateKeyBetween(undefined, undefined) });
 				fetchMock.mockResolvedValue(response);
 
 				const page = render(Page);
@@ -572,13 +568,6 @@ describe('backlog page tests', () => {
 
 				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 				expectRequestPath(fetchMock, `/api/tasks/${task.id}/trash`);
-				const trashedDate = getRequestSearchParameter(fetchMock, 'trashedDate');
-				expect(trashedDate).not.toBeNull();
-				if (trashedDate === null) throw new Error('Expected the trash request to contain a trashedDate.');
-				const parsedTrashedDate = parseAbsolute(trashedDate, localTimeZone);
-				const currentDate = now(localTimeZone);
-				const dateDifference = Math.abs(parsedTrashedDate.compare(currentDate));
-				expect(dateDifference).toBeLessThanOrEqual(maximumTrashTimestampDifferenceMilliseconds);
 				expectRequestMethod(fetchMock, 'PATCH');
 				expectRequestCredentialsMode(fetchMock, 'same-origin');
 				expectRequestBody(fetchMock, undefined);
@@ -588,7 +577,7 @@ describe('backlog page tests', () => {
 			it('successfully trashes a task dated today', async () => {
 				const task = testData.todayPartition.firstTask;
 
-				const response = new Response(null, { status: 204 });
+				const response = getResponse({ rank: generateKeyBetween(undefined, undefined) });
 				fetchMock.mockResolvedValue(response);
 
 				const page = render(Page);
@@ -601,13 +590,6 @@ describe('backlog page tests', () => {
 
 				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 				expectRequestPath(fetchMock, `/api/tasks/${task.id}/trash`);
-				const trashedDate = getRequestSearchParameter(fetchMock, 'trashedDate');
-				expect(trashedDate).not.toBeNull();
-				if (trashedDate === null) throw new Error('Expected the trash request to contain a trashedDate.');
-				const parsedTrashedDate = parseAbsolute(trashedDate, localTimeZone);
-				const currentDate = now(localTimeZone);
-				const dateDifference = Math.abs(parsedTrashedDate.compare(currentDate));
-				expect(dateDifference).toBeLessThanOrEqual(maximumTrashTimestampDifferenceMilliseconds);
 				expectRequestMethod(fetchMock, 'PATCH');
 				expectRequestCredentialsMode(fetchMock, 'same-origin');
 				expectRequestBody(fetchMock, undefined);
@@ -670,9 +652,11 @@ describe('backlog page tests', () => {
 					testData.nonTodayPastPartition.secondTask,
 					testData.todayPartition.thirdTask
 				] as const;
-				const taskIds = tasks.map((task) => task.id);
 
-				const response = new Response(null, { status: 204 });
+				const taskIds = tasks.map((task) => task.id);
+				const trashedTaskRanks = generateNKeysBetween(undefined, undefined, tasks.length);
+				const trashedTasks = tasks.map((task, index) => ({ id: task.id, rank: trashedTaskRanks[index] }));
+				const response = getResponse(trashedTasks);
 				fetchMock.mockResolvedValue(response);
 
 				const page = render(Page);
@@ -683,13 +667,6 @@ describe('backlog page tests', () => {
 
 				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 				expectRequestPath(fetchMock, '/api/tasks/batch-trash');
-				const trashedDate = getRequestSearchParameter(fetchMock, 'trashedDate');
-				expect(trashedDate).not.toBeNull();
-				if (trashedDate === null) throw new Error('Expected the batch trash request to contain a trashedDate.');
-				const parsedTrashedDate = parseAbsolute(trashedDate, localTimeZone);
-				const currentDate = now(localTimeZone);
-				const dateDifference = Math.abs(parsedTrashedDate.compare(currentDate));
-				expect(dateDifference).toBeLessThanOrEqual(maximumTrashTimestampDifferenceMilliseconds);
 				const requestBody = JSON.stringify({ taskIds });
 				expectRequestMethod(fetchMock, 'PATCH');
 				expectRequestCredentialsMode(fetchMock, 'same-origin');
@@ -1589,7 +1566,6 @@ const fetchMock = vi.fn();
 const toastErrorMock = vi.mocked(toast.error);
 const category = { id: 7, title: 'Personal', color: '#22c55e' };
 const localTimeZone = getLocalTimeZone();
-const maximumTrashTimestampDifferenceMilliseconds = 5_000;
 const todayDate = today(localTimeZone);
 const testData = createTestData();
 
