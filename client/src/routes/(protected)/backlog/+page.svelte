@@ -111,7 +111,6 @@
 			{
 				label: 'Trash',
 				icon: Trash2,
-				variant: 'danger' as const,
 				disabled: taskService.taskMutationBlocked,
 				onclick: () => taskService.trashTask(task.id)
 			}
