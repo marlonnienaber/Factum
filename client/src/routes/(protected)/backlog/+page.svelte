@@ -64,6 +64,8 @@
 			const taskDragItemIndex = taskDragItems.findIndex((task) => task.id === taskDragItemId);
 			const request: TaskDragAndDropRequest = {
 				date: dateKey ? parseDate(dateKey) : undefined,
+				done: false,
+				trashed: false,
 				previousTaskId: taskDragItems[taskDragItemIndex - 1]?.id
 			};
 			await taskService.dragAndDropTask(taskDragItemId, request);
