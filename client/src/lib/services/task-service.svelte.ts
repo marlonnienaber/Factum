@@ -514,7 +514,9 @@ async function dragAndDropTask(id: number, request: TaskDragAndDropRequest): Pro
 
 	const undatedTask = undatedTaskStore.undatedTasks.find((task) => task.id === id);
 	const datedTask = datedUntrashedOpenTaskStore.datedUntrashedOpenTasks.find((task) => task.id === id);
-	const task = undatedTask ?? datedTask;
+	const completedTask = datedUntrashedDoneTaskStore.datedUntrashedDoneTasks.find((task) => task.id === id);
+	const trashedTask = trashedTaskStore.trashedTasks.find((task) => task.id === id);
+	const task = undatedTask ?? datedTask ?? completedTask ?? trashedTask;
 	if (!task) return;
 
 	taskMutationLoading = true;
@@ -527,12 +529,47 @@ async function dragAndDropTask(id: number, request: TaskDragAndDropRequest): Pro
 		);
 		if (networkCall.status === 'failed') return;
 
+		if (request.trashed && completedTask !== undefined) {
+			datedUntrashedDoneTaskStore.removeTask(id);
+			trashedTaskStore.addOrUpdateTask({ ...completedTask, rank: networkCall.result.rank });
+			return;
+		}
+		if (request.trashed && trashedTask !== undefined) {
+			trashedTaskStore.addOrUpdateTask({ ...trashedTask, rank: networkCall.result.rank });
+			return;
+		}
+		if (!request.trashed && trashedTask !== undefined && request.date !== undefined) {
+			trashedTaskStore.removeTask(id);
+			datedUntrashedDoneTaskStore.addOrUpdateTask({
+				...trashedTask,
+				date: request.date,
+				done: true,
+				rank: networkCall.result.rank
+			});
+			return;
+		}
+		if (completedTask !== undefined && request.date !== undefined) {
+			datedUntrashedDoneTaskStore.addOrUpdateTask({
+				...completedTask,
+				date: request.date,
+				rank: networkCall.result.rank
+			});
+			return;
+		}
+
+		const openTask = undatedTask ?? datedTask;
+		if (openTask === undefined) return;
 		undatedTaskStore.removeTask(id);
 		datedUntrashedOpenTaskStore.removeTask(id);
 		if (request.date) {
-			datedUntrashedOpenTaskStore.addOrUpdateTask({ ...task, date: request.date, rank: networkCall.result.rank, done: false });
+			datedUntrashedOpenTaskStore.addOrUpdateTask({
+				...openTask,
+				date: request.date,
+				rank: networkCall.result.rank,
+				done: false
+			});
 		} else {
-			undatedTaskStore.addOrUpdateTask({ ...task, rank: networkCall.result.rank });
+			undatedTaskStore.addOrUpdateTask({ ...openTask, rank: networkCall.result.rank });
 		}
 	} finally {
 		taskMutationLoading = false;

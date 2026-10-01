@@ -14,24 +14,81 @@
 	import { parseDate, type DateValue } from '@internationalized/date';
 	import type { DatedUntrashedDoneTaskResponse } from '$lib/types/responses/dated-untrashed-done-task-response';
 	import type { TrashedTaskResponse } from '$lib/types/responses/trashed-task-response';
-	import { Info, MousePointer2, RotateCcw, SquarePen, Trash2, XCircle } from '@lucide/svelte';
+	import type { TaskDragAndDropRequest } from '$lib/types/requests/task-drag-and-drop-request';
+	import { Ghost, Info, MousePointer2, RotateCcw, SquarePen, Trash2, XCircle } from '@lucide/svelte';
+	import { dndzone, SHADOW_ITEM_MARKER_PROPERTY_NAME as isShadowTask, TRIGGERS, type DndEvent } from 'svelte-dnd-action';
+
+	type TaskDragItem = (DatedUntrashedDoneTaskResponse | TrashedTaskResponse) & {
+		[isShadowTask]?: boolean;
+	};
 
 	const maximumBatchSize = 50;
 
 	let taskDialogOpen = $state(false);
 	let taskDialogTask = $state<DatedUntrashedDoneTaskResponse | TrashedTaskResponse>();
+	let dragging = $state(false);
 	let selectionEnabled = $state(false);
 	let selectedTaskIds = $state<number[]>([]);
 	let unselectedCategoryIds = $state<number[]>([]);
 	let startDate = $state<DateValue>();
 	let endDate = $state<DateValue>();
-	const dateKeyToDatedUntrashedDoneTasksRecord = $derived(createDateKeyToDatedUntrashedDoneTasksRecord());
+	let trashedTaskDragItems = $state<TaskDragItem[]>([...trashedTaskStore.trashedTasks]);
+	let dateKeyToUntrashedTaskDragItemsRecord = $state<Record<string, TaskDragItem[]>>(createDateKeyToUntrashedTaskDragItemsRecord());
 
-	function createDateKeyToDatedUntrashedDoneTasksRecord(): Record<string, DatedUntrashedDoneTaskResponse[]> {
+	$effect.pre(() => {
+		if (dragging) return;
+		dateKeyToUntrashedTaskDragItemsRecord = createDateKeyToUntrashedTaskDragItemsRecord();
+		trashedTaskDragItems = [...trashedTaskStore.trashedTasks];
+	});
+
+	function createDateKeyToUntrashedTaskDragItemsRecord(): Record<string, TaskDragItem[]> {
 		const dateKeyToDatedUntrashedDoneTasksMap = Map.groupBy(datedUntrashedDoneTaskStore.datedUntrashedDoneTasks, (task) =>
 			task.date.toString()
 		);
 		return Object.fromEntries(dateKeyToDatedUntrashedDoneTasksMap);
+	}
+
+	function handleConsider(event: CustomEvent<DndEvent<TaskDragItem>>, dateKey?: string): void {
+		dragging = true;
+		setTaskDragItems(event.detail.items, dateKey);
+	}
+
+	async function handleFinalize(event: CustomEvent<DndEvent<TaskDragItem>>, dateKey?: string): Promise<void> {
+		const taskDragItems = event.detail.items;
+		setTaskDragItems(taskDragItems, dateKey);
+
+		const taskDragItemId = Number(event.detail.info.id);
+		const wasTaskDragItemDroppedIntoZone = event.detail.info.trigger === TRIGGERS.DROPPED_INTO_ZONE;
+		const completedTask = datedUntrashedDoneTaskStore.datedUntrashedDoneTasks.find((task) => task.id === taskDragItemId);
+		const trashedTask = trashedTaskStore.trashedTasks.find((task) => task.id === taskDragItemId);
+		const task = completedTask ?? trashedTask;
+		if (wasTaskDragItemDroppedIntoZone && task !== undefined) {
+			const taskDragItemIndex = taskDragItems.findIndex((taskDragItem) => taskDragItem.id === taskDragItemId);
+			const request: TaskDragAndDropRequest = {
+				date: dateKey === undefined ? task.date : parseDate(dateKey),
+				done: dateKey === undefined ? task.done : true,
+				trashed: dateKey === undefined,
+				previousTaskId: taskDragItems[taskDragItemIndex - 1]?.id
+			};
+			await taskService.dragAndDropTask(taskDragItemId, request);
+		}
+
+		dragging = false;
+	}
+
+	function setTaskDragItems(taskDragItems: TaskDragItem[], dateKey?: string): void {
+		if (dateKey === undefined) {
+			trashedTaskDragItems = taskDragItems;
+		} else {
+			dateKeyToUntrashedTaskDragItemsRecord = {
+				...dateKeyToUntrashedTaskDragItemsRecord,
+				[dateKey]: taskDragItems
+			};
+		}
+	}
+
+	function getTaskDragItemKey(task: TaskDragItem): string {
+		return `${task.id}-${task[isShadowTask] ? 'shadow' : 'item'}`;
 	}
 
 	function loadMoreDatedUntrashedDoneTasks(): Promise<void> | undefined {
@@ -100,7 +157,6 @@
 			{
 				label: 'Trash',
 				icon: Trash2,
-				variant: 'danger' as const,
 				disabled: taskService.taskMutationBlocked,
 				onclick: () => taskService.trashTask(task.id)
 			}
@@ -181,20 +237,25 @@
 					Select Tasks
 					{#snippet trailingIcon()}<MousePointer2 size={17} aria-hidden="true" />{/snippet}
 				</Button>
-				<Button
-					variant="danger"
-					disabled={trashedTaskStore.trashedTasks.length === 0 || taskService.taskMutationBlocked}
-					onclick={emptyTrash}
-				>
-					Empty Trash
-					{#snippet trailingIcon()}<Trash2 size={17} aria-hidden="true" />{/snippet}
-				</Button>
+				{#if trashedTaskStore.trashedTasks.length > 0}
+					<Button variant="danger" disabled={taskService.taskMutationBlocked} onclick={emptyTrash}>
+						Empty Trash
+						{#snippet trailingIcon()}<Trash2 size={17} aria-hidden="true" />{/snippet}
+					</Button>
+				{/if}
 			{/if}
 		</div>
 		<section class="category-selection-section">
 			<h1>Category Filter</h1>
 			<div class="category-filter-container">
-				<CategoryFilter {unselectedCategoryIds} onSelectionChange={handleCategorySelectionChange} />
+				{#if categoryStore.categories.length === 0}
+					<div class="no-categories">
+						<Ghost size={40} aria-hidden="true" />
+						<span>No Categories Available</span>
+					</div>
+				{:else}
+					<CategoryFilter {unselectedCategoryIds} onSelectionChange={handleCategorySelectionChange} />
+				{/if}
 			</div>
 		</section>
 		<section class="time-scope-section">
@@ -209,22 +270,32 @@
 		<InfiniteScrollContainer
 			hasMore={datedUntrashedDoneTaskStore.hasMore}
 			loading={taskService.datedUntrashedDoneTasksLoading}
-			disabled={false}
+			disabled={dragging}
 			loadMore={loadMoreDatedUntrashedDoneTasks}
 		>
 			<div class="date-groups">
-				{#each Object.entries(dateKeyToDatedUntrashedDoneTasksRecord) as [groupKey, tasks] (groupKey)}
+				{#each Object.entries(dateKeyToUntrashedTaskDragItemsRecord) as [groupKey, taskDragItems] (groupKey)}
 					{@const groupDate = parseDate(groupKey)}
 					<div class="date-group">
 						<h2>{getDateLabel(groupDate)}</h2>
-						<div class="task-list" aria-label={`Completed tasks dated ${getDateLabel(groupDate)}`}>
-							{#each tasks as task (task.id)}
+						<div
+							class="task-item-drop-zone"
+							aria-label={`Completed tasks dated ${getDateLabel(groupDate)}`}
+							use:dndzone={{
+								items: taskDragItems,
+								dragDisabled: selectionEnabled || taskService.taskMutationBlocked,
+								dropTargetStyle:{ outline: 'none' }
+							}}
+							onconsider={(event) => handleConsider(event, groupKey)}
+							onfinalize={(event) => handleFinalize(event, groupKey)}
+						>
+							{#each taskDragItems as taskDragItem (getTaskDragItemKey(taskDragItem))}
 								<Task
-									{task}
-									actions={getTaskActions(task, false)}
-									isShadowItem={false}
+									task={taskDragItem}
+									actions={getTaskActions(taskDragItem, false)}
+									isShadowItem={Boolean(taskDragItem[isShadowTask])}
 									{selectionEnabled}
-									selected={selectedTaskIds.includes(task.id)}
+									selected={selectedTaskIds.includes(taskDragItem.id)}
 									onSelectedChange={updateTaskSelection}
 								/>
 							{/each}
@@ -245,15 +316,25 @@
 		<InfiniteScrollContainer
 			hasMore={trashedTaskStore.hasMore}
 			loading={taskService.trashedTasksLoading}
-			disabled={false}
+			disabled={dragging}
 			loadMore={loadMoreTrashedTasks}
 		>
-			<div class="trashed-task-list" aria-label="Trashed tasks">
-				{#each trashedTaskStore.trashedTasks as task (task.id)}
+			<div
+				class="task-item-drop-zone"
+				aria-label="Trashed tasks"
+				use:dndzone={{
+					items: trashedTaskDragItems,
+					dragDisabled: selectionEnabled || taskService.taskMutationBlocked,
+					dropTargetStyle: { outline: 'none' }
+				}}
+				onconsider={handleConsider}
+				onfinalize={handleFinalize}
+			>
+				{#each trashedTaskDragItems as taskDragItem (getTaskDragItemKey(taskDragItem))}
 					<Task
-						{task}
-						actions={getTaskActions(task, true)}
-						isShadowItem={false}
+						task={taskDragItem}
+						actions={getTaskActions(taskDragItem, true)}
+						isShadowItem={Boolean(taskDragItem[isShadowTask])}
 						selectionEnabled={false}
 						selected={false}
 						displayDate
@@ -290,6 +371,12 @@
 			font-size: 1rem;
 			margin: 0;
 			font-weight: 500;
+		}
+
+		.task-item-drop-zone {
+			display: flex;
+			flex-direction: column;
+			gap: 0.75rem;
 		}
 
 		.left-column-container {
@@ -333,6 +420,19 @@
 					align-items: safe center;
 					justify-content: center;
 					min-height: 0;
+
+					.no-categories {
+						display: flex;
+						flex-direction: column;
+						align-items: center;
+						gap: 0.75rem;
+						color: var(--text);
+						font-size: 0.875rem;
+
+						span {
+							color: var(--text-subtle);
+						}
+					}
 				}
 			}
 
@@ -376,12 +476,6 @@
 					display: flex;
 					flex-direction: column;
 					gap: 0.75rem;
-
-					.task-list {
-						display: flex;
-						flex-direction: column;
-						gap: 0.75rem;
-					}
 				}
 			}
 		}
@@ -407,12 +501,11 @@
 					white-space: nowrap;
 				}
 			}
-
-			.trashed-task-list {
-				display: flex;
-				flex-direction: column;
-				gap: 0.75rem;
-			}
 		}
+	}
+
+	/*noinspection CssUnusedSymbol*/
+	:global(#dnd-action-dragged-el) {
+		opacity: 1 !important;
 	}
 </style>
