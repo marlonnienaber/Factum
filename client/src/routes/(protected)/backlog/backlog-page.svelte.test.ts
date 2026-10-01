@@ -751,7 +751,7 @@ describe('backlog page tests', () => {
 					await dropTask(tasksWithoutDateList, reorderedTasks, testData.noDatePartition.thirdTask.id);
 
 					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-					const requestBody = JSON.stringify({});
+					const requestBody = JSON.stringify({ done: false, trashed: false });
 					expectRequestUrl(fetchMock, `/api/tasks/${testData.noDatePartition.thirdTask.id}/drag-and-drop`);
 					expectRequestMethod(fetchMock, 'PATCH');
 					expectRequestCredentialsMode(fetchMock, 'same-origin');
@@ -778,7 +778,11 @@ describe('backlog page tests', () => {
 					await dropTask(tasksWithoutDateList, reorderedTasks, testData.noDatePartition.thirdTask.id);
 
 					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-					const requestBody = JSON.stringify({ previousTaskId: testData.noDatePartition.firstTask.id });
+					const requestBody = JSON.stringify({
+						done: false,
+						trashed: false,
+						previousTaskId: testData.noDatePartition.firstTask.id
+					});
 					expectRequestUrl(fetchMock, `/api/tasks/${testData.noDatePartition.thirdTask.id}/drag-and-drop`);
 					expectRequestMethod(fetchMock, 'PATCH');
 					expectRequestCredentialsMode(fetchMock, 'same-origin');
@@ -802,7 +806,11 @@ describe('backlog page tests', () => {
 					await dropTask(tasksWithoutDateList, reorderedTasks, testData.noDatePartition.firstTask.id);
 
 					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-					const requestBody = JSON.stringify({ previousTaskId: testData.noDatePartition.thirdTask.id });
+					const requestBody = JSON.stringify({
+						done: false,
+						trashed: false,
+						previousTaskId: testData.noDatePartition.thirdTask.id
+					});
 					expectRequestUrl(fetchMock, `/api/tasks/${testData.noDatePartition.firstTask.id}/drag-and-drop`);
 					expectRequestMethod(fetchMock, 'PATCH');
 					expectRequestCredentialsMode(fetchMock, 'same-origin');
@@ -829,7 +837,9 @@ describe('backlog page tests', () => {
 
 					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 					const requestBody = JSON.stringify({
-						date: testData.todayPartitionDate.toString()
+						date: testData.todayPartitionDate.toString(),
+						done: false,
+						trashed: false
 					});
 					expectRequestUrl(fetchMock, `/api/tasks/${testData.todayPartition.thirdTask.id}/drag-and-drop`);
 					expectRequestMethod(fetchMock, 'PATCH');
@@ -859,6 +869,8 @@ describe('backlog page tests', () => {
 					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 					const requestBody = JSON.stringify({
 						date: testData.todayPartitionDate.toString(),
+						done: false,
+						trashed: false,
 						previousTaskId: testData.todayPartition.firstTask.id
 					});
 					expectRequestUrl(fetchMock, `/api/tasks/${testData.todayPartition.thirdTask.id}/drag-and-drop`);
@@ -886,6 +898,8 @@ describe('backlog page tests', () => {
 					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 					const requestBody = JSON.stringify({
 						date: testData.todayPartitionDate.toString(),
+						done: false,
+						trashed: false,
 						previousTaskId: testData.todayPartition.thirdTask.id
 					});
 					expectRequestUrl(fetchMock, `/api/tasks/${testData.todayPartition.firstTask.id}/drag-and-drop`);
@@ -914,7 +928,9 @@ describe('backlog page tests', () => {
 
 					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 					const requestBody = JSON.stringify({
-						date: testData.nonTodayPastPartitionDate.toString()
+						date: testData.nonTodayPastPartitionDate.toString(),
+						done: false,
+						trashed: false
 					});
 					expectRequestUrl(fetchMock, `/api/tasks/${testData.nonTodayPastPartition.thirdTask.id}/drag-and-drop`);
 					expectRequestMethod(fetchMock, 'PATCH');
@@ -944,6 +960,8 @@ describe('backlog page tests', () => {
 					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 					const requestBody = JSON.stringify({
 						date: testData.nonTodayPastPartitionDate.toString(),
+						done: false,
+						trashed: false,
 						previousTaskId: testData.nonTodayPastPartition.firstTask.id
 					});
 					expectRequestUrl(fetchMock, `/api/tasks/${testData.nonTodayPastPartition.thirdTask.id}/drag-and-drop`);
@@ -971,6 +989,8 @@ describe('backlog page tests', () => {
 					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 					const requestBody = JSON.stringify({
 						date: testData.nonTodayPastPartitionDate.toString(),
+						done: false,
+						trashed: false,
 						previousTaskId: testData.nonTodayPastPartition.thirdTask.id
 					});
 					expectRequestUrl(fetchMock, `/api/tasks/${testData.nonTodayPastPartition.firstTask.id}/drag-and-drop`);
@@ -1001,7 +1021,9 @@ describe('backlog page tests', () => {
 
 					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 					const requestBody = JSON.stringify({
-						date: testData.nonTodayFuturePartitionDate.toString()
+						date: testData.nonTodayFuturePartitionDate.toString(),
+						done: false,
+						trashed: false
 					});
 					expectRequestUrl(fetchMock, `/api/tasks/${testData.nonTodayPastPartition.firstTask.id}/drag-and-drop`);
 					expectRequestMethod(fetchMock, 'PATCH');
@@ -1036,6 +1058,8 @@ describe('backlog page tests', () => {
 					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 					const requestBody = JSON.stringify({
 						date: testData.nonTodayFuturePartitionDate.toString(),
+						done: false,
+						trashed: false,
 						previousTaskId: testData.nonTodayFuturePartition.firstTask.id
 					});
 					expectRequestUrl(fetchMock, `/api/tasks/${testData.nonTodayPastPartition.firstTask.id}/drag-and-drop`);
@@ -1068,6 +1092,8 @@ describe('backlog page tests', () => {
 					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 					const requestBody = JSON.stringify({
 						date: testData.nonTodayFuturePartitionDate.toString(),
+						done: false,
+						trashed: false,
 						previousTaskId: testData.nonTodayFuturePartition.thirdTask.id
 					});
 					expectRequestUrl(fetchMock, `/api/tasks/${testData.nonTodayPastPartition.firstTask.id}/drag-and-drop`);
@@ -1128,6 +1154,8 @@ describe('backlog page tests', () => {
 						const draggedTaskIndex = reorderedTasks.findIndex((task) => task.id === testData.noDatePartition.thirdTask.id);
 						const requestBody = JSON.stringify({
 							date: destinationDate.toString(),
+							done: false,
+							trashed: false,
 							previousTaskId: reorderedTasks[draggedTaskIndex - 1]?.id
 						});
 						expectRequestUrl(fetchMock, `/api/tasks/${testData.noDatePartition.thirdTask.id}/drag-and-drop`);
@@ -1179,6 +1207,8 @@ describe('backlog page tests', () => {
 					const draggedTaskIndex = reorderedTasks.findIndex((task) => task.id === testData.noDatePartition.thirdTask.id);
 					const requestBody = JSON.stringify({
 						date: testData.todayPartitionDate.toString(),
+						done: false,
+						trashed: false,
 						previousTaskId: reorderedTasks[draggedTaskIndex - 1]?.id
 					});
 					expectRequestUrl(fetchMock, `/api/tasks/${testData.noDatePartition.thirdTask.id}/drag-and-drop`);
@@ -1229,7 +1259,11 @@ describe('backlog page tests', () => {
 
 					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 					const draggedTaskIndex = reorderedTasks.findIndex((task) => task.id === testData.nonTodayPastPartition.thirdTask.id);
-					const requestBody = JSON.stringify({ previousTaskId: reorderedTasks[draggedTaskIndex - 1]?.id });
+					const requestBody = JSON.stringify({
+						done: false,
+						trashed: false,
+						previousTaskId: reorderedTasks[draggedTaskIndex - 1]?.id
+					});
 					expectRequestUrl(fetchMock, `/api/tasks/${testData.nonTodayPastPartition.thirdTask.id}/drag-and-drop`);
 					expectRequestMethod(fetchMock, 'PATCH');
 					expectRequestCredentialsMode(fetchMock, 'same-origin');
@@ -1278,6 +1312,8 @@ describe('backlog page tests', () => {
 					const draggedTaskIndex = reorderedTasks.findIndex((task) => task.id === testData.nonTodayPastPartition.thirdTask.id);
 					const requestBody = JSON.stringify({
 						date: testData.todayPartitionDate.toString(),
+						done: false,
+						trashed: false,
 						previousTaskId: reorderedTasks[draggedTaskIndex - 1]?.id
 					});
 					expectRequestUrl(fetchMock, `/api/tasks/${testData.nonTodayPastPartition.thirdTask.id}/drag-and-drop`);
@@ -1328,7 +1364,11 @@ describe('backlog page tests', () => {
 
 					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 					const draggedTaskIndex = reorderedTasks.findIndex((task) => task.id === testData.todayPartition.thirdTask.id);
-					const requestBody = JSON.stringify({ previousTaskId: reorderedTasks[draggedTaskIndex - 1]?.id });
+					const requestBody = JSON.stringify({
+						done: false,
+						trashed: false,
+						previousTaskId: reorderedTasks[draggedTaskIndex - 1]?.id
+					});
 					expectRequestUrl(fetchMock, `/api/tasks/${testData.todayPartition.thirdTask.id}/drag-and-drop`);
 					expectRequestMethod(fetchMock, 'PATCH');
 					expectRequestCredentialsMode(fetchMock, 'same-origin');
@@ -1377,6 +1417,8 @@ describe('backlog page tests', () => {
 					const draggedTaskIndex = reorderedTasks.findIndex((task) => task.id === testData.todayPartition.thirdTask.id);
 					const requestBody = JSON.stringify({
 						date: testData.nonTodayPastPartitionDate.toString(),
+						done: false,
+						trashed: false,
 						previousTaskId: reorderedTasks[draggedTaskIndex - 1]?.id
 					});
 					expectRequestUrl(fetchMock, `/api/tasks/${testData.todayPartition.thirdTask.id}/drag-and-drop`);
