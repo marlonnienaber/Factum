@@ -40,7 +40,7 @@ func NewTaskDragAndDropHandler(taskService *services.TaskService) shared.Authent
 			case errors.Is(err, stores.ErrTaskNotFound):
 				c.JSON(http.StatusNotFound, taskNotFoundErrorResponse)
 			case errors.Is(err, services.ErrRequestDataRepresentInvalidDragAndDropGesture):
-				c.JSON(http.StatusBadRequest, invalidDateAndPreviousTaskIdCombinationErrorResponse)
+				c.JSON(http.StatusBadRequest, invalidDragAndDropGestureErrorResponse)
 			default:
 				slog.Error("handling task drag and drop failed", "error", err)
 				c.JSON(http.StatusInternalServerError, shared.UnexpectedErrorResponse)
@@ -62,12 +62,7 @@ var previousTaskNotFoundErrorResponse = shared.ErrorResponse{
 	Message:   "No previous task exists for the provided previousTaskId.",
 }
 
-var invalidDateAndPreviousTaskIdCombinationErrorResponse = shared.ErrorResponse{
-	ErrorCode: "invalid_date_and_previous_task_id_combination",
-	Message:   "The provided date and previousTaskId do not represent an allowed drag and drop gesture.",
-}
-
-var taskRankAlreadyExistsErrorResponse = shared.ErrorResponse{
-	ErrorCode: "task_rank_already_exists",
-	Message:   "The provided rank is already in use.",
+var invalidDragAndDropGestureErrorResponse = shared.ErrorResponse{
+	ErrorCode: "invalid_drag_and_drop_gesture",
+	Message:   "The combination of task ID and request body properties does not represent a valid drag and drop gesture.",
 }

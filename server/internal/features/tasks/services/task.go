@@ -170,7 +170,6 @@ func (service *TaskService) UpdateTask(userId int64, request transport.UpdateTas
 }
 
 func (service *TaskService) DragAndDropTask(userId int64, taskId int64, request transport.TaskDragAndDropRequest) (*transport.TaskDragAndDropResponse, error) {
-	// TODO: extend to support backlog and workbench cases
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("dragging and dropping task failed")
 
 	response, err := shared.ExecuteAsSerializableTransaction(service.db, func(transaction *sqlx.Tx) (*transport.TaskDragAndDropResponse, error) {
@@ -179,46 +178,24 @@ func (service *TaskService) DragAndDropTask(userId int64, taskId int64, request 
 			return nil, err
 		}
 
-		isMovingFromDateToDate := task.Date != nil && request.Date != nil && !datesAreEqual(task.Date, request.Date)
-		isAllowedToMoveFromDateToDate := !task.Trashed && !task.Done && task.Date != nil
-
-		isMovingFromDateToNoDate := task.Date != nil && request.Date == nil
-		isAllowedToMoveFromDateToNoDate := !task.Trashed && !task.Done && task.Date != nil
-
-		isMovingFromNoDateToDate := task.Date == nil && request.Date != nil
-		isAllowedToMoveFromNoDateToDate := !task.Trashed && !task.Done && task.Date == nil
-
-		isOnlyChangingRank := datesAreEqual(task.Date, request.Date)
-		isAllowedToOnlyChangeRank := !task.Trashed && !task.Done
-
-		isAllowedToChangeDateAndOrRank := isMovingFromDateToDate && isAllowedToMoveFromDateToDate ||
-			isMovingFromDateToNoDate && isAllowedToMoveFromDateToNoDate ||
-			isMovingFromNoDateToDate && isAllowedToMoveFromNoDateToDate ||
-			isOnlyChangingRank && isAllowedToOnlyChangeRank
-
-		if !isAllowedToChangeDateAndOrRank {
+		isValidDragAndDropAction := service.isValidDragAndDropAction(task, request)
+		if !isValidDragAndDropAction {
 			return nil, ErrRequestDataRepresentInvalidDragAndDropGesture
 		}
 
-		previousTaskRank := ""
-		if request.PreviousTaskId != nil {
-			if *request.PreviousTaskId == taskId {
-				return nil, ErrRequestDataRepresentInvalidDragAndDropGesture
-			}
-			previousTask, err := service.taskStore.GetTaskByIdForUser(transaction, *request.PreviousTaskId, userId)
-			if err != nil {
-				if errors.Is(err, stores.ErrTaskNotFound) {
-					return nil, ErrPreviousTaskNotFound
-				}
-				return nil, err
-			}
-			if !datesAreEqual(previousTask.Date, request.Date) || previousTask.Done != task.Done || previousTask.Trashed {
-				return nil, ErrRequestDataRepresentInvalidDragAndDropGesture
-			}
-			previousTaskRank = previousTask.Rank
+		previousTaskRank, err := service.getPreviousTaskRankForTaskDragAndDrop(transaction, userId, taskId, request)
+		if err != nil {
+			return nil, err
 		}
-
-		successorTaskRank, err := service.taskStore.GetRankOfSuccessorTaskForTaskDragAndDrop(transaction, userId, taskId, request.Date, task.Done, previousTaskRank)
+		successorTaskRank, err := service.taskStore.GetRankOfSuccessorTaskForTaskDragAndDrop(
+			transaction,
+			userId,
+			taskId,
+			request.Date,
+			request.Done,
+			request.Trashed,
+			previousTaskRank,
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -226,11 +203,15 @@ func (service *TaskService) DragAndDropTask(userId int64, taskId int64, request 
 		if err != nil {
 			return nil, err
 		}
+
 		task.Date = request.Date
+		task.Done = request.Done
+		task.Trashed = request.Trashed
 		task.Rank = rank
-		if err := service.taskStore.UpdateTaskDateAndRank(transaction, task); err != nil {
+		if err := service.taskStore.UpdateTaskForDragAndDrop(transaction, task); err != nil {
 			return nil, err
 		}
+
 		return &transport.TaskDragAndDropResponse{Rank: rank}, nil
 	})
 	if err != nil {
@@ -529,6 +510,129 @@ func (service *TaskService) BatchOpenTasks(userId int64, taskIds []int64) ([]tra
 	}
 
 	return response, nil
+}
+
+func (service *TaskService) getPreviousTaskRankForTaskDragAndDrop(
+	transaction *sqlx.Tx,
+	userId int64,
+	taskId int64,
+	request transport.TaskDragAndDropRequest,
+) (string, error) {
+	if request.PreviousTaskId == nil {
+		return "", nil
+	}
+	if *request.PreviousTaskId == taskId {
+		return "", ErrRequestDataRepresentInvalidDragAndDropGesture
+	}
+
+	previousTask, err := service.taskStore.GetTaskByIdForUser(transaction, *request.PreviousTaskId, userId)
+	if err != nil {
+		if errors.Is(err, stores.ErrTaskNotFound) {
+			return "", ErrPreviousTaskNotFound
+		}
+		return "", err
+	}
+	previousTaskIsInTargetPartition := previousTask.Trashed == request.Trashed &&
+		(request.Trashed || datesAreEqual(previousTask.Date, request.Date) && previousTask.Done == request.Done)
+	if !previousTaskIsInTargetPartition {
+		return "", ErrRequestDataRepresentInvalidDragAndDropGesture
+	}
+
+	return previousTask.Rank, nil
+}
+
+func (service *TaskService) isValidDragAndDropAction(task *domain.Task, request transport.TaskDragAndDropRequest) bool {
+	isMovingFromDatedOpenUntrashedToDatedOpenUntrashed := service.isMovingFromDatedOpenUntrashedToDatedOpenUntrashed(task, request)
+	isMovingFromDatedOpenUntrashedToUndatedOpenUntrashed := service.isMovingFromDatedOpenUntrashedToUndatedOpenUntrashed(task, request)
+	isMovingFromUndatedOpenUntrashedToDatedOpenUntrashed := service.isMovingFromUndatedOpenUntrashedToDatedOpenUntrashed(task, request)
+	isMovingWithinDatedOpenUntrashed := service.isMovingWithinDatedOpenUntrashed(task, request)
+	isMovingWithinUndatedOpenUntrashed := service.isMovingWithinUndatedOpenUntrashed(task, request)
+
+	isValidBacklogAction := isMovingFromDatedOpenUntrashedToDatedOpenUntrashed ||
+		isMovingFromDatedOpenUntrashedToUndatedOpenUntrashed ||
+		isMovingFromUndatedOpenUntrashedToDatedOpenUntrashed ||
+		isMovingWithinDatedOpenUntrashed ||
+		isMovingWithinUndatedOpenUntrashed
+
+	isMovingFromDatedDoneUntrashedToDatedDoneUntrashed := service.isMovingFromDatedDoneUntrashedToDatedDoneUntrashed(task, request)
+	isMovingFromDatedDoneUntrashedToDatedDoneTrashed := service.isMovingFromDatedDoneUntrashedToDatedDoneTrashed(task, request)
+	isMovingFromTrashedToDatedDoneUntrashed := service.isMovingFromTrashedToDatedDoneUntrashed(task, request)
+	isMovingWithinDatedDoneUntrashed := service.isMovingWithinDatedDoneUntrashed(task, request)
+	isMovingWithinTrashed := service.isMovingWithinTrashed(task, request)
+
+	isValidArchiveAction := isMovingFromDatedDoneUntrashedToDatedDoneUntrashed ||
+		isMovingFromDatedDoneUntrashedToDatedDoneTrashed ||
+		isMovingFromTrashedToDatedDoneUntrashed ||
+		isMovingWithinDatedDoneUntrashed ||
+		isMovingWithinTrashed
+
+	return isValidBacklogAction || isValidArchiveAction
+}
+
+func (service *TaskService) isMovingFromDatedOpenUntrashedToDatedOpenUntrashed(task *domain.Task, request transport.TaskDragAndDropRequest) bool {
+	taskIsDatedOpenUntrashed := task.Date != nil && !task.Done && !task.Trashed
+	targetIsDifferentDatedOpenUntrashed := request.Date != nil && !datesAreEqual(task.Date, request.Date) && !request.Done && !request.Trashed
+	return taskIsDatedOpenUntrashed && targetIsDifferentDatedOpenUntrashed
+}
+
+func (service *TaskService) isMovingFromDatedOpenUntrashedToUndatedOpenUntrashed(task *domain.Task, request transport.TaskDragAndDropRequest) bool {
+	taskIsDatedOpenUntrashed := task.Date != nil && !task.Done && !task.Trashed
+	targetIsUndatedOpenUntrashed := request.Date == nil && !request.Done && !request.Trashed
+	return taskIsDatedOpenUntrashed && targetIsUndatedOpenUntrashed
+}
+
+func (service *TaskService) isMovingFromUndatedOpenUntrashedToDatedOpenUntrashed(task *domain.Task, request transport.TaskDragAndDropRequest) bool {
+	taskIsUndatedOpenUntrashed := task.Date == nil && !task.Done && !task.Trashed
+	targetIsDatedOpenUntrashed := request.Date != nil && !request.Done && !request.Trashed
+	return taskIsUndatedOpenUntrashed && targetIsDatedOpenUntrashed
+}
+
+func (service *TaskService) isMovingWithinDatedOpenUntrashed(task *domain.Task, request transport.TaskDragAndDropRequest) bool {
+	taskIsDatedOpenUntrashed := task.Date != nil && !task.Done && !task.Trashed
+	targetIsSameDatedOpenUntrashed := datesAreEqual(task.Date, request.Date) && !request.Done && !request.Trashed
+	return taskIsDatedOpenUntrashed && targetIsSameDatedOpenUntrashed
+}
+
+func (service *TaskService) isMovingWithinUndatedOpenUntrashed(task *domain.Task, request transport.TaskDragAndDropRequest) bool {
+	taskIsUndatedOpenUntrashed := task.Date == nil && !task.Done && !task.Trashed
+	targetIsUndatedOpenUntrashed := request.Date == nil && !request.Done && !request.Trashed
+	return taskIsUndatedOpenUntrashed && targetIsUndatedOpenUntrashed
+}
+
+func (service *TaskService) isMovingFromDatedDoneUntrashedToDatedDoneUntrashed(task *domain.Task, request transport.TaskDragAndDropRequest) bool {
+	taskIsDatedDoneUntrashed := task.Date != nil && task.Done && !task.Trashed
+	targetIsDifferentDatedDoneUntrashed := request.Date != nil && !datesAreEqual(task.Date, request.Date) && request.Done && !request.Trashed
+	return taskIsDatedDoneUntrashed && targetIsDifferentDatedDoneUntrashed
+}
+
+func (service *TaskService) isMovingFromDatedDoneUntrashedToDatedDoneTrashed(task *domain.Task, request transport.TaskDragAndDropRequest) bool {
+	taskIsDatedDoneUntrashed := task.Date != nil && task.Done && !task.Trashed
+	targetIsDatedDoneTrashed := request.Date != nil && request.Done && request.Trashed
+	return taskIsDatedDoneUntrashed && targetIsDatedDoneTrashed
+}
+
+func (service *TaskService) isMovingFromTrashedToDatedDoneUntrashed(task *domain.Task, request transport.TaskDragAndDropRequest) bool {
+	taskIsDatedDoneTrashed := task.Date != nil && task.Done && task.Trashed
+	taskIsDatedOpenTrashed := task.Date != nil && !task.Done && task.Trashed
+	taskIsUndatedOpenTrashed := task.Date == nil && !task.Done && task.Trashed
+	targetIsDatedDoneUntrashed := request.Date != nil && request.Done && !request.Trashed
+	return (taskIsDatedDoneTrashed || taskIsDatedOpenTrashed || taskIsUndatedOpenTrashed) && targetIsDatedDoneUntrashed
+}
+
+func (service *TaskService) isMovingWithinDatedDoneUntrashed(task *domain.Task, request transport.TaskDragAndDropRequest) bool {
+	taskIsDatedDoneUntrashed := task.Date != nil && task.Done && !task.Trashed
+	targetIsSameDatedDoneUntrashed := datesAreEqual(task.Date, request.Date) && request.Done && !request.Trashed
+	return taskIsDatedDoneUntrashed && targetIsSameDatedDoneUntrashed
+}
+
+func (service *TaskService) isMovingWithinTrashed(task *domain.Task, request transport.TaskDragAndDropRequest) bool {
+	isMovingWithinDatedDoneTrashed := task.Date != nil && task.Done && task.Trashed &&
+		datesAreEqual(task.Date, request.Date) && request.Done && request.Trashed
+	isMovingWithinDatedOpenTrashed := task.Date != nil && !task.Done && task.Trashed &&
+		datesAreEqual(task.Date, request.Date) && !request.Done && request.Trashed
+	isMovingWithinUndatedOpenTrashed := task.Date == nil && !task.Done && task.Trashed &&
+		datesAreEqual(task.Date, request.Date) && !request.Done && request.Trashed
+	return isMovingWithinDatedDoneTrashed || isMovingWithinDatedOpenTrashed || isMovingWithinUndatedOpenTrashed
 }
 
 func (service *TaskService) checkThatTasksAreOpen(tasks []*domain.Task) error {

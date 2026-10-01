@@ -201,19 +201,23 @@ func (store *TaskStore) BatchUpdateDoneForUntrashedTasks(
 	return nil
 }
 
-func (store *TaskStore) UpdateTaskDateAndRank(transaction *sqlx.Tx, task *domain.Task) error {
-	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("updating task date and rank failed")
+func (store *TaskStore) UpdateTaskForDragAndDrop(transaction *sqlx.Tx, task *domain.Task) error {
+	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("updating task for drag and drop failed")
 
 	result, err := transaction.Exec(`
 		UPDATE tasks
 		SET date = $1,
-		    rank = $2
-		WHERE id = $3
-		  AND user_id = $4
-	`, task.Date, task.Rank, task.Id, task.UserId)
+		    done = $2,
+		    trashed = $3,
+		    rank = $4
+		WHERE id = $5
+		  AND user_id = $6
+	`, task.Date, task.Done, task.Trashed, task.Rank, task.Id, task.UserId)
 	if err != nil {
 		var postgresError *pq.Error
-		if errors.As(err, &postgresError) && postgresError.Constraint == "tasks_untrashed_user_id_done_date_rank_unique" {
+		if errors.As(err, &postgresError) &&
+			(postgresError.Constraint == "tasks_untrashed_user_id_done_date_rank_unique" ||
+				postgresError.Constraint == "tasks_trashed_user_id_rank_unique") {
 			return ErrTaskRankAlreadyExists
 		}
 		return wrapUnexpectedError(err)
@@ -234,8 +238,9 @@ func (store *TaskStore) GetRankOfSuccessorTaskForTaskDragAndDrop(
 	transaction *sqlx.Tx,
 	userId int64,
 	taskId int64,
-	taskDate *shared.Date,
-	taskDone bool,
+	targetDate *shared.Date,
+	targetDone bool,
+	targetTrashed bool,
 	previousTaskRank string,
 ) (string, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("retrieving next task rank failed")
@@ -246,13 +251,14 @@ func (store *TaskStore) GetRankOfSuccessorTaskForTaskDragAndDrop(
 		FROM tasks
 		WHERE user_id = $1
 		  AND id <> $2
-		  AND date IS NOT DISTINCT FROM $3
-		  AND done = $4
-		  AND trashed = FALSE
-		  AND rank > $5
+		  AND (
+		      ($5 = TRUE AND trashed = TRUE)
+		      OR ($5 = FALSE AND trashed = FALSE AND date IS NOT DISTINCT FROM $3 AND done = $4)
+		  )
+		  AND rank > $6
 		ORDER BY rank
 		LIMIT 1
-	`, userId, taskId, taskDate, taskDone, previousTaskRank)
+	`, userId, taskId, targetDate, targetDone, targetTrashed, previousTaskRank)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", nil
 	}

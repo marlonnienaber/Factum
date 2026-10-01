@@ -19,6 +19,8 @@ type UpdateTaskRequest struct {
 
 type TaskDragAndDropRequest struct {
 	Date           *shared.Date `json:"date"`
+	Done           bool         `json:"done"`
+	Trashed        bool         `json:"trashed"`
 	PreviousTaskId *int64       `json:"previousTaskId" binding:"omitempty,gt=0"`
 }
 
