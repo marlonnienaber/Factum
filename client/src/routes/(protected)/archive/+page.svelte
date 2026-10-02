@@ -113,7 +113,7 @@
 		const selectedCategoryIds = getSelectedCategoryIds();
 		if (selectedCategoryIds.length === 0) {
 			datedUntrashedDoneTaskStore.reset();
-			trashedTaskStore.reset();
+			trashedTaskStore.clearPages();
 		} else {
 			void taskService.fetchDatedUntrashedDoneTasks(undefined, selectedCategoryIds, startDate, endDate);
 			void taskService.fetchTrashedTasks(undefined, selectedCategoryIds, startDate, endDate);
@@ -126,7 +126,7 @@
 		const selectedCategoryIds = getSelectedCategoryIds();
 		if (selectedCategoryIds.length === 0) {
 			datedUntrashedDoneTaskStore.reset();
-			trashedTaskStore.reset();
+			trashedTaskStore.clearPages();
 		} else {
 			void taskService.fetchDatedUntrashedDoneTasks(undefined, selectedCategoryIds, startDate, endDate);
 			void taskService.fetchTrashedTasks(undefined, selectedCategoryIds, startDate, endDate);
@@ -237,7 +237,7 @@
 					Select Tasks
 					{#snippet trailingIcon()}<MousePointer2 size={17} aria-hidden="true" />{/snippet}
 				</Button>
-				{#if trashedTaskStore.trashedTasks.length > 0}
+				{#if trashedTaskStore.trashedTasksExist}
 					<Button variant="danger" disabled={taskService.taskMutationBlocked} onclick={emptyTrash}>
 						Empty Trash
 						{#snippet trailingIcon()}<Trash2 size={17} aria-hidden="true" />{/snippet}

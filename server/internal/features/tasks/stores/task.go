@@ -36,6 +36,25 @@ func NewTaskStore(db *sqlx.DB) *TaskStore {
 	}
 }
 
+func (store *TaskStore) DoTrashedTasksExist(userId int64) (bool, error) {
+	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("checking whether trashed tasks exist failed")
+
+	var trashedTasksExist bool
+	err := store.db.Get(&trashedTasksExist, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM tasks
+			WHERE user_id = $1
+			  AND trashed = TRUE
+		)
+	`, userId)
+	if err != nil {
+		return false, wrapUnexpectedError(err)
+	}
+
+	return trashedTasksExist, nil
+}
+
 func (store *TaskStore) DeleteTrashedTasks(userId int64) error {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("deleting trashed tasks failed")
 

@@ -31,6 +31,7 @@
 				void taskService.fetchDatedUntrashedOpenNonTodayTasks();
 				void taskService.fetchUndatedTasks();
 				void taskService.fetchTrashedTasks();
+				void taskService.fetchTrashedTasksExist();
 			});
 		} else {
 			if (!loading) {

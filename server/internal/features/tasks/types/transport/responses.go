@@ -77,6 +77,10 @@ type GetTrashedTasksResponse struct {
 	HasMore bool                  `json:"hasMore"`
 }
 
+type GetTrashedTasksExistResponse struct {
+	TrashedTasksExist bool `json:"trashedTasksExist"`
+}
+
 type BatchCompleteTaskResponse struct {
 	Id   int64       `json:"id"`
 	Date shared.Date `json:"date"`

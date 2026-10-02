@@ -2,8 +2,14 @@ import type { TrashedTaskResponse } from '$lib/types/responses/trashed-task-resp
 
 let trashedTasks: TrashedTaskResponse[] = $state<TrashedTaskResponse[]>([]);
 let hasMore = $state(false);
+let trashedTasksExist = $state(false);
+
+function setTrashedTasksExist(value: boolean): void {
+	trashedTasksExist = value;
+}
 
 function addOrUpdateTasks(tasks: TrashedTaskResponse[]) {
+	if (tasks.length > 0) trashedTasksExist = true;
 	const taskIds = new Set(tasks.map((task) => task.id));
 	const deduplicatedTasks = trashedTasks.filter((task) => !taskIds.has(task.id));
 	trashedTasks = [...deduplicatedTasks, ...tasks].sort(compareTasksByRank);
@@ -22,13 +28,18 @@ function removeTask(id: number): void {
 	trashedTasks = trashedTasks.filter((task) => task.id !== id);
 }
 
-function compareTasksByRank(first: TrashedTaskResponse, second: TrashedTaskResponse): number {
-	return first.rank < second.rank ? -1 : first.rank > second.rank ? 1 : 0;
+function clearPages(): void {
+	trashedTasks = [];
+	hasMore = false;
 }
 
 function reset(): void {
-	trashedTasks = [];
-	hasMore = false;
+	clearPages();
+	trashedTasksExist = false;
+}
+
+function compareTasksByRank(first: TrashedTaskResponse, second: TrashedTaskResponse): number {
+	return first.rank < second.rank ? -1 : first.rank > second.rank ? 1 : 0;
 }
 
 export const trashedTaskStore = {
@@ -38,9 +49,14 @@ export const trashedTaskStore = {
 	get hasMore(): boolean {
 		return hasMore;
 	},
+	get trashedTasksExist(): boolean {
+		return trashedTasksExist;
+	},
 	addOrUpdateTasks,
 	addOrUpdateTask,
 	addPage,
 	removeTask,
+	setTrashedTasksExist,
+	clearPages,
 	reset
 };

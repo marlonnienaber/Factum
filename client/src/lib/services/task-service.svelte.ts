@@ -31,6 +31,10 @@ import {
 } from '$lib/types/responses/get-dated-untrashed-open-tasks-response';
 import { GetUndatedTasksResponseSchema, type GetUndatedTasksResponse } from '$lib/types/responses/get-undated-tasks-response';
 import { GetTrashedTasksResponseSchema, type GetTrashedTasksResponse } from '$lib/types/responses/get-trashed-tasks-response';
+import {
+	GetTrashedTasksExistResponseSchema,
+	type GetTrashedTasksExistResponse
+} from '$lib/types/responses/get-trashed-tasks-exist-response';
 import type { TrashedTaskResponse } from '$lib/types/responses/trashed-task-response';
 import { TrashTaskResponseSchema, type TrashTaskResponse } from '$lib/types/responses/trash-task-response';
 import { RestoreTaskResponseSchema, type RestoreTaskResponse } from '$lib/types/responses/restore-task-response';
@@ -46,6 +50,7 @@ let datedUntrashedDoneTasksLoading = $state(false);
 let datedUntrashedOpenTodayTasksLoading = $state(false);
 let datedUntrashedOpenNonTodayTasksLoading = $state(false);
 let trashedTasksLoading = $state(false);
+let trashedTasksExistLoading = $state(false);
 let taskMutationLoading = $state(false);
 const taskMutationBlocked = $derived(
 	taskMutationLoading ||
@@ -53,7 +58,8 @@ const taskMutationBlocked = $derived(
 		datedUntrashedDoneTasksLoading ||
 		datedUntrashedOpenTodayTasksLoading ||
 		datedUntrashedOpenNonTodayTasksLoading ||
-		trashedTasksLoading
+		trashedTasksLoading ||
+		trashedTasksExistLoading
 );
 
 async function fetchDatedUntrashedDoneTasks(
@@ -166,12 +172,28 @@ async function fetchTrashedTasks(
 		);
 		if (networkCall.status === 'success') {
 			if (rank === undefined) {
-				trashedTaskStore.reset();
+				trashedTaskStore.clearPages();
 			}
 			trashedTaskStore.addPage(networkCall.result.tasks, networkCall.result.hasMore);
 		}
 	} finally {
 		trashedTasksLoading = false;
+	}
+}
+
+async function fetchTrashedTasksExist(): Promise<void> {
+	if (trashedTasksExistLoading) return;
+	trashedTasksExistLoading = true;
+	try {
+		const networkCall: NetworkCall<GetTrashedTasksExistResponse> = await jsonGetWithoutBodyWithResponse(
+			'/api/tasks/trashed/exists',
+			GetTrashedTasksExistResponseSchema
+		);
+		if (networkCall.status === 'success') {
+			trashedTaskStore.setTrashedTasksExist(networkCall.result.trashedTasksExist);
+		}
+	} finally {
+		trashedTasksExistLoading = false;
 	}
 }
 
@@ -459,6 +481,7 @@ async function restoreTask(id: number): Promise<void> {
 		);
 		if (networkCall.status !== 'success') return;
 
+		await fetchTrashedTasksExist();
 		trashedTaskStore.removeTask(id);
 		if (task.done && task.date !== undefined) {
 			datedUntrashedDoneTaskStore.addOrUpdateTask({
@@ -496,7 +519,7 @@ async function restoreTask(id: number): Promise<void> {
 }
 
 async function deleteTrashedTasks(): Promise<void> {
-	if (taskMutationBlocked || trashedTaskStore.trashedTasks.length === 0) return;
+	if (taskMutationBlocked || !trashedTaskStore.trashedTasksExist) return;
 
 	taskMutationLoading = true;
 	try {
@@ -539,6 +562,7 @@ async function dragAndDropTask(id: number, request: TaskDragAndDropRequest): Pro
 			return;
 		}
 		if (!request.trashed && trashedTask !== undefined && request.date !== undefined) {
+			await fetchTrashedTasksExist();
 			trashedTaskStore.removeTask(id);
 			datedUntrashedDoneTaskStore.addOrUpdateTask({
 				...trashedTask,
@@ -592,6 +616,9 @@ export const taskService = {
 	get trashedTasksLoading(): boolean {
 		return trashedTasksLoading;
 	},
+	get trashedTasksExistLoading(): boolean {
+		return trashedTasksExistLoading;
+	},
 	get taskMutationLoading(): boolean {
 		return taskMutationLoading;
 	},
@@ -603,6 +630,7 @@ export const taskService = {
 	fetchDatedUntrashedOpenTodayTasks,
 	fetchDatedUntrashedOpenNonTodayTasks,
 	fetchTrashedTasks,
+	fetchTrashedTasksExist,
 	createTask,
 	updateTask,
 	toggleTaskDone,
