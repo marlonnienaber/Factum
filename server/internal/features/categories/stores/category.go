@@ -68,7 +68,20 @@ func (store *CategoryStore) DoesCategoryExistForUser(
 	return exists, nil
 }
 
+func (store *CategoryStore) CountCategoriesForUser(transaction *sqlx.Tx, userId int64) (int64, error) {
+	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("counting categories for user failed")
+
+	var categoryCount int64
+	err := transaction.Get(&categoryCount, "SELECT COUNT(*) FROM categories WHERE user_id = $1", userId)
+	if err != nil {
+		return 0, wrapUnexpectedError(err)
+	}
+
+	return categoryCount, nil
+}
+
 func (store *CategoryStore) InsertCategory(
+	transaction *sqlx.Tx,
 	userId int64,
 	title string,
 	color string,
@@ -76,7 +89,7 @@ func (store *CategoryStore) InsertCategory(
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("inserting category failed")
 
 	var category transport.CreateCategoryResponse
-	err := store.db.Get(&category, `
+	err := transaction.Get(&category, `
 		INSERT INTO categories (user_id, title, color)
 		VALUES ($1, $2, $3)
 		RETURNING id

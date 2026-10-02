@@ -1,7 +1,7 @@
 import { UndatedTaskResponseSchema } from '$lib/types/responses/undated-task-response';
 import { z } from 'zod';
 
-export const GetUndatedTasksResponseSchema = z.object({
+export const GetUndatedTasksResponseSchema = z.strictObject({
 	tasks: z.array(UndatedTaskResponseSchema),
 	hasMore: z.boolean()
 });

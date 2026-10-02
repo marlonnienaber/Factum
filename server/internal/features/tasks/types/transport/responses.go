@@ -1,20 +1,16 @@
 package transport
 
-import (
-	"time"
+import "github.com/marlonnienaber/Factum/server/internal/shared"
 
-	"github.com/marlonnienaber/Factum/server/internal/shared"
-)
-
-type TaskResponse struct {
-	Id          int64        `db:"id" json:"id"`
-	CategoryId  int64        `db:"category_id" json:"categoryId"`
-	Title       string       `db:"title" json:"title"`
-	Description *string      `db:"description" json:"description,omitempty"`
-	Date        *shared.Date `db:"date" json:"date,omitempty"`
-	Rank        *string      `db:"rank" json:"rank,omitempty"`
-	Done        bool         `db:"done" json:"done"`
-	TrashedDate *time.Time   `db:"trashed_date" json:"trashedDate,omitempty"`
+type UpdateTaskResponse struct {
+	Id          int64        `json:"id"`
+	CategoryId  int64        `json:"categoryId"`
+	Title       string       `json:"title"`
+	Description *string      `json:"description,omitempty"`
+	Date        *shared.Date `json:"date,omitempty"`
+	Rank        string       `json:"rank"`
+	Done        bool         `json:"done"`
+	Trashed     bool         `json:"trashed"`
 }
 
 type DatedUntrashedTaskResponse struct {
@@ -24,7 +20,6 @@ type DatedUntrashedTaskResponse struct {
 	Description *string     `db:"description" json:"description,omitempty"`
 	Date        shared.Date `db:"date" json:"date"`
 	Rank        string      `db:"rank" json:"rank"`
-	Done        bool        `db:"done" json:"done"`
 }
 
 type GetDatedUntrashedTasksResponse struct {
@@ -38,6 +33,10 @@ type CreateTaskResponse struct {
 }
 
 type TaskDragAndDropResponse struct {
+	Rank string `json:"rank"`
+}
+
+type TrashTaskResponse struct {
 	Rank string `json:"rank"`
 }
 
@@ -63,12 +62,37 @@ type GetUndatedTasksResponse struct {
 	HasMore bool                  `json:"hasMore"`
 }
 
-type BatchCompleteResponse struct {
-	DatedUntrashedDoneTasks []TaskResponse `json:"datedUntrashedDoneTasks"`
-	TrashedTasks            []TaskResponse `json:"trashedTasks"`
+type TrashedTaskResponse struct {
+	Id          int64        `db:"id" json:"id"`
+	CategoryId  int64        `db:"category_id" json:"categoryId"`
+	Title       string       `db:"title" json:"title"`
+	Description *string      `db:"description" json:"description,omitempty"`
+	Date        *shared.Date `db:"date" json:"date,omitempty"`
+	Done        bool         `db:"done" json:"done"`
+	Rank        string       `db:"rank" json:"rank"`
 }
 
-type BatchOpenResponse struct {
-	DatedUntrashedOpenTasks []TaskResponse `json:"datedUntrashedOpenTasks"`
-	TrashedTasks            []TaskResponse `json:"trashedTasks"`
+type GetTrashedTasksResponse struct {
+	Tasks   []TrashedTaskResponse `json:"tasks"`
+	HasMore bool                  `json:"hasMore"`
+}
+
+type GetTrashedTasksExistResponse struct {
+	TrashedTasksExist bool `json:"trashedTasksExist"`
+}
+
+type BatchCompleteTaskResponse struct {
+	Id   int64       `json:"id"`
+	Date shared.Date `json:"date"`
+	Rank string      `json:"rank"`
+}
+
+type BatchOpenTaskResponse struct {
+	Id   int64  `json:"id"`
+	Rank string `json:"rank"`
+}
+
+type BatchTrashTaskResponse struct {
+	Id   int64  `json:"id"`
+	Rank string `json:"rank"`
 }

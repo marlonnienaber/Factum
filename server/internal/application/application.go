@@ -8,6 +8,7 @@ import (
 	authServices "github.com/marlonnienaber/Factum/server/internal/features/authentication/services"
 	"github.com/marlonnienaber/Factum/server/internal/features/authentication/stores"
 	categoriesHandlers "github.com/marlonnienaber/Factum/server/internal/features/categories/handlers"
+	categoriesServices "github.com/marlonnienaber/Factum/server/internal/features/categories/services"
 	categoriesStores "github.com/marlonnienaber/Factum/server/internal/features/categories/stores"
 	tasksHandlers "github.com/marlonnienaber/Factum/server/internal/features/tasks/handlers"
 	tasksServices "github.com/marlonnienaber/Factum/server/internal/features/tasks/services"
@@ -17,12 +18,14 @@ import (
 )
 
 func NewApplication(cfg configuration.Configuration, db *sqlx.DB) *gin.Engine {
+	gin.EnableJsonDecoderDisallowUnknownFields()
 	validation.RegisterJsonPropertyNames()
 	validation.RegisterRankValidation()
 
 	userStore := stores.NewUserStore(db)
 	authenticationService := authServices.NewAuthenticationService(userStore, cfg)
 	categoryStore := categoriesStores.NewCategoryStore(db)
+	categoryService := categoriesServices.NewCategoryService(db, categoryStore)
 	taskStore := tasksStores.NewTaskStore(db)
 	taskService := tasksServices.NewTaskService(db, taskStore, categoryStore)
 
@@ -36,7 +39,7 @@ func NewApplication(cfg configuration.Configuration, db *sqlx.DB) *gin.Engine {
 	api.GET("/current-authentication", shared.RequireAuth(authHandlers.NewGetCurrentAuthenticationHandler(userStore)))
 
 	api.GET("/categories", shared.RequireAuth(categoriesHandlers.NewGetCategoriesHandler(categoryStore)))
-	api.POST("/categories", shared.RequireAuth(categoriesHandlers.NewCreateCategoryHandler(categoryStore)))
+	api.POST("/categories", shared.RequireAuth(categoriesHandlers.NewCreateCategoryHandler(categoryService)))
 	api.DELETE("/categories/:id", shared.RequireAuth(categoriesHandlers.NewDeleteCategoryHandler(categoryStore)))
 
 	api.POST("/tasks", shared.RequireAuth(tasksHandlers.NewCreateTaskHandler(taskService)))
@@ -48,7 +51,10 @@ func NewApplication(cfg configuration.Configuration, db *sqlx.DB) *gin.Engine {
 	api.PATCH("/tasks/:id/trash", shared.RequireAuth(tasksHandlers.NewTrashTaskHandler(taskService)))
 	api.PATCH("/tasks/:id/restore", shared.RequireAuth(tasksHandlers.NewRestoreTaskHandler(taskService)))
 	api.PATCH("/tasks/:id/toggle-done", shared.RequireAuth(tasksHandlers.NewToggleTaskDoneHandler(taskService)))
+	api.DELETE("/tasks/trashed", shared.RequireAuth(tasksHandlers.NewDeleteTrashedTasksHandler(taskStore)))
+	api.GET("/tasks/trashed/exists", shared.RequireAuth(tasksHandlers.NewGetTrashedTasksExistHandler(taskStore)))
 	api.GET("/tasks/undated", shared.RequireAuth(tasksHandlers.NewGetUndatedTasksHandler(taskStore)))
+	api.GET("/tasks/dated-untrashed-done", shared.RequireAuth(tasksHandlers.NewGetDatedUntrashedDoneTasksHandler(taskStore)))
 	api.GET(
 		"/tasks/dated-untrashed-open-today",
 		shared.RequireAuth(tasksHandlers.NewGetDatedUntrashedOpenTodayTasksHandler(taskStore)),

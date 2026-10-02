@@ -174,7 +174,7 @@ func TestTasksBatchCompleteOneTaskAlreadyDone(t *testing.T) {
 	)
 }
 
-func TestTasksBatchCompleteTasksFromAllValidPartitions(t *testing.T) {
+func TestTasksBatchCompleteOneTaskTrashed(t *testing.T) {
 	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
 		Email:    support.TestUser1Email,
@@ -188,61 +188,62 @@ func TestTasksBatchCompleteTasksFromAllValidPartitions(t *testing.T) {
 	var category categoriesTransport.CategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
 
-	undatedUntrashedTasks := support.PrepareOpenUndatedUntrashedTasks(t, app, category.Id, cookies...)
-	datedUntrashedTasks := support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
-	trashedTasks := support.PrepareTrashedTasks(t, app, category.Id, cookies...)
-
-	var undatedTrashedTask tasksTransport.TaskResponse
-	var datedTrashedTask tasksTransport.TaskResponse
+	trashedTasks := support.PrepareTrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
+	var openTrashedTask tasksTransport.TrashedTaskResponse
 	for _, task := range trashedTasks {
-		if task.Done {
-			continue
-		}
-		if task.Date == nil {
-			undatedTrashedTask = task
-		} else {
-			datedTrashedTask = task
+		if !task.Done {
+			openTrashedTask = task
+			break
 		}
 	}
-	require.NotZero(t, undatedTrashedTask.Id, "expected an open undated trashed task")
-	require.NotZero(t, datedTrashedTask.Id, "expected an open dated trashed task")
+	require.NotZero(t, openTrashedTask.Id, "expected an open trashed task")
 
+	payload, err := json.Marshal(tasksTransport.BatchUpdateDoneRequest{TaskIds: []int64{openTrashedTask.Id}})
+	require.NoError(t, err, "serializing request failed")
+	resp := support.MakeJsonRequest(t, app, http.MethodPatch, "/api/tasks/batch-complete", payload, cookies...)
+
+	support.AssertErrorResponse(
+		t,
+		resp,
+		http.StatusBadRequest,
+		"one_of_provided_tasks_is_trashed",
+		"Trashed tasks can not be part of a batch operation.",
+	)
+}
+
+func TestTasksBatchCompleteMultipleTasks(t *testing.T) {
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
+	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
+	})
+	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	cookies := signUpResp.Result().Cookies()
+
+	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
+	require.Equal(t, http.StatusCreated, categoryResp.Code)
+	var category categoriesTransport.CategoryResponse
+	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
+
+	undatedTasks := support.PrepareOpenUndatedUntrashedTasks(t, app, category.Id, cookies...)
+	datedTasks := support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
 	payload, err := json.Marshal(tasksTransport.BatchUpdateDoneRequest{
-		TaskIds: []int64{
-			undatedUntrashedTasks[0].Id,
-			datedUntrashedTasks[0].Id,
-			undatedTrashedTask.Id,
-			datedTrashedTask.Id,
-		},
+		TaskIds: []int64{undatedTasks[0].Id, datedTasks[0].Id},
 	})
 	require.NoError(t, err, "serializing request failed")
 	resp := support.MakeJsonRequest(t, app, http.MethodPatch, "/api/tasks/batch-complete", payload, cookies...)
 
 	require.Equal(t, http.StatusOK, resp.Code)
-	var respBody tasksTransport.BatchCompleteResponse
+	var respBody []tasksTransport.BatchCompleteTaskResponse
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
-	require.Len(t, respBody.DatedUntrashedDoneTasks, 2)
-	require.Len(t, respBody.TrashedTasks, 2)
+	require.Len(t, respBody, 2)
 
 	assert.ElementsMatch(t,
-		[]int64{undatedUntrashedTasks[0].Id, datedUntrashedTasks[0].Id},
-		[]int64{respBody.DatedUntrashedDoneTasks[0].Id, respBody.DatedUntrashedDoneTasks[1].Id},
+		[]int64{undatedTasks[0].Id, datedTasks[0].Id},
+		[]int64{respBody[0].Id, respBody[1].Id},
 	)
-	for _, task := range respBody.DatedUntrashedDoneTasks {
-		assert.True(t, task.Done, "expected task to be completed")
-		assert.NotNil(t, task.Date, "expected completed task to have a date")
-		assert.NotNil(t, task.Rank, "expected untrashed task to have a rank")
-		assert.Nil(t, task.TrashedDate, "expected task to be untrashed")
-	}
-
-	assert.ElementsMatch(t,
-		[]int64{undatedTrashedTask.Id, datedTrashedTask.Id},
-		[]int64{respBody.TrashedTasks[0].Id, respBody.TrashedTasks[1].Id},
-	)
-	for _, task := range respBody.TrashedTasks {
-		assert.True(t, task.Done, "expected task to be completed")
-		assert.NotNil(t, task.Date, "expected completed task to have a date")
-		assert.Nil(t, task.Rank, "expected trashed task not to have a rank")
-		assert.NotNil(t, task.TrashedDate, "expected task to remain trashed")
+	for _, task := range respBody {
+		assert.False(t, task.Date.IsZero(), "expected completed task to have a date")
+		assert.NotEmpty(t, task.Rank, "expected untrashed task to have a rank")
 	}
 }

@@ -283,7 +283,7 @@ func TestTasksUpdateTaskCategoryNotFound(t *testing.T) {
 
 	taskResp := support.MakeCreateTaskRequest(t, app, "Task", nil, nil, category.Id, cookies...)
 	require.Equal(t, http.StatusCreated, taskResp.Code)
-	var task tasksTransport.TaskResponse
+	var task tasksTransport.CreateTaskResponse
 	require.NoError(t, json.NewDecoder(taskResp.Body).Decode(&task), "failed to decode task response")
 
 	payload, err := json.Marshal(tasksTransport.UpdateTaskRequest{
@@ -339,7 +339,7 @@ func TestTasksUpdateTaskWithCategoryOwnedByDifferentUser(t *testing.T) {
 
 	taskResp := support.MakeCreateTaskRequest(t, app, "Task", nil, nil, firstCategory.Id, firstUserCookies...)
 	require.Equal(t, http.StatusCreated, taskResp.Code)
-	var task tasksTransport.TaskResponse
+	var task tasksTransport.CreateTaskResponse
 	require.NoError(t, json.NewDecoder(taskResp.Body).Decode(&task), "failed to decode task response")
 
 	payload, err := json.Marshal(tasksTransport.UpdateTaskRequest{
@@ -375,7 +375,7 @@ func TestTasksUpdateTaskChangeTitle(t *testing.T) {
 
 	taskResp := support.MakeCreateTaskRequest(t, app, "Old title", nil, nil, category.Id, cookies...)
 	require.Equal(t, http.StatusCreated, taskResp.Code)
-	var task tasksTransport.TaskResponse
+	var task tasksTransport.CreateTaskResponse
 	require.NoError(t, json.NewDecoder(taskResp.Body).Decode(&task), "failed to decode task response")
 
 	payload, err := json.Marshal(tasksTransport.UpdateTaskRequest{
@@ -386,10 +386,11 @@ func TestTasksUpdateTaskChangeTitle(t *testing.T) {
 	require.NoError(t, err, "serializing request failed")
 	resp := support.MakeJsonRequest(t, app, http.MethodPut, "/api/tasks", payload, cookies...)
 	require.Equal(t, http.StatusOK, resp.Code)
-	var respBody tasksTransport.TaskResponse
+	var respBody tasksTransport.UpdateTaskResponse
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
 
 	assert.Equal(t, "New title", respBody.Title, "unexpected task title")
+	require.NotNil(t, respBody.Rank)
 	assert.Equal(t, task.Rank, respBody.Rank, "expected task rank to remain unchanged")
 }
 
@@ -409,7 +410,7 @@ func TestTasksUpdateTaskAddDescription(t *testing.T) {
 
 	taskResp := support.MakeCreateTaskRequest(t, app, "Task", nil, nil, category.Id, cookies...)
 	require.Equal(t, http.StatusCreated, taskResp.Code)
-	var task tasksTransport.TaskResponse
+	var task tasksTransport.CreateTaskResponse
 	require.NoError(t, json.NewDecoder(taskResp.Body).Decode(&task), "failed to decode task response")
 
 	description := "Description"
@@ -422,10 +423,11 @@ func TestTasksUpdateTaskAddDescription(t *testing.T) {
 	require.NoError(t, err, "serializing request failed")
 	resp := support.MakeJsonRequest(t, app, http.MethodPut, "/api/tasks", payload, cookies...)
 	require.Equal(t, http.StatusOK, resp.Code)
-	var respBody tasksTransport.TaskResponse
+	var respBody tasksTransport.UpdateTaskResponse
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
 
 	assert.Equal(t, &description, respBody.Description, "unexpected task description")
+	require.NotNil(t, respBody.Rank)
 	assert.Equal(t, task.Rank, respBody.Rank, "expected task rank to remain unchanged")
 }
 
@@ -446,7 +448,7 @@ func TestTasksUpdateTaskRemoveDescription(t *testing.T) {
 	description := "Description"
 	taskResp := support.MakeCreateTaskRequest(t, app, "Task", &description, nil, category.Id, cookies...)
 	require.Equal(t, http.StatusCreated, taskResp.Code)
-	var task tasksTransport.TaskResponse
+	var task tasksTransport.CreateTaskResponse
 	require.NoError(t, json.NewDecoder(taskResp.Body).Decode(&task), "failed to decode task response")
 
 	payload, err := json.Marshal(tasksTransport.UpdateTaskRequest{
@@ -457,10 +459,11 @@ func TestTasksUpdateTaskRemoveDescription(t *testing.T) {
 	require.NoError(t, err, "serializing request failed")
 	resp := support.MakeJsonRequest(t, app, http.MethodPut, "/api/tasks", payload, cookies...)
 	require.Equal(t, http.StatusOK, resp.Code)
-	var respBody tasksTransport.TaskResponse
+	var respBody tasksTransport.UpdateTaskResponse
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
 
 	assert.Nil(t, respBody.Description, "expected task description to be removed")
+	require.NotNil(t, respBody.Rank)
 	assert.Equal(t, task.Rank, respBody.Rank, "expected task rank to remain unchanged")
 }
 
@@ -481,7 +484,7 @@ func TestTasksUpdateTaskChangeDescription(t *testing.T) {
 	oldDescription := "Old description"
 	taskResp := support.MakeCreateTaskRequest(t, app, "Task", &oldDescription, nil, category.Id, cookies...)
 	require.Equal(t, http.StatusCreated, taskResp.Code)
-	var task tasksTransport.TaskResponse
+	var task tasksTransport.CreateTaskResponse
 	require.NoError(t, json.NewDecoder(taskResp.Body).Decode(&task), "failed to decode task response")
 
 	newDescription := "New description"
@@ -494,10 +497,11 @@ func TestTasksUpdateTaskChangeDescription(t *testing.T) {
 	require.NoError(t, err, "serializing request failed")
 	resp := support.MakeJsonRequest(t, app, http.MethodPut, "/api/tasks", payload, cookies...)
 	require.Equal(t, http.StatusOK, resp.Code)
-	var respBody tasksTransport.TaskResponse
+	var respBody tasksTransport.UpdateTaskResponse
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
 
 	assert.Equal(t, &newDescription, respBody.Description, "unexpected task description")
+	require.NotNil(t, respBody.Rank)
 	assert.Equal(t, task.Rank, respBody.Rank, "expected task rank to remain unchanged")
 }
 
@@ -527,7 +531,7 @@ func TestTasksUpdateTaskFromOpenWithoutDateUntrashedToDate(t *testing.T) {
 	require.NoError(t, err, "serializing request failed")
 	resp := support.MakeJsonRequest(t, app, http.MethodPut, "/api/tasks", payload, cookies...)
 	require.Equal(t, http.StatusOK, resp.Code)
-	var respBody tasksTransport.TaskResponse
+	var respBody tasksTransport.UpdateTaskResponse
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
 
 	assert.Equal(t, &datedTasks[0].Date, respBody.Date, "unexpected task date")
@@ -561,7 +565,7 @@ func TestTasksUpdateTaskFromOpenWithDateUntrashedToNoDate(t *testing.T) {
 	require.NoError(t, err, "serializing request failed")
 	resp := support.MakeJsonRequest(t, app, http.MethodPut, "/api/tasks", payload, cookies...)
 	require.Equal(t, http.StatusOK, resp.Code)
-	var respBody tasksTransport.TaskResponse
+	var respBody tasksTransport.UpdateTaskResponse
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
 
 	assert.Nil(t, respBody.Date, "expected task date to be removed")
@@ -595,7 +599,7 @@ func TestTasksUpdateTaskFromDoneWithDateUntrashedToNoDate(t *testing.T) {
 	require.NoError(t, err, "serializing request failed")
 	resp := support.MakeJsonRequest(t, app, http.MethodPut, "/api/tasks", payload, cookies...)
 	require.Equal(t, http.StatusOK, resp.Code)
-	var respBody tasksTransport.TaskResponse
+	var respBody tasksTransport.UpdateTaskResponse
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
 
 	assert.Nil(t, respBody.Date, "expected task date to be removed")
@@ -617,8 +621,8 @@ func TestTasksUpdateTaskFromDoneWithDateTrashedToNoDateTrashed(t *testing.T) {
 	var category categoriesTransport.CategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
 
-	trashedTasks := support.PrepareTrashedTasks(t, app, category.Id, cookies...)
-	var task tasksTransport.TaskResponse
+	trashedTasks := support.PrepareTrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
+	var task tasksTransport.TrashedTaskResponse
 	for _, candidate := range trashedTasks {
 		if candidate.Done && candidate.Date != nil {
 			task = candidate
@@ -626,7 +630,6 @@ func TestTasksUpdateTaskFromDoneWithDateTrashedToNoDateTrashed(t *testing.T) {
 		}
 	}
 	require.NotZero(t, task.Id, "expected a done dated trashed task")
-	require.Nil(t, task.Rank, "expected trashed task not to have a rank")
 
 	payload, err := json.Marshal(tasksTransport.UpdateTaskRequest{
 		Id:         task.Id,
@@ -636,12 +639,13 @@ func TestTasksUpdateTaskFromDoneWithDateTrashedToNoDateTrashed(t *testing.T) {
 	require.NoError(t, err, "serializing request failed")
 	resp := support.MakeJsonRequest(t, app, http.MethodPut, "/api/tasks", payload, cookies...)
 	require.Equal(t, http.StatusOK, resp.Code)
-	var respBody tasksTransport.TaskResponse
+	var respBody tasksTransport.UpdateTaskResponse
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
 
 	assert.Nil(t, respBody.Date, "expected task date to be removed")
 	assert.False(t, respBody.Done, "expected task to become open")
-	assert.Nil(t, respBody.Rank, "expected trashed task not to have a rank")
+	assert.Equal(t, task.Rank, respBody.Rank, "expected trash rank to remain unchanged")
+	assert.True(t, respBody.Trashed, "expected task to remain trashed")
 }
 
 func TestTasksUpdateTaskFromOpenWithDateTrashedToNoDateTrashed(t *testing.T) {
@@ -658,8 +662,8 @@ func TestTasksUpdateTaskFromOpenWithDateTrashedToNoDateTrashed(t *testing.T) {
 	var category categoriesTransport.CategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
 
-	trashedTasks := support.PrepareTrashedTasks(t, app, category.Id, cookies...)
-	var task tasksTransport.TaskResponse
+	trashedTasks := support.PrepareTrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
+	var task tasksTransport.TrashedTaskResponse
 	for _, candidate := range trashedTasks {
 		if !candidate.Done && candidate.Date != nil {
 			task = candidate
@@ -667,7 +671,6 @@ func TestTasksUpdateTaskFromOpenWithDateTrashedToNoDateTrashed(t *testing.T) {
 		}
 	}
 	require.NotZero(t, task.Id, "expected an open dated trashed task")
-	require.Nil(t, task.Rank, "expected trashed task not to have a rank")
 
 	payload, err := json.Marshal(tasksTransport.UpdateTaskRequest{
 		Id:         task.Id,
@@ -677,12 +680,13 @@ func TestTasksUpdateTaskFromOpenWithDateTrashedToNoDateTrashed(t *testing.T) {
 	require.NoError(t, err, "serializing request failed")
 	resp := support.MakeJsonRequest(t, app, http.MethodPut, "/api/tasks", payload, cookies...)
 	require.Equal(t, http.StatusOK, resp.Code)
-	var respBody tasksTransport.TaskResponse
+	var respBody tasksTransport.UpdateTaskResponse
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
 
 	assert.Nil(t, respBody.Date, "expected task date to be removed")
 	assert.False(t, respBody.Done, "expected task to remain open")
-	assert.Nil(t, respBody.Rank, "expected trashed task not to have a rank")
+	assert.Equal(t, task.Rank, respBody.Rank, "expected trash rank to remain unchanged")
+	assert.True(t, respBody.Trashed, "expected task to remain trashed")
 }
 
 func TestTasksUpdateTaskFromOpenWithoutDateTrashedToDateTrashed(t *testing.T) {
@@ -699,8 +703,8 @@ func TestTasksUpdateTaskFromOpenWithoutDateTrashedToDateTrashed(t *testing.T) {
 	var category categoriesTransport.CategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
 
-	trashedTasks := support.PrepareTrashedTasks(t, app, category.Id, cookies...)
-	var task tasksTransport.TaskResponse
+	trashedTasks := support.PrepareTrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
+	var task tasksTransport.TrashedTaskResponse
 	for _, candidate := range trashedTasks {
 		if !candidate.Done && candidate.Date == nil {
 			task = candidate
@@ -708,7 +712,6 @@ func TestTasksUpdateTaskFromOpenWithoutDateTrashedToDateTrashed(t *testing.T) {
 		}
 	}
 	require.NotZero(t, task.Id, "expected an open undated trashed task")
-	require.Nil(t, task.Rank, "expected trashed task not to have a rank")
 	targetDate, err := shared.ParseDate("2026-03-25")
 	require.NoError(t, err, "parsing test date failed")
 
@@ -721,12 +724,13 @@ func TestTasksUpdateTaskFromOpenWithoutDateTrashedToDateTrashed(t *testing.T) {
 	require.NoError(t, err, "serializing request failed")
 	resp := support.MakeJsonRequest(t, app, http.MethodPut, "/api/tasks", payload, cookies...)
 	require.Equal(t, http.StatusOK, resp.Code)
-	var respBody tasksTransport.TaskResponse
+	var respBody tasksTransport.UpdateTaskResponse
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
 
 	assert.Equal(t, &targetDate, respBody.Date, "unexpected task date")
 	assert.False(t, respBody.Done, "expected task to remain open")
-	assert.Nil(t, respBody.Rank, "expected trashed task not to have a rank")
+	assert.Equal(t, task.Rank, respBody.Rank, "expected trash rank to remain unchanged")
+	assert.True(t, respBody.Trashed, "expected task to remain trashed")
 }
 
 func TestTasksUpdateTaskFromOpenWithDateToOtherDate(t *testing.T) {
@@ -757,7 +761,7 @@ func TestTasksUpdateTaskFromOpenWithDateToOtherDate(t *testing.T) {
 	require.NoError(t, err, "serializing request failed")
 	resp := support.MakeJsonRequest(t, app, http.MethodPut, "/api/tasks", payload, cookies...)
 	require.Equal(t, http.StatusOK, resp.Code)
-	var respBody tasksTransport.TaskResponse
+	var respBody tasksTransport.UpdateTaskResponse
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
 
 	assert.Equal(t, &targetDate, respBody.Date, "unexpected task date")
@@ -793,7 +797,7 @@ func TestTasksUpdateTaskFromDoneWithDateToOtherDate(t *testing.T) {
 	require.NoError(t, err, "serializing request failed")
 	resp := support.MakeJsonRequest(t, app, http.MethodPut, "/api/tasks", payload, cookies...)
 	require.Equal(t, http.StatusOK, resp.Code)
-	var respBody tasksTransport.TaskResponse
+	var respBody tasksTransport.UpdateTaskResponse
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
 
 	assert.Equal(t, &targetDate, respBody.Date, "unexpected task date")
@@ -822,7 +826,7 @@ func TestTasksUpdateTaskChangeCategory(t *testing.T) {
 
 	taskResp := support.MakeCreateTaskRequest(t, app, "Task", nil, nil, oldCategory.Id, cookies...)
 	require.Equal(t, http.StatusCreated, taskResp.Code)
-	var task tasksTransport.TaskResponse
+	var task tasksTransport.CreateTaskResponse
 	require.NoError(t, json.NewDecoder(taskResp.Body).Decode(&task), "failed to decode task response")
 
 	payload, err := json.Marshal(tasksTransport.UpdateTaskRequest{
@@ -833,9 +837,10 @@ func TestTasksUpdateTaskChangeCategory(t *testing.T) {
 	require.NoError(t, err, "serializing request failed")
 	resp := support.MakeJsonRequest(t, app, http.MethodPut, "/api/tasks", payload, cookies...)
 	require.Equal(t, http.StatusOK, resp.Code)
-	var respBody tasksTransport.TaskResponse
+	var respBody tasksTransport.UpdateTaskResponse
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
 
 	assert.Equal(t, newCategory.Id, respBody.CategoryId, "unexpected category id")
+	require.NotNil(t, respBody.Rank)
 	assert.Equal(t, task.Rank, respBody.Rank, "expected task rank to remain unchanged")
 }

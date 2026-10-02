@@ -1,8 +1,6 @@
 package domain
 
 import (
-	"time"
-
 	"github.com/marlonnienaber/Factum/server/internal/features/tasks/types/transport"
 	"github.com/marlonnienaber/Factum/server/internal/shared"
 )
@@ -14,13 +12,13 @@ type Task struct {
 	Title       string       `db:"title"`
 	Description *string      `db:"description"`
 	Date        *shared.Date `db:"date"`
-	Rank        *string      `db:"rank"`
+	Rank        string       `db:"rank"`
 	Done        bool         `db:"done"`
-	TrashedDate *time.Time   `db:"trashed_date"`
+	Trashed     bool         `db:"trashed"`
 }
 
-func (task *Task) ToTaskResponse() *transport.TaskResponse {
-	return &transport.TaskResponse{
+func (task *Task) ToUpdateTaskResponse() *transport.UpdateTaskResponse {
+	return &transport.UpdateTaskResponse{
 		Id:          task.Id,
 		CategoryId:  task.CategoryId,
 		Title:       task.Title,
@@ -28,6 +26,6 @@ func (task *Task) ToTaskResponse() *transport.TaskResponse {
 		Date:        task.Date,
 		Rank:        task.Rank,
 		Done:        task.Done,
-		TrashedDate: task.TrashedDate,
+		Trashed:     task.Trashed,
 	}
 }

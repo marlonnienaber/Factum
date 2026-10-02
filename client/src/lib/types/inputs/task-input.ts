@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const taskInputSchema = z.object({
+export const taskInputSchema = z.strictObject({
 	title: z.string().min(1, 'Title must have at least 1 character').max(100, 'Title must have at most 100 characters'),
 	description: z.preprocess(
 		(value) => (value === '' ? undefined : value),

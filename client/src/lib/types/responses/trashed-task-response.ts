@@ -1,7 +1,7 @@
-import { parseAbsoluteToLocal, parseDate } from '@internationalized/date';
+import { parseDate } from '@internationalized/date';
 import { z } from 'zod';
 
-export const TrashedTaskResponseSchema = z.object({
+export const TrashedTaskResponseSchema = z.strictObject({
 	id: z.number().int().positive(),
 	categoryId: z.number().int().positive(),
 	title: z.string().min(1).max(100),
@@ -11,7 +11,7 @@ export const TrashedTaskResponseSchema = z.object({
 		.transform((date) => parseDate(date))
 		.optional(),
 	done: z.boolean(),
-	trashedDate: z.iso.datetime().transform((trashedDate) => parseAbsoluteToLocal(trashedDate))
+	rank: z.string().min(1)
 });
 
 export type TrashedTaskResponse = z.infer<typeof TrashedTaskResponseSchema>;

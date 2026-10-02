@@ -6,13 +6,14 @@ import (
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/marlonnienaber/Factum/server/internal/features/categories/services"
 	"github.com/marlonnienaber/Factum/server/internal/features/categories/stores"
 	"github.com/marlonnienaber/Factum/server/internal/features/categories/types/transport"
 	"github.com/marlonnienaber/Factum/server/internal/shared"
 	"github.com/marlonnienaber/Factum/server/internal/validation"
 )
 
-func NewCreateCategoryHandler(categoryStore *stores.CategoryStore) shared.AuthenticatedHandlerFunc {
+func NewCreateCategoryHandler(categoryService *services.CategoryService) shared.AuthenticatedHandlerFunc {
 	return func(c *shared.AuthenticatedContext) {
 		unexpectedErrorLogMessage := "handling create category failed"
 
@@ -27,9 +28,12 @@ func NewCreateCategoryHandler(categoryStore *stores.CategoryStore) shared.Authen
 			return
 		}
 
-		categoryResponse, err := categoryStore.InsertCategory(c.UserId, request.Title, request.Color)
+		categoryResponse, err := categoryService.CreateCategory(c.UserId, request)
 		if err != nil {
 			switch {
+			case errors.Is(err, services.ErrMaximumCategoryCountReached):
+				c.JSON(http.StatusConflict, maximumCategoryCountReachedErrorResponse)
+				return
 			case errors.Is(err, stores.ErrCategoryTitleAlreadyInUse):
 				c.JSON(http.StatusConflict, categoryTitleAlreadyInUseErrorResponse)
 				return
@@ -55,4 +59,9 @@ var categoryTitleAlreadyInUseErrorResponse = shared.ErrorResponse{
 var categoryColorAlreadyInUseErrorResponse = shared.ErrorResponse{
 	ErrorCode: "category_color_already_in_use",
 	Message:   "Category color is already in use.",
+}
+
+var maximumCategoryCountReachedErrorResponse = shared.ErrorResponse{
+	ErrorCode: "maximum_category_count_reached",
+	Message:   "A maximum of 30 categories can be created per user.",
 }

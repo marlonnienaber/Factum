@@ -17,16 +17,12 @@ CREATE TABLE tasks (
     title VARCHAR(100) NOT NULL,
     description VARCHAR(500),
     date DATE,
-    rank TEXT COLLATE "C",
+    rank TEXT COLLATE "C" NOT NULL,
     done BOOLEAN NOT NULL DEFAULT FALSE,
-    trashed_date TIMESTAMPTZ,
+    trashed BOOLEAN NOT NULL DEFAULT FALSE,
 
     CONSTRAINT tasks_user_id_foreign_key FOREIGN KEY (user_id) REFERENCES users (id),
     CONSTRAINT tasks_category_id_foreign_key FOREIGN KEY (category_id) REFERENCES categories (id) ON DELETE RESTRICT,
-    CONSTRAINT tasks_rank_presence_check CHECK (
-        (trashed_date IS NULL AND rank IS NOT NULL)
-        OR (trashed_date IS NOT NULL AND rank IS NULL)
-    ),
     CONSTRAINT tasks_done_requires_date_check CHECK (
         done = FALSE OR date IS NOT NULL
     )
@@ -34,4 +30,10 @@ CREATE TABLE tasks (
 
 CREATE UNIQUE INDEX tasks_untrashed_user_id_done_date_rank_unique
     ON tasks (user_id, done, date, rank) NULLS NOT DISTINCT
-    WHERE trashed_date IS NULL;
+    WHERE trashed = FALSE;
+
+CREATE UNIQUE INDEX tasks_trashed_user_id_rank_unique
+    ON tasks (user_id, rank)
+    WHERE trashed = TRUE;
+
+CREATE INDEX tasks_user_id_index ON tasks (user_id);

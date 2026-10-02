@@ -31,6 +31,9 @@ func NewCreateTaskHandler(taskService *services.TaskService) shared.Authenticate
 		taskResponse, err := taskService.CreateTask(c.UserId, request)
 		if err != nil {
 			switch {
+			case errors.Is(err, services.ErrMaximumTaskCountReached):
+				c.JSON(http.StatusConflict, maximumTaskCountReachedErrorResponse)
+				return
 			case errors.Is(err, stores.ErrCategoryNotFound):
 				c.JSON(http.StatusNotFound, categoryNotFoundErrorResponse)
 				return
@@ -53,4 +56,9 @@ var invalidQueryParameterCombinationErrorResponse = shared.ErrorResponse{
 var categoryNotFoundErrorResponse = shared.ErrorResponse{
 	ErrorCode: "category_not_found",
 	Message:   "No category exists for the provided categoryId.",
+}
+
+var maximumTaskCountReachedErrorResponse = shared.ErrorResponse{
+	ErrorCode: "maximum_task_count_reached",
+	Message:   "A maximum of 1000 tasks can be created per user.",
 }

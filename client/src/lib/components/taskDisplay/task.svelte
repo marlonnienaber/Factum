@@ -6,42 +6,51 @@
 	import Popover from '$lib/components/shared/popover.svelte';
 	import { taskService } from '$lib/services/task-service.svelte';
 	import { categoryStore } from '$lib/stores/category-store.svelte';
+	import type { DatedUntrashedDoneTaskResponse } from '$lib/types/responses/dated-untrashed-done-task-response';
 	import type { DatedUntrashedOpenTaskResponse } from '$lib/types/responses/dated-untrashed-open-task-response';
 	import type { UndatedTaskResponse } from '$lib/types/responses/undated-task-response';
-	import { Ellipsis, SquarePen, Trash2 } from '@lucide/svelte';
+	import type { TrashedTaskResponse } from '$lib/types/responses/trashed-task-response';
+	import type { DateValue } from '@internationalized/date';
+	import { Ellipsis, type LucideIcon } from '@lucide/svelte';
+
+	type TaskAction = {
+		label: string;
+		icon: LucideIcon;
+		variant?: 'default' | 'success' | 'danger';
+		disabled?: boolean;
+		onclick: () => void | Promise<void>;
+	};
 
 	type Props = {
-		task: DatedUntrashedOpenTaskResponse | UndatedTaskResponse;
+		task: DatedUntrashedDoneTaskResponse | DatedUntrashedOpenTaskResponse | UndatedTaskResponse | TrashedTaskResponse;
+		actions: TaskAction[];
 		isShadowItem: boolean;
 		selectionEnabled: boolean;
 		selected: boolean;
+		displayDate?: boolean;
 		onSelectedChange: (taskId: number, selected: boolean) => void;
-		onedit: () => void;
 	};
 
-	const { task, isShadowItem, selectionEnabled, selected, onSelectedChange, onedit }: Props = $props();
-	let checked = $state(false);
+	const { task, actions, isShadowItem, selectionEnabled, selected, displayDate = false, onSelectedChange }: Props = $props();
 	let menuOpen = $state(false);
 	const category = $derived(categoryStore.categories.find((category) => category.id === task.categoryId));
+	const dateLabel = $derived(displayDate && 'date' in task && task.date !== undefined ? formatDate(task.date) : undefined);
 
-	function handleEdit(): void {
+	function handleAction(action: TaskAction): void {
 		menuOpen = false;
-		onedit();
+		void action.onclick();
 	}
 
-	function handleTrash(): void {
-		menuOpen = false;
-		void taskService.trashTask(task.id);
-	}
-
-	function handleCheckedChange(nextChecked: boolean): void {
-		if (!nextChecked) return;
-		checked = true;
-		void taskService.completeTask(task.id);
+	function handleCheckedChange(): void {
+		void taskService.toggleTaskDone(task.id);
 	}
 
 	function toggleSelection(): void {
 		if (selectionEnabled) onSelectedChange(task.id, !selected);
+	}
+
+	function formatDate(date: DateValue): string {
+		return `${date.day.toString().padStart(2, '0')}.${date.month.toString().padStart(2, '0')}.${date.year}`;
 	}
 </script>
 
@@ -63,26 +72,34 @@
 		</div>
 		{#if !selectionEnabled}
 			<div class="actions-and-done-toggle">
-				<Popover bind:open={menuOpen} side="bottom" align="end" triggerAriaLabel={`More options for "${task.title}"`}>
-					{#snippet trigger()}<Ellipsis size={18} aria-hidden="true" />{/snippet}
-					<Button onclick={handleEdit}>
-						Edit
-						{#snippet trailingIcon()}<SquarePen size={17} aria-hidden="true" />{/snippet}
-					</Button>
-					<Button variant="danger" disabled={taskService.taskMutationBlocked} onclick={handleTrash}>
-						Trash
-						{#snippet trailingIcon()}<Trash2 size={17} aria-hidden="true" />{/snippet}
-					</Button>
-				</Popover>
-				<Checkbox {checked} onCheckedChange={handleCheckedChange} ariaLabel={`Mark "${task.title}" as completed`} />
+				{#if actions.length > 0}
+					<Popover bind:open={menuOpen} side="bottom" align="end" triggerAriaLabel={`More options for "${task.title}"`}>
+						{#snippet trigger()}<Ellipsis size={18} aria-hidden="true" />{/snippet}
+						{#each actions as action (action.label)}
+							{@const ActionIcon = action.icon}
+							<Button variant={action.variant} disabled={action.disabled} onclick={() => handleAction(action)}>
+								{action.label}
+								{#snippet trailingIcon()}<ActionIcon size={17} aria-hidden="true" />{/snippet}
+							</Button>
+						{/each}
+					</Popover>
+				{/if}
+				<Checkbox checked={task.done} onCheckedChange={handleCheckedChange} ariaLabel={`Mark "${task.title}" as completed`} />
 			</div>
 		{/if}
 	</div>
 	{#if task.description}
 		<span class="description">{task.description}</span>
 	{/if}
-	{#if category}
-		<Category {category} />
+	{#if category || dateLabel}
+		<div class="metadata">
+			{#if category}
+				<Category {category} />
+			{/if}
+			{#if dateLabel}
+				<span class="date">{dateLabel}</span>
+			{/if}
+		</div>
 	{/if}
 </div>
 
@@ -108,7 +125,7 @@
 		.header {
 			display: flex;
 			justify-content: space-between;
-			align-items: center;
+			align-items: start;
 			min-height: 1.125rem;
 
 			.selection-toggle-and-title {
@@ -152,6 +169,18 @@
 
 		.description {
 			font-size: 0.75rem;
+		}
+
+		.metadata {
+			display: flex;
+			justify-content: space-between;
+			align-items: end;
+			gap: 0.5rem;
+
+			.date {
+				color: var(--text-subtle);
+				font-size: 0.75rem;
+			}
 		}
 	}
 

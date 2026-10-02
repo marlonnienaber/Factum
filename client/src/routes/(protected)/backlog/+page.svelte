@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { CheckCheck, MousePointer2, Plus, Trash2, XCircle } from '@lucide/svelte';
+	import { CheckCheck, MousePointer2, Plus, SquarePen, Trash2, XCircle } from '@lucide/svelte';
 	import Button from '$lib/components/shared/button.svelte';
 	import InfiniteScrollContainer from '$lib/components/shared/infinite-scroll-container.svelte';
 	import TaskDialog from '$lib/components/taskCreation/task-dialog.svelte';
@@ -8,25 +8,25 @@
 	import { undatedTaskStore } from '$lib/stores/undated-task-store.svelte';
 	import { taskService } from '$lib/services/task-service.svelte';
 	import type { TaskDragAndDropRequest } from '$lib/types/requests/task-drag-and-drop-request';
-	import { getLocalTimeZone, parseDate, today, type CalendarDate } from '@internationalized/date';
+	import { getDateLabel } from '$lib/utils/date';
+	import { getLocalTimeZone, parseDate, today } from '@internationalized/date';
 	import type { DatedUntrashedOpenTaskResponse } from '$lib/types/responses/dated-untrashed-open-task-response';
 	import type { UndatedTaskResponse } from '$lib/types/responses/undated-task-response';
-	import { dndzone, SHADOW_ITEM_MARKER_PROPERTY_NAME as isShadowTask, TRIGGERS, type DndEvent } from 'svelte-dnd-action';
+	import { type DndEvent, dndzone, SHADOW_ITEM_MARKER_PROPERTY_NAME as isShadowTask, TRIGGERS } from 'svelte-dnd-action';
 
 	type TaskDragItem = (DatedUntrashedOpenTaskResponse | UndatedTaskResponse) & {
 		[isShadowTask]?: boolean;
 	};
 
-	const dropTargetStyle = { outline: 'none' };
 	const maximumBatchSize = 50;
 	const todayDate = today(getLocalTimeZone());
 	const todayDateKey = todayDate.toString();
 
 	let taskDialogOpen = $state(false);
+	let taskDialogTask = $state<DatedUntrashedOpenTaskResponse | UndatedTaskResponse>();
 	let dragging = $state(false);
 	let selectionEnabled = $state(false);
 	let selectedTaskIds = $state<number[]>([]);
-	let taskDialogTask = $state<DatedUntrashedOpenTaskResponse | UndatedTaskResponse>();
 	let undatedTaskDragItems = $state<TaskDragItem[]>([...undatedTaskStore.undatedTasks]);
 	let todayTaskDragItems = $state<TaskDragItem[]>([...datedUntrashedOpenTaskStore.datedUntrashedOpenTodayTasks]);
 	let dateKeyToDatedTaskDragItemsRecord = $state<Record<string, TaskDragItem[]>>(createGroupKeyToDatedTaskItemsRecord());
@@ -36,10 +36,6 @@
 		undatedTaskDragItems = [...undatedTaskStore.undatedTasks];
 		todayTaskDragItems = [...datedUntrashedOpenTaskStore.datedUntrashedOpenTodayTasks];
 		dateKeyToDatedTaskDragItemsRecord = createGroupKeyToDatedTaskItemsRecord();
-	});
-
-	$effect(() => {
-		console.log('Selected task IDs:', $state.snapshot(selectedTaskIds));
 	});
 
 	function createGroupKeyToDatedTaskItemsRecord(): Record<string, TaskDragItem[]> {
@@ -67,6 +63,8 @@
 			const taskDragItemIndex = taskDragItems.findIndex((task) => task.id === taskDragItemId);
 			const request: TaskDragAndDropRequest = {
 				date: dateKey ? parseDate(dateKey) : undefined,
+				done: false,
+				trashed: false,
 				previousTaskId: taskDragItems[taskDragItemIndex - 1]?.id
 			};
 			await taskService.dragAndDropTask(taskDragItemId, request);
@@ -92,19 +90,26 @@
 		return `${task.id}-${task[isShadowTask] ? 'shadow' : 'item'}`;
 	}
 
-	function formatDate(date: CalendarDate): string {
-		if (date.compare(todayDate) === 0) return 'Today';
-		return `${String(date.day).padStart(2, '0')}.${String(date.month).padStart(2, '0')}.${date.year}`;
-	}
-
 	function openCreateTaskDialog() {
 		taskDialogTask = undefined;
 		taskDialogOpen = true;
 	}
 
-	function openEditTaskDialog(task: DatedUntrashedOpenTaskResponse | UndatedTaskResponse) {
+	function openTaskDialog(task: DatedUntrashedOpenTaskResponse | UndatedTaskResponse) {
 		taskDialogTask = task;
 		taskDialogOpen = true;
+	}
+
+	function getTaskActions(task: DatedUntrashedOpenTaskResponse | UndatedTaskResponse) {
+		return [
+			{ label: 'Edit', icon: SquarePen, onclick: () => openTaskDialog(task) },
+			{
+				label: 'Trash',
+				icon: Trash2,
+				disabled: taskService.taskMutationBlocked,
+				onclick: () => taskService.trashTask(task.id)
+			}
+		];
 	}
 
 	function loadMoreUndatedTasks(): Promise<void> | undefined {
@@ -165,7 +170,6 @@
 					{#snippet trailingIcon()}<XCircle size={17} aria-hidden="true" />{/snippet}
 				</Button>
 				<Button
-					variant="success"
 					disabled={selectedTaskIds.length === 0 || selectedTaskIds.length > maximumBatchSize || taskService.taskMutationBlocked}
 					onclick={completeSelectedTasks}
 				>
@@ -173,7 +177,6 @@
 					{#snippet trailingIcon()}<CheckCheck size={17} aria-hidden="true" />{/snippet}
 				</Button>
 				<Button
-					variant="danger"
 					disabled={selectedTaskIds.length === 0 || selectedTaskIds.length > maximumBatchSize || taskService.taskMutationBlocked}
 					onclick={trashSelectedTasks}
 				>
@@ -210,7 +213,7 @@
 					use:dndzone={{
 						items: undatedTaskDragItems,
 						dragDisabled: selectionEnabled || taskService.taskMutationBlocked,
-						dropTargetStyle: dropTargetStyle
+						dropTargetStyle: { outline: 'none' }
 					}}
 					onconsider={handleConsider}
 					onfinalize={handleFinalize}
@@ -218,11 +221,11 @@
 					{#each undatedTaskDragItems as taskDragItem (getTaskDragItemKey(taskDragItem))}
 						<Task
 							task={taskDragItem}
+							actions={getTaskActions(taskDragItem)}
 							isShadowItem={Boolean(taskDragItem[isShadowTask])}
 							{selectionEnabled}
 							selected={selectedTaskIds.includes(taskDragItem.id)}
 							onSelectedChange={updateTaskSelection}
-							onedit={() => openEditTaskDialog(taskDragItem)}
 						/>
 					{/each}
 				</div>
@@ -241,14 +244,14 @@
 				{#each Object.entries(dateKeyToDatedTaskDragItemsRecord) as [groupKey, taskDragItems] (groupKey)}
 					{@const groupDate = parseDate(groupKey)}
 					<div class="date-group">
-						<h2>{formatDate(groupDate)}</h2>
+						<h2>{getDateLabel(groupDate)}</h2>
 						<div
 							class="task-item-drop-zone"
-							aria-label={`Tasks dated ${formatDate(groupDate)}`}
+							aria-label={`Tasks dated ${getDateLabel(groupDate)}`}
 							use:dndzone={{
 								items: taskDragItems,
 								dragDisabled: selectionEnabled || taskService.taskMutationBlocked,
-								dropTargetStyle: dropTargetStyle
+								dropTargetStyle: { outline: 'none' }
 							}}
 							onconsider={(event) => handleConsider(event, groupKey)}
 							onfinalize={(event) => handleFinalize(event, groupKey)}
@@ -256,11 +259,11 @@
 							{#each taskDragItems as taskDragItem (getTaskDragItemKey(taskDragItem))}
 								<Task
 									task={taskDragItem}
+									actions={getTaskActions(taskDragItem)}
 									isShadowItem={Boolean(taskDragItem[isShadowTask])}
 									{selectionEnabled}
 									selected={selectedTaskIds.includes(taskDragItem.id)}
 									onSelectedChange={updateTaskSelection}
-									onedit={() => openEditTaskDialog(taskDragItem)}
 								/>
 							{/each}
 						</div>
@@ -283,7 +286,7 @@
 				use:dndzone={{
 					items: todayTaskDragItems,
 					dragDisabled: selectionEnabled || taskService.taskMutationBlocked,
-					dropTargetStyle: dropTargetStyle
+					dropTargetStyle: { outline: 'none' }
 				}}
 				onconsider={(event) => handleConsider(event, todayDateKey)}
 				onfinalize={(event) => handleFinalize(event, todayDateKey)}
@@ -291,11 +294,11 @@
 				{#each todayTaskDragItems as taskDragItem (getTaskDragItemKey(taskDragItem))}
 					<Task
 						task={taskDragItem}
+						actions={getTaskActions(taskDragItem)}
 						isShadowItem={Boolean(taskDragItem[isShadowTask])}
 						{selectionEnabled}
 						selected={selectedTaskIds.includes(taskDragItem.id)}
 						onSelectedChange={updateTaskSelection}
-						onedit={() => openEditTaskDialog(taskDragItem)}
 					/>
 				{/each}
 			</div>

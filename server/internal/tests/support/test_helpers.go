@@ -201,7 +201,6 @@ func PrepareDoneDatedUntrashedTasks(
 		var toggleResponse tasksTransport.ToggleTaskDoneResponse
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&toggleResponse), "failed to decode toggle task done response")
 		require.NotNil(t, toggleResponse.Rank, "expected toggled task to have a rank")
-		tasks[index].Done = true
 		tasks[index].Date = toggleResponse.Date
 		tasks[index].Rank = *toggleResponse.Rank
 	}
@@ -212,68 +211,77 @@ func PrepareTrashedTasks(
 	t *testing.T,
 	app *gin.Engine,
 	categoryId int64,
+	date shared.Date,
 	cookies ...*http.Cookie,
-) []tasksTransport.TaskResponse {
+) []tasksTransport.TrashedTaskResponse {
 	t.Helper()
 
-	date, err := shared.ParseDate("2026-03-25")
-	require.NoError(t, err, "parsing test date failed")
 	trashedDate := time.Date(2026, time.March, 26, 10, 30, 0, 0, time.UTC)
 
-	trashTask := func(task tasksTransport.TaskResponse) tasksTransport.TaskResponse {
+	trashTask := func(task tasksTransport.TrashedTaskResponse) tasksTransport.TrashedTaskResponse {
 		resp := MakeTrashTaskRequest(t, app, task.Id, trashedDate, cookies...)
-		require.Equal(t, http.StatusNoContent, resp.Code)
-		task.Rank = nil
-		task.TrashedDate = &trashedDate
+		require.Equal(t, http.StatusOK, resp.Code)
+		var trashTaskResponse tasksTransport.TrashTaskResponse
+		require.NoError(t, json.NewDecoder(resp.Body).Decode(&trashTaskResponse), "failed to decode trash task response")
+		task.Rank = trashTaskResponse.Rank
 		return task
 	}
 
 	openUndatedResp := MakeCreateTaskRequest(t, app, "Open undated task", nil, nil, categoryId, cookies...)
 	require.Equal(t, http.StatusCreated, openUndatedResp.Code)
-	var openUndatedTask tasksTransport.TaskResponse
+	var openUndatedCreateResponse tasksTransport.CreateTaskResponse
 	require.NoError(
 		t,
-		json.NewDecoder(openUndatedResp.Body).Decode(&openUndatedTask),
+		json.NewDecoder(openUndatedResp.Body).Decode(&openUndatedCreateResponse),
 		"failed to decode task response",
 	)
-	openUndatedTask.CategoryId = categoryId
-	openUndatedTask.Title = "Open undated task"
+	openUndatedTask := tasksTransport.TrashedTaskResponse{
+		Id:         openUndatedCreateResponse.Id,
+		CategoryId: categoryId,
+		Title:      "Open undated task",
+	}
 
 	openDatedResp := MakeCreateTaskRequest(t, app, "Open dated task", nil, &date, categoryId, cookies...)
 	require.Equal(t, http.StatusCreated, openDatedResp.Code)
-	var openDatedTask tasksTransport.TaskResponse
+	var openDatedCreateResponse tasksTransport.CreateTaskResponse
 	require.NoError(
 		t,
-		json.NewDecoder(openDatedResp.Body).Decode(&openDatedTask),
+		json.NewDecoder(openDatedResp.Body).Decode(&openDatedCreateResponse),
 		"failed to decode task response",
 	)
-	openDatedTask.CategoryId = categoryId
-	openDatedTask.Title = "Open dated task"
-	openDatedTask.Date = &date
+	openDatedTask := tasksTransport.TrashedTaskResponse{
+		Id:         openDatedCreateResponse.Id,
+		CategoryId: categoryId,
+		Title:      "Open dated task",
+		Date:       &date,
+	}
 
 	doneDatedResp := MakeCreateTaskRequest(t, app, "Done dated task", nil, &date, categoryId, cookies...)
 	require.Equal(t, http.StatusCreated, doneDatedResp.Code)
-	var doneDatedTask tasksTransport.TaskResponse
+	var doneDatedCreateResponse tasksTransport.CreateTaskResponse
 	require.NoError(
 		t,
-		json.NewDecoder(doneDatedResp.Body).Decode(&doneDatedTask),
+		json.NewDecoder(doneDatedResp.Body).Decode(&doneDatedCreateResponse),
 		"failed to decode task response",
 	)
-	doneDatedTask.CategoryId = categoryId
-	doneDatedTask.Title = "Done dated task"
-	require.NotNil(t, doneDatedTask.Rank, "expected created task to have a rank")
+	doneDatedTask := tasksTransport.TrashedTaskResponse{
+		Id:         doneDatedCreateResponse.Id,
+		CategoryId: categoryId,
+		Title:      "Done dated task",
+		Date:       &date,
+	}
 	toggleDoneResp := MakeToggleDoneRequest(t, app, doneDatedTask.Id, cookies...)
 	require.Equal(t, http.StatusOK, toggleDoneResp.Code)
-	var toggleResponse tasksTransport.ToggleTaskDoneResponse
-	require.NoError(t, json.NewDecoder(toggleDoneResp.Body).Decode(&toggleResponse), "failed to decode toggle task done response")
 	doneDatedTask.Done = true
-	doneDatedTask.Date = &toggleResponse.Date
-	doneDatedTask.Rank = toggleResponse.Rank
 
-	return []tasksTransport.TaskResponse{
-		trashTask(doneDatedTask),
-		trashTask(openDatedTask),
-		trashTask(openUndatedTask),
+	doneDatedTask = trashTask(doneDatedTask)
+	openDatedTask = trashTask(openDatedTask)
+	openUndatedTask = trashTask(openUndatedTask)
+
+	return []tasksTransport.TrashedTaskResponse{
+		openUndatedTask,
+		openDatedTask,
+		doneDatedTask,
 	}
 }
 

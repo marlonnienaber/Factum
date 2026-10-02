@@ -1,6 +1,6 @@
 import { fireEvent, render, type RenderResult, waitFor, within } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
-import { getLocalTimeZone, now, parseAbsolute, today } from '@internationalized/date';
+import { getLocalTimeZone, today } from '@internationalized/date';
 import { generateKeyBetween, generateNKeysBetween } from 'fractional-indexing';
 import { toast } from 'svelte-sonner';
 import { type DndEvent, SOURCES, TRIGGERS } from 'svelte-dnd-action';
@@ -297,7 +297,9 @@ describe('backlog page tests', () => {
 					categoryId: category.id,
 					title: newTitle,
 					description: newDescription,
-					rank: task.rank
+					done: false,
+					rank: task.rank,
+					trashed: false
 				});
 				fetchMock.mockResolvedValue(response);
 
@@ -338,7 +340,9 @@ describe('backlog page tests', () => {
 					title: newTitle,
 					description: newDescription,
 					date: taskDate.toString(),
-					rank: task.rank
+					done: false,
+					rank: task.rank,
+					trashed: false
 				});
 				fetchMock.mockResolvedValue(response);
 
@@ -381,7 +385,9 @@ describe('backlog page tests', () => {
 					title: newTitle,
 					description: newDescription,
 					date: taskDate.toString(),
-					rank: task.rank
+					done: false,
+					rank: task.rank,
+					trashed: false
 				});
 				fetchMock.mockResolvedValue(response);
 
@@ -438,7 +444,8 @@ describe('backlog page tests', () => {
 				expect(datedUntrashedDoneTaskStore.datedUntrashedDoneTasks).toContainEqual({
 					...task,
 					date: completedTaskDate,
-					rank: completedTaskRank
+					rank: completedTaskRank,
+					done: true
 				});
 			});
 
@@ -464,7 +471,8 @@ describe('backlog page tests', () => {
 				expectTaskNotToBePresent(page, task.title);
 				expect(datedUntrashedDoneTaskStore.datedUntrashedDoneTasks).toContainEqual({
 					...task,
-					rank: completedTaskRank
+					rank: completedTaskRank,
+					done: true
 				});
 			});
 
@@ -490,7 +498,8 @@ describe('backlog page tests', () => {
 				expectTaskNotToBePresent(page, task.title);
 				expect(datedUntrashedDoneTaskStore.datedUntrashedDoneTasks).toContainEqual({
 					...task,
-					rank: completedTaskRank
+					rank: completedTaskRank,
+					done: true
 				});
 			});
 
@@ -524,7 +533,7 @@ describe('backlog page tests', () => {
 			it('successfully trashes a task without a date', async () => {
 				const task = testData.noDatePartition.firstTask;
 
-				const response = new Response(null, { status: 204 });
+				const response = getResponse({ rank: generateKeyBetween(undefined, undefined) });
 				fetchMock.mockResolvedValue(response);
 
 				const page = render(Page);
@@ -537,13 +546,6 @@ describe('backlog page tests', () => {
 
 				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 				expectRequestPath(fetchMock, `/api/tasks/${task.id}/trash`);
-				const trashedDate = getRequestSearchParameter(fetchMock, 'trashedDate');
-				expect(trashedDate).not.toBeNull();
-				if (trashedDate === null) throw new Error('Expected the trash request to contain a trashedDate.');
-				const parsedTrashedDate = parseAbsolute(trashedDate, localTimeZone);
-				const currentDate = now(localTimeZone);
-				const dateDifference = Math.abs(parsedTrashedDate.compare(currentDate));
-				expect(dateDifference).toBeLessThanOrEqual(maximumTrashTimestampDifferenceMilliseconds);
 				expectRequestMethod(fetchMock, 'PATCH');
 				expectRequestCredentialsMode(fetchMock, 'same-origin');
 				expectRequestBody(fetchMock, undefined);
@@ -553,7 +555,7 @@ describe('backlog page tests', () => {
 			it('successfully trashes a task with a non-today date', async () => {
 				const task = testData.nonTodayPastPartition.firstTask;
 
-				const response = new Response(null, { status: 204 });
+				const response = getResponse({ rank: generateKeyBetween(undefined, undefined) });
 				fetchMock.mockResolvedValue(response);
 
 				const page = render(Page);
@@ -566,13 +568,6 @@ describe('backlog page tests', () => {
 
 				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 				expectRequestPath(fetchMock, `/api/tasks/${task.id}/trash`);
-				const trashedDate = getRequestSearchParameter(fetchMock, 'trashedDate');
-				expect(trashedDate).not.toBeNull();
-				if (trashedDate === null) throw new Error('Expected the trash request to contain a trashedDate.');
-				const parsedTrashedDate = parseAbsolute(trashedDate, localTimeZone);
-				const currentDate = now(localTimeZone);
-				const dateDifference = Math.abs(parsedTrashedDate.compare(currentDate));
-				expect(dateDifference).toBeLessThanOrEqual(maximumTrashTimestampDifferenceMilliseconds);
 				expectRequestMethod(fetchMock, 'PATCH');
 				expectRequestCredentialsMode(fetchMock, 'same-origin');
 				expectRequestBody(fetchMock, undefined);
@@ -582,7 +577,7 @@ describe('backlog page tests', () => {
 			it('successfully trashes a task dated today', async () => {
 				const task = testData.todayPartition.firstTask;
 
-				const response = new Response(null, { status: 204 });
+				const response = getResponse({ rank: generateKeyBetween(undefined, undefined) });
 				fetchMock.mockResolvedValue(response);
 
 				const page = render(Page);
@@ -595,13 +590,6 @@ describe('backlog page tests', () => {
 
 				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 				expectRequestPath(fetchMock, `/api/tasks/${task.id}/trash`);
-				const trashedDate = getRequestSearchParameter(fetchMock, 'trashedDate');
-				expect(trashedDate).not.toBeNull();
-				if (trashedDate === null) throw new Error('Expected the trash request to contain a trashedDate.');
-				const parsedTrashedDate = parseAbsolute(trashedDate, localTimeZone);
-				const currentDate = now(localTimeZone);
-				const dateDifference = Math.abs(parsedTrashedDate.compare(currentDate));
-				expect(dateDifference).toBeLessThanOrEqual(maximumTrashTimestampDifferenceMilliseconds);
 				expectRequestMethod(fetchMock, 'PATCH');
 				expectRequestCredentialsMode(fetchMock, 'same-origin');
 				expectRequestBody(fetchMock, undefined);
@@ -619,12 +607,24 @@ describe('backlog page tests', () => {
 				const taskIds = tasks.map((task) => task.id);
 				const completedTaskRanks = generateNKeysBetween(undefined, undefined, tasks.length);
 				const completedTasks = [
-					{ ...tasks[0], date: testData.todayPartitionDate.toString(), rank: completedTaskRanks[0] },
-					{ ...tasks[1], date: testData.nonTodayPastPartitionDate.toString(), rank: completedTaskRanks[1] },
-					{ ...tasks[2], date: testData.todayPartitionDate.toString(), rank: completedTaskRanks[2] }
+					{
+						id: tasks[0].id,
+						date: testData.todayPartitionDate.toString(),
+						rank: completedTaskRanks[0]
+					},
+					{
+						id: tasks[1].id,
+						date: testData.nonTodayPastPartitionDate.toString(),
+						rank: completedTaskRanks[1]
+					},
+					{
+						id: tasks[2].id,
+						date: testData.todayPartitionDate.toString(),
+						rank: completedTaskRanks[2]
+					}
 				];
 
-				const response = getResponse({ datedUntrashedDoneTasks: completedTasks, trashedTasks: [] });
+				const response = getResponse(completedTasks);
 				fetchMock.mockResolvedValue(response);
 
 				const page = render(Page);
@@ -652,9 +652,11 @@ describe('backlog page tests', () => {
 					testData.nonTodayPastPartition.secondTask,
 					testData.todayPartition.thirdTask
 				] as const;
-				const taskIds = tasks.map((task) => task.id);
 
-				const response = new Response(null, { status: 204 });
+				const taskIds = tasks.map((task) => task.id);
+				const trashedTaskRanks = generateNKeysBetween(undefined, undefined, tasks.length);
+				const trashedTasks = tasks.map((task, index) => ({ id: task.id, rank: trashedTaskRanks[index] }));
+				const response = getResponse(trashedTasks);
 				fetchMock.mockResolvedValue(response);
 
 				const page = render(Page);
@@ -665,13 +667,6 @@ describe('backlog page tests', () => {
 
 				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 				expectRequestPath(fetchMock, '/api/tasks/batch-trash');
-				const trashedDate = getRequestSearchParameter(fetchMock, 'trashedDate');
-				expect(trashedDate).not.toBeNull();
-				if (trashedDate === null) throw new Error('Expected the batch trash request to contain a trashedDate.');
-				const parsedTrashedDate = parseAbsolute(trashedDate, localTimeZone);
-				const currentDate = now(localTimeZone);
-				const dateDifference = Math.abs(parsedTrashedDate.compare(currentDate));
-				expect(dateDifference).toBeLessThanOrEqual(maximumTrashTimestampDifferenceMilliseconds);
 				const requestBody = JSON.stringify({ taskIds });
 				expectRequestMethod(fetchMock, 'PATCH');
 				expectRequestCredentialsMode(fetchMock, 'same-origin');
@@ -756,7 +751,7 @@ describe('backlog page tests', () => {
 					await dropTask(tasksWithoutDateList, reorderedTasks, testData.noDatePartition.thirdTask.id);
 
 					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-					const requestBody = JSON.stringify({});
+					const requestBody = JSON.stringify({ done: false, trashed: false });
 					expectRequestUrl(fetchMock, `/api/tasks/${testData.noDatePartition.thirdTask.id}/drag-and-drop`);
 					expectRequestMethod(fetchMock, 'PATCH');
 					expectRequestCredentialsMode(fetchMock, 'same-origin');
@@ -783,7 +778,11 @@ describe('backlog page tests', () => {
 					await dropTask(tasksWithoutDateList, reorderedTasks, testData.noDatePartition.thirdTask.id);
 
 					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-					const requestBody = JSON.stringify({ previousTaskId: testData.noDatePartition.firstTask.id });
+					const requestBody = JSON.stringify({
+						done: false,
+						trashed: false,
+						previousTaskId: testData.noDatePartition.firstTask.id
+					});
 					expectRequestUrl(fetchMock, `/api/tasks/${testData.noDatePartition.thirdTask.id}/drag-and-drop`);
 					expectRequestMethod(fetchMock, 'PATCH');
 					expectRequestCredentialsMode(fetchMock, 'same-origin');
@@ -807,7 +806,11 @@ describe('backlog page tests', () => {
 					await dropTask(tasksWithoutDateList, reorderedTasks, testData.noDatePartition.firstTask.id);
 
 					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-					const requestBody = JSON.stringify({ previousTaskId: testData.noDatePartition.thirdTask.id });
+					const requestBody = JSON.stringify({
+						done: false,
+						trashed: false,
+						previousTaskId: testData.noDatePartition.thirdTask.id
+					});
 					expectRequestUrl(fetchMock, `/api/tasks/${testData.noDatePartition.firstTask.id}/drag-and-drop`);
 					expectRequestMethod(fetchMock, 'PATCH');
 					expectRequestCredentialsMode(fetchMock, 'same-origin');
@@ -834,7 +837,9 @@ describe('backlog page tests', () => {
 
 					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 					const requestBody = JSON.stringify({
-						date: testData.todayPartitionDate.toString()
+						date: testData.todayPartitionDate.toString(),
+						done: false,
+						trashed: false
 					});
 					expectRequestUrl(fetchMock, `/api/tasks/${testData.todayPartition.thirdTask.id}/drag-and-drop`);
 					expectRequestMethod(fetchMock, 'PATCH');
@@ -864,6 +869,8 @@ describe('backlog page tests', () => {
 					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 					const requestBody = JSON.stringify({
 						date: testData.todayPartitionDate.toString(),
+						done: false,
+						trashed: false,
 						previousTaskId: testData.todayPartition.firstTask.id
 					});
 					expectRequestUrl(fetchMock, `/api/tasks/${testData.todayPartition.thirdTask.id}/drag-and-drop`);
@@ -891,6 +898,8 @@ describe('backlog page tests', () => {
 					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 					const requestBody = JSON.stringify({
 						date: testData.todayPartitionDate.toString(),
+						done: false,
+						trashed: false,
 						previousTaskId: testData.todayPartition.thirdTask.id
 					});
 					expectRequestUrl(fetchMock, `/api/tasks/${testData.todayPartition.firstTask.id}/drag-and-drop`);
@@ -919,7 +928,9 @@ describe('backlog page tests', () => {
 
 					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 					const requestBody = JSON.stringify({
-						date: testData.nonTodayPastPartitionDate.toString()
+						date: testData.nonTodayPastPartitionDate.toString(),
+						done: false,
+						trashed: false
 					});
 					expectRequestUrl(fetchMock, `/api/tasks/${testData.nonTodayPastPartition.thirdTask.id}/drag-and-drop`);
 					expectRequestMethod(fetchMock, 'PATCH');
@@ -949,6 +960,8 @@ describe('backlog page tests', () => {
 					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 					const requestBody = JSON.stringify({
 						date: testData.nonTodayPastPartitionDate.toString(),
+						done: false,
+						trashed: false,
 						previousTaskId: testData.nonTodayPastPartition.firstTask.id
 					});
 					expectRequestUrl(fetchMock, `/api/tasks/${testData.nonTodayPastPartition.thirdTask.id}/drag-and-drop`);
@@ -976,6 +989,8 @@ describe('backlog page tests', () => {
 					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 					const requestBody = JSON.stringify({
 						date: testData.nonTodayPastPartitionDate.toString(),
+						done: false,
+						trashed: false,
 						previousTaskId: testData.nonTodayPastPartition.thirdTask.id
 					});
 					expectRequestUrl(fetchMock, `/api/tasks/${testData.nonTodayPastPartition.firstTask.id}/drag-and-drop`);
@@ -1006,7 +1021,9 @@ describe('backlog page tests', () => {
 
 					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 					const requestBody = JSON.stringify({
-						date: testData.nonTodayFuturePartitionDate.toString()
+						date: testData.nonTodayFuturePartitionDate.toString(),
+						done: false,
+						trashed: false
 					});
 					expectRequestUrl(fetchMock, `/api/tasks/${testData.nonTodayPastPartition.firstTask.id}/drag-and-drop`);
 					expectRequestMethod(fetchMock, 'PATCH');
@@ -1041,6 +1058,8 @@ describe('backlog page tests', () => {
 					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 					const requestBody = JSON.stringify({
 						date: testData.nonTodayFuturePartitionDate.toString(),
+						done: false,
+						trashed: false,
 						previousTaskId: testData.nonTodayFuturePartition.firstTask.id
 					});
 					expectRequestUrl(fetchMock, `/api/tasks/${testData.nonTodayPastPartition.firstTask.id}/drag-and-drop`);
@@ -1073,6 +1092,8 @@ describe('backlog page tests', () => {
 					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 					const requestBody = JSON.stringify({
 						date: testData.nonTodayFuturePartitionDate.toString(),
+						done: false,
+						trashed: false,
 						previousTaskId: testData.nonTodayFuturePartition.thirdTask.id
 					});
 					expectRequestUrl(fetchMock, `/api/tasks/${testData.nonTodayPastPartition.firstTask.id}/drag-and-drop`);
@@ -1133,6 +1154,8 @@ describe('backlog page tests', () => {
 						const draggedTaskIndex = reorderedTasks.findIndex((task) => task.id === testData.noDatePartition.thirdTask.id);
 						const requestBody = JSON.stringify({
 							date: destinationDate.toString(),
+							done: false,
+							trashed: false,
 							previousTaskId: reorderedTasks[draggedTaskIndex - 1]?.id
 						});
 						expectRequestUrl(fetchMock, `/api/tasks/${testData.noDatePartition.thirdTask.id}/drag-and-drop`);
@@ -1184,6 +1207,8 @@ describe('backlog page tests', () => {
 					const draggedTaskIndex = reorderedTasks.findIndex((task) => task.id === testData.noDatePartition.thirdTask.id);
 					const requestBody = JSON.stringify({
 						date: testData.todayPartitionDate.toString(),
+						done: false,
+						trashed: false,
 						previousTaskId: reorderedTasks[draggedTaskIndex - 1]?.id
 					});
 					expectRequestUrl(fetchMock, `/api/tasks/${testData.noDatePartition.thirdTask.id}/drag-and-drop`);
@@ -1234,7 +1259,11 @@ describe('backlog page tests', () => {
 
 					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 					const draggedTaskIndex = reorderedTasks.findIndex((task) => task.id === testData.nonTodayPastPartition.thirdTask.id);
-					const requestBody = JSON.stringify({ previousTaskId: reorderedTasks[draggedTaskIndex - 1]?.id });
+					const requestBody = JSON.stringify({
+						done: false,
+						trashed: false,
+						previousTaskId: reorderedTasks[draggedTaskIndex - 1]?.id
+					});
 					expectRequestUrl(fetchMock, `/api/tasks/${testData.nonTodayPastPartition.thirdTask.id}/drag-and-drop`);
 					expectRequestMethod(fetchMock, 'PATCH');
 					expectRequestCredentialsMode(fetchMock, 'same-origin');
@@ -1283,6 +1312,8 @@ describe('backlog page tests', () => {
 					const draggedTaskIndex = reorderedTasks.findIndex((task) => task.id === testData.nonTodayPastPartition.thirdTask.id);
 					const requestBody = JSON.stringify({
 						date: testData.todayPartitionDate.toString(),
+						done: false,
+						trashed: false,
 						previousTaskId: reorderedTasks[draggedTaskIndex - 1]?.id
 					});
 					expectRequestUrl(fetchMock, `/api/tasks/${testData.nonTodayPastPartition.thirdTask.id}/drag-and-drop`);
@@ -1333,7 +1364,11 @@ describe('backlog page tests', () => {
 
 					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 					const draggedTaskIndex = reorderedTasks.findIndex((task) => task.id === testData.todayPartition.thirdTask.id);
-					const requestBody = JSON.stringify({ previousTaskId: reorderedTasks[draggedTaskIndex - 1]?.id });
+					const requestBody = JSON.stringify({
+						done: false,
+						trashed: false,
+						previousTaskId: reorderedTasks[draggedTaskIndex - 1]?.id
+					});
 					expectRequestUrl(fetchMock, `/api/tasks/${testData.todayPartition.thirdTask.id}/drag-and-drop`);
 					expectRequestMethod(fetchMock, 'PATCH');
 					expectRequestCredentialsMode(fetchMock, 'same-origin');
@@ -1382,6 +1417,8 @@ describe('backlog page tests', () => {
 					const draggedTaskIndex = reorderedTasks.findIndex((task) => task.id === testData.todayPartition.thirdTask.id);
 					const requestBody = JSON.stringify({
 						date: testData.nonTodayPastPartitionDate.toString(),
+						done: false,
+						trashed: false,
 						previousTaskId: reorderedTasks[draggedTaskIndex - 1]?.id
 					});
 					expectRequestUrl(fetchMock, `/api/tasks/${testData.todayPartition.thirdTask.id}/drag-and-drop`);
@@ -1424,12 +1461,13 @@ describe('backlog page tests', () => {
 
 		describe('infinite scroll', () => {
 			it('loads more tasks without a date', async () => {
-				const nextTask: UndatedTaskResponse = {
+				const nextTaskResponse = {
 					id: 13,
 					categoryId: category.id,
 					title: 'Buy train tickets',
 					rank: generateKeyBetween(testData.noDatePartition.thirdTask.rank, undefined)
 				};
+				const nextTask: UndatedTaskResponse = { ...nextTaskResponse, done: false };
 				const existingDatedTasks = [...datedUntrashedOpenTaskStore.datedUntrashedOpenTasks];
 				const resolveFetch = mockPendingFetch(fetchMock);
 
@@ -1448,7 +1486,7 @@ describe('backlog page tests', () => {
 				expect(within(getTaskColumn(page, 'Today')).queryByLabelText('Loading more items')).not.toBeInTheDocument();
 				expect(within(getTaskColumn(page, 'Date Assigned')).queryByLabelText('Loading more items')).not.toBeInTheDocument();
 
-				resolveFetch(getResponse({ tasks: [nextTask], hasMore: false }));
+				resolveFetch(getResponse({ tasks: [nextTaskResponse], hasMore: false }));
 
 				await waitFor(() => expect(undatedTaskStore.undatedTasks).toContainEqual(nextTask));
 				expect(undatedTaskStore.hasMore).toBe(false);
@@ -1458,12 +1496,17 @@ describe('backlog page tests', () => {
 			});
 
 			it('loads more tasks dated today', async () => {
-				const nextTask: DatedUntrashedOpenTaskResponse = {
+				const nextTaskResponse = {
 					id: 13,
 					categoryId: category.id,
 					title: 'Pick up the parcel',
-					date: testData.todayPartitionDate,
+					date: testData.todayPartitionDate.toString(),
 					rank: generateKeyBetween(testData.todayPartition.thirdTask.rank, undefined)
+				};
+				const nextTask: DatedUntrashedOpenTaskResponse = {
+					...nextTaskResponse,
+					date: testData.todayPartitionDate,
+					done: false
 				};
 				const existingNonTodayTasks = [...datedUntrashedOpenTaskStore.datedUntrashedOpenNonTodayTasks];
 				const resolveFetch = mockPendingFetch(fetchMock);
@@ -1482,12 +1525,7 @@ describe('backlog page tests', () => {
 				expect(within(todayColumn).getByLabelText('Loading more items')).toBeInTheDocument();
 				expect(within(getTaskColumn(page, 'Date Assigned')).queryByLabelText('Loading more items')).not.toBeInTheDocument();
 
-				resolveFetch(
-					getResponse({
-						tasks: [{ ...nextTask, date: nextTask.date.toString() }],
-						hasMore: false
-					})
-				);
+				resolveFetch(getResponse({ tasks: [nextTaskResponse], hasMore: false }));
 
 				await waitFor(() => expect(datedUntrashedOpenTaskStore.datedUntrashedOpenTodayTasks).toContainEqual(nextTask));
 				expect(datedUntrashedOpenTaskStore.todayTasksHasMore).toBe(false);
@@ -1497,12 +1535,17 @@ describe('backlog page tests', () => {
 			});
 
 			it('loads more tasks with a non-today date', async () => {
-				const nextTask: DatedUntrashedOpenTaskResponse = {
+				const nextTaskResponse = {
 					id: 13,
 					categoryId: category.id,
 					title: 'Check in for the train',
-					date: testData.nonTodayFuturePartitionDate,
+					date: testData.nonTodayFuturePartitionDate.toString(),
 					rank: generateKeyBetween(testData.nonTodayFuturePartition.thirdTask.rank, undefined)
+				};
+				const nextTask: DatedUntrashedOpenTaskResponse = {
+					...nextTaskResponse,
+					date: testData.nonTodayFuturePartitionDate,
+					done: false
 				};
 				const existingTodayTasks = [...datedUntrashedOpenTaskStore.datedUntrashedOpenTodayTasks];
 				const resolveFetch = mockPendingFetch(fetchMock);
@@ -1522,12 +1565,7 @@ describe('backlog page tests', () => {
 				expect(within(nonTodayColumn).getByLabelText('Loading more items')).toBeInTheDocument();
 				expect(within(getTaskColumn(page, 'Today')).queryByLabelText('Loading more items')).not.toBeInTheDocument();
 
-				resolveFetch(
-					getResponse({
-						tasks: [{ ...nextTask, date: nextTask.date.toString() }],
-						hasMore: false
-					})
-				);
+				resolveFetch(getResponse({ tasks: [nextTaskResponse], hasMore: false }));
 
 				await waitFor(() => expect(datedUntrashedOpenTaskStore.datedUntrashedOpenNonTodayTasks).toContainEqual(nextTask));
 				expect(datedUntrashedOpenTaskStore.nonTodayTasksHasMore).toBe(false);
@@ -1570,7 +1608,6 @@ const fetchMock = vi.fn();
 const toastErrorMock = vi.mocked(toast.error);
 const category = { id: 7, title: 'Personal', color: '#22c55e' };
 const localTimeZone = getLocalTimeZone();
-const maximumTrashTimestampDifferenceMilliseconds = 5_000;
 const todayDate = today(localTimeZone);
 const testData = createTestData();
 
@@ -1596,7 +1633,8 @@ function createTestData() {
 		...details,
 		id: taskId++,
 		categoryId: category.id,
-		rank: noDateTaskRanks[index]
+		rank: noDateTaskRanks[index],
+		done: false
 	}));
 
 	const todayTaskDetails = [
@@ -1610,7 +1648,8 @@ function createTestData() {
 		id: taskId++,
 		categoryId: category.id,
 		date: todayDate,
-		rank: todayTaskRanks[index]
+		rank: todayTaskRanks[index],
+		done: false
 	}));
 
 	const nonTodayPastTaskDetails = [
@@ -1624,7 +1663,8 @@ function createTestData() {
 		id: taskId++,
 		categoryId: category.id,
 		date: nonTodayPastDate,
-		rank: nonTodayPastTaskRanks[index]
+		rank: nonTodayPastTaskRanks[index],
+		done: false
 	}));
 
 	const nonTodayFutureTaskDetails = [
@@ -1638,7 +1678,8 @@ function createTestData() {
 		id: taskId++,
 		categoryId: category.id,
 		date: nonTodayFutureDate,
-		rank: nonTodayFutureTaskRanks[index]
+		rank: nonTodayFutureTaskRanks[index],
+		done: false
 	}));
 
 	const noDatePartition: TaskPartition<UndatedTaskResponse> = {
@@ -1739,7 +1780,8 @@ function addTasksExceedingMaximumBatchSize(): string[] {
 		categoryId: category.id,
 		title: `Review project note ${index + 1}`,
 		description: `Review and organize project note ${index + 1}.`,
-		rank
+		rank,
+		done: false as const
 	}));
 	undatedTaskStore.addOrUpdateTasks(tasks);
 	return tasks.map((task) => task.title);

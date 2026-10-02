@@ -37,6 +37,9 @@ func NewBatchOpenTasksHandler(taskService *services.TaskService) shared.Authenti
 			case errors.Is(err, services.ErrTaskAlreadyOpen):
 				c.JSON(http.StatusBadRequest, oneOfProvidedTasksAlreadyOpenErrorResponse)
 				return
+			case errors.Is(err, services.ErrTaskIsTrashed):
+				c.JSON(http.StatusBadRequest, oneOfProvidedTasksIsTrashedErrorResponse)
+				return
 			default:
 				slog.Error(unexpectedErrorLogMessage, "error", err)
 				c.JSON(http.StatusInternalServerError, shared.UnexpectedErrorResponse)
@@ -51,4 +54,9 @@ func NewBatchOpenTasksHandler(taskService *services.TaskService) shared.Authenti
 var oneOfProvidedTasksAlreadyOpenErrorResponse = shared.ErrorResponse{
 	ErrorCode: "one_of_provided_tasks_already_open",
 	Message:   "One of the provided tasks is already open.",
+}
+
+var oneOfProvidedTasksIsTrashedErrorResponse = shared.ErrorResponse{
+	ErrorCode: "one_of_provided_tasks_is_trashed",
+	Message:   "Trashed tasks can not be part of a batch operation.",
 }

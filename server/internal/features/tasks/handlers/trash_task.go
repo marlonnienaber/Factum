@@ -13,7 +13,6 @@ import (
 func NewTrashTaskHandler(taskService *services.TaskService) shared.AuthenticatedHandlerFunc {
 	return func(c *shared.AuthenticatedContext) {
 		id, idErr := shared.GetRequiredInt64PathVariable(c, "id")
-		trashedDate, trashedDateErr := shared.GetRequiredTimestampQueryParameter(c, "trashedDate")
 
 		unexpectedErrorLogMessage := "handling trash task failed"
 
@@ -21,16 +20,8 @@ func NewTrashTaskHandler(taskService *services.TaskService) shared.Authenticated
 			c.JSON(http.StatusBadRequest, invalidTaskIdErrorResponse)
 			return
 		}
-		if errors.Is(trashedDateErr, shared.MissingQueryParameterErr) {
-			c.JSON(http.StatusBadRequest, shared.MissingQueryParameterErrorResponse)
-			return
-		}
-		if trashedDateErr != nil {
-			c.JSON(http.StatusBadRequest, shared.InvalidQueryParameterErrorResponse)
-			return
-		}
-
-		if err := taskService.TrashTask(c.UserId, id, trashedDate); err != nil {
+		response, err := taskService.TrashTask(c.UserId, id)
+		if err != nil {
 			switch {
 			case errors.Is(err, stores.ErrTaskNotFound):
 				c.JSON(http.StatusNotFound, taskNotFoundErrorResponse)
@@ -45,7 +36,7 @@ func NewTrashTaskHandler(taskService *services.TaskService) shared.Authenticated
 			}
 		}
 
-		c.Status(http.StatusNoContent)
+		c.JSON(http.StatusOK, response)
 	}
 }
 

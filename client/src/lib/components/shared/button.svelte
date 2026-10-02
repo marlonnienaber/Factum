@@ -39,7 +39,7 @@
 		}
 
 		&:disabled {
-			opacity: 0.5;
+			opacity: 0.65;
 			cursor: default;
 		}
 

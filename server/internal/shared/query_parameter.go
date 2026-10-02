@@ -2,6 +2,7 @@ package shared
 
 import (
 	"errors"
+	"slices"
 	"strconv"
 	"time"
 
@@ -34,18 +35,31 @@ func GetOptionalRankQueryParameter(c *AuthenticatedContext, key string) (*string
 	return rank, nil
 }
 
-func GetOptionalInt64QueryParameter(c *AuthenticatedContext, key string) (*int64, error) {
-	value, exists := c.GetQuery(key)
+func GetOptionalIdQueryParameterList(c *AuthenticatedContext, key string, maxLength int) ([]int64, error) {
+	values, exists := c.GetQueryArray(key)
 	if !exists {
-		return nil, nil
+		return []int64{}, nil
 	}
-
-	integer, err := strconv.ParseInt(value, 10, 64)
-	if err != nil || integer <= 0 {
+	if len(values) == 0 {
+		return nil, InvalidQueryParameterErr
+	}
+	if len(values) > maxLength {
 		return nil, InvalidQueryParameterErr
 	}
 
-	return &integer, nil
+	integers := make([]int64, 0, len(values))
+	for _, value := range values {
+		integer, err := strconv.ParseInt(value, 10, 64)
+		if err != nil || integer <= 0 {
+			return nil, InvalidQueryParameterErr
+		}
+		if slices.Contains(integers, integer) {
+			return nil, InvalidQueryParameterErr
+		}
+		integers = append(integers, integer)
+	}
+
+	return integers, nil
 }
 
 func GetOptionalDateQueryParameter(c *AuthenticatedContext, key string) (*time.Time, error) {
@@ -60,32 +74,4 @@ func GetOptionalDateQueryParameter(c *AuthenticatedContext, key string) (*time.T
 	}
 
 	return &date, nil
-}
-
-func GetOptionalTimestampQueryParameter(c *AuthenticatedContext, key string) (*time.Time, error) {
-	value, exists := c.GetQuery(key)
-	if !exists {
-		return nil, nil
-	}
-
-	timestamp, err := time.Parse(time.RFC3339, value)
-	if err != nil {
-		return nil, InvalidQueryParameterErr
-	}
-
-	return &timestamp, nil
-}
-
-func GetRequiredTimestampQueryParameter(c *AuthenticatedContext, key string) (time.Time, error) {
-	value, exists := c.GetQuery(key)
-	if !exists {
-		return time.Time{}, MissingQueryParameterErr
-	}
-
-	timestamp, err := time.Parse(time.RFC3339, value)
-	if err != nil {
-		return time.Time{}, InvalidQueryParameterErr
-	}
-
-	return timestamp, nil
 }

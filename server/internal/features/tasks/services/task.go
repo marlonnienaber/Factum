@@ -16,11 +16,15 @@ import (
 var (
 	ErrRequestDataRepresentInvalidDragAndDropGesture = errors.New("provided request data do not match a valid drag and drop gesture for the given task id")
 	ErrPreviousTaskNotFound                          = errors.New("previous task not found")
+	ErrMaximumTaskCountReached                       = errors.New("maximum task count reached")
 	ErrTaskAlreadyTrashed                            = errors.New("task is already trashed")
+	ErrTaskIsTrashed                                 = errors.New("task is trashed")
 	ErrTaskAlreadyRestored                           = errors.New("task is already restored")
 	ErrTaskAlreadyCompleted                          = errors.New("task is already completed")
 	ErrTaskAlreadyOpen                               = errors.New("task is already open")
 )
+
+const maximumTaskCountPerUser = 1_000
 
 type TaskService struct {
 	db            *sqlx.DB
@@ -44,6 +48,14 @@ func (service *TaskService) CreateTask(userId int64, request transport.CreateTas
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("creating task failed")
 
 	task, err := shared.ExecuteAsSerializableTransaction(service.db, func(transaction *sqlx.Tx) (*transport.CreateTaskResponse, error) {
+		taskCount, err := service.taskStore.CountTasksForUser(transaction, userId)
+		if err != nil {
+			return nil, err
+		}
+		if taskCount >= maximumTaskCountPerUser {
+			return nil, ErrMaximumTaskCountReached
+		}
+
 		categoryExists, err := service.categoryStore.DoesCategoryExistForUser(transaction, request.CategoryId, userId)
 		if err != nil {
 			return nil, err
@@ -74,7 +86,7 @@ func (service *TaskService) CreateTask(userId int64, request transport.CreateTas
 		return service.taskStore.InsertTask(transaction, userId, request, rank)
 	})
 	if err != nil {
-		if errors.Is(err, stores.ErrCategoryNotFound) {
+		if errors.Is(err, stores.ErrCategoryNotFound) || errors.Is(err, ErrMaximumTaskCountReached) {
 			return nil, err
 		}
 		return nil, wrapUnexpectedError(err)
@@ -83,10 +95,10 @@ func (service *TaskService) CreateTask(userId int64, request transport.CreateTas
 	return task, nil
 }
 
-func (service *TaskService) UpdateTask(userId int64, request transport.UpdateTaskRequest) (*transport.TaskResponse, error) {
+func (service *TaskService) UpdateTask(userId int64, request transport.UpdateTaskRequest) (*transport.UpdateTaskResponse, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("updating task failed")
 
-	taskResponse, err := shared.ExecuteAsSerializableTransaction(service.db, func(transaction *sqlx.Tx) (*transport.TaskResponse, error) {
+	taskResponse, err := shared.ExecuteAsSerializableTransaction(service.db, func(transaction *sqlx.Tx) (*transport.UpdateTaskResponse, error) {
 		task, err := service.taskStore.GetTaskByIdForUser(transaction, request.Id, userId)
 		if err != nil {
 			return nil, err
@@ -106,7 +118,7 @@ func (service *TaskService) UpdateTask(userId int64, request transport.UpdateTas
 		}
 
 		dateChanged := !datesAreEqual(task.Date, request.Date)
-		targetPartitionChanged := task.TrashedDate == nil && dateChanged
+		targetPartitionChanged := !task.Trashed && dateChanged
 		if targetPartitionChanged {
 			var highestRank *string
 			switch {
@@ -129,7 +141,7 @@ func (service *TaskService) UpdateTask(userId int64, request transport.UpdateTas
 			if err != nil {
 				return nil, err
 			}
-			task.Rank = &rank
+			task.Rank = rank
 		}
 
 		task.CategoryId = request.CategoryId
@@ -142,7 +154,7 @@ func (service *TaskService) UpdateTask(userId int64, request transport.UpdateTas
 			return nil, err
 		}
 
-		return task.ToTaskResponse(), nil
+		return task.ToUpdateTaskResponse(), nil
 	})
 	if err != nil {
 		switch {
@@ -158,7 +170,6 @@ func (service *TaskService) UpdateTask(userId int64, request transport.UpdateTas
 }
 
 func (service *TaskService) DragAndDropTask(userId int64, taskId int64, request transport.TaskDragAndDropRequest) (*transport.TaskDragAndDropResponse, error) {
-	// TODO: extend to support backlog and workbench cases
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("dragging and dropping task failed")
 
 	response, err := shared.ExecuteAsSerializableTransaction(service.db, func(transaction *sqlx.Tx) (*transport.TaskDragAndDropResponse, error) {
@@ -167,46 +178,24 @@ func (service *TaskService) DragAndDropTask(userId int64, taskId int64, request 
 			return nil, err
 		}
 
-		isMovingFromDateToDate := task.Date != nil && request.Date != nil && !datesAreEqual(task.Date, request.Date)
-		isAllowedToMoveFromDateToDate := task.TrashedDate == nil && !task.Done && task.Date != nil
-
-		isMovingFromDateToNoDate := task.Date != nil && request.Date == nil
-		isAllowedToMoveFromDateToNoDate := task.TrashedDate == nil && !task.Done && task.Date != nil
-
-		isMovingFromNoDateToDate := task.Date == nil && request.Date != nil
-		isAllowedToMoveFromNoDateToDate := task.TrashedDate == nil && !task.Done && task.Date == nil
-
-		isOnlyChangingRank := datesAreEqual(task.Date, request.Date)
-		isAllowedToOnlyChangeRank := task.TrashedDate == nil && !task.Done
-
-		isAllowedToChangeDateAndOrRank := isMovingFromDateToDate && isAllowedToMoveFromDateToDate ||
-			isMovingFromDateToNoDate && isAllowedToMoveFromDateToNoDate ||
-			isMovingFromNoDateToDate && isAllowedToMoveFromNoDateToDate ||
-			isOnlyChangingRank && isAllowedToOnlyChangeRank
-
-		if !isAllowedToChangeDateAndOrRank {
+		isValidDragAndDropAction := service.isValidDragAndDropAction(task, request)
+		if !isValidDragAndDropAction {
 			return nil, ErrRequestDataRepresentInvalidDragAndDropGesture
 		}
 
-		previousTaskRank := ""
-		if request.PreviousTaskId != nil {
-			if *request.PreviousTaskId == taskId {
-				return nil, ErrRequestDataRepresentInvalidDragAndDropGesture
-			}
-			previousTask, err := service.taskStore.GetTaskByIdForUser(transaction, *request.PreviousTaskId, userId)
-			if err != nil {
-				if errors.Is(err, stores.ErrTaskNotFound) {
-					return nil, ErrPreviousTaskNotFound
-				}
-				return nil, err
-			}
-			if !datesAreEqual(previousTask.Date, request.Date) || previousTask.Done != task.Done || previousTask.TrashedDate != nil || previousTask.Rank == nil {
-				return nil, ErrRequestDataRepresentInvalidDragAndDropGesture
-			}
-			previousTaskRank = *previousTask.Rank
+		previousTaskRank, err := service.getPreviousTaskRankForTaskDragAndDrop(transaction, userId, taskId, request)
+		if err != nil {
+			return nil, err
 		}
-
-		successorTaskRank, err := service.taskStore.GetRankOfSuccessorTaskForTaskDragAndDrop(transaction, userId, taskId, request.Date, task.Done, previousTaskRank)
+		successorTaskRank, err := service.taskStore.GetRankOfSuccessorTaskForTaskDragAndDrop(
+			transaction,
+			userId,
+			taskId,
+			request.Date,
+			request.Done,
+			request.Trashed,
+			previousTaskRank,
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -214,11 +203,15 @@ func (service *TaskService) DragAndDropTask(userId int64, taskId int64, request 
 		if err != nil {
 			return nil, err
 		}
+
 		task.Date = request.Date
-		task.Rank = &rank
-		if err := service.taskStore.UpdateTaskDateAndRank(transaction, task); err != nil {
+		task.Done = request.Done
+		task.Trashed = request.Trashed
+		task.Rank = rank
+		if err := service.taskStore.UpdateTaskForDragAndDrop(transaction, task); err != nil {
 			return nil, err
 		}
+
 		return &transport.TaskDragAndDropResponse{Rank: rank}, nil
 	})
 	if err != nil {
@@ -234,63 +227,100 @@ func (service *TaskService) DragAndDropTask(userId int64, taskId int64, request 
 	return response, nil
 }
 
-func (service *TaskService) TrashTask(userId int64, taskId int64, trashedDate time.Time) error {
+func (service *TaskService) TrashTask(userId int64, taskId int64) (*transport.TrashTaskResponse, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("trashing task failed")
 
-	err := shared.ExecuteAsSerializableTransactionWithoutResult(service.db, func(transaction *sqlx.Tx) error {
+	response, err := shared.ExecuteAsSerializableTransaction(service.db, func(transaction *sqlx.Tx) (*transport.TrashTaskResponse, error) {
 		task, err := service.taskStore.GetTaskByIdForUser(transaction, taskId, userId)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		if task.TrashedDate != nil {
-			return ErrTaskAlreadyTrashed
+		if task.Trashed {
+			return nil, ErrTaskAlreadyTrashed
 		}
 
-		task.TrashedDate = &trashedDate
-		task.Rank = nil
-		return service.taskStore.UpdateTaskTrashedState(transaction, task)
+		lowestTrashedTaskRank, err := service.taskStore.GetLowestTrashedTaskRank(transaction, userId)
+		if err != nil {
+			return nil, err
+		}
+		upperRankBoundary := ""
+		if lowestTrashedTaskRank != nil {
+			upperRankBoundary = *lowestTrashedTaskRank
+		}
+		rank, err := fracdex.KeyBetween("", upperRankBoundary)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := service.taskStore.TrashTask(transaction, userId, taskId, rank); err != nil {
+			return nil, err
+		}
+		return &transport.TrashTaskResponse{Rank: rank}, nil
 	})
 	if err != nil {
 		switch {
 		case errors.Is(err, stores.ErrTaskNotFound),
 			errors.Is(err, ErrTaskAlreadyTrashed):
-			return err
+			return nil, err
 		default:
-			return wrapUnexpectedError(err)
+			return nil, wrapUnexpectedError(err)
 		}
 	}
 
-	return nil
+	return response, nil
 }
 
-func (service *TaskService) BatchTrashTasks(userId int64, taskIds []int64, trashedDate time.Time) error {
+func (service *TaskService) BatchTrashTasks(userId int64, taskIds []int64) ([]transport.BatchTrashTaskResponse, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("batch trashing tasks failed")
 
-	err := shared.ExecuteAsSerializableTransactionWithoutResult(service.db, func(transaction *sqlx.Tx) error {
+	response, err := shared.ExecuteAsSerializableTransaction(service.db, func(transaction *sqlx.Tx) ([]transport.BatchTrashTaskResponse, error) {
 		tasks, err := service.taskStore.GetTasksByIdsForUser(transaction, taskIds, userId)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
-		for index := range tasks {
-			if tasks[index].TrashedDate != nil {
-				return ErrTaskAlreadyTrashed
+		for _, task := range tasks {
+			if task.Trashed {
+				return nil, ErrTaskAlreadyTrashed
 			}
 		}
 
-		return service.taskStore.TrashTasks(transaction, userId, taskIds, trashedDate)
+		lowestTrashedTaskRank, err := service.taskStore.GetLowestTrashedTaskRank(transaction, userId)
+		if err != nil {
+			return nil, err
+		}
+
+		upperRankBoundary := ""
+		if lowestTrashedTaskRank != nil {
+			upperRankBoundary = *lowestTrashedTaskRank
+		}
+		ranks := make([]string, len(taskIds))
+		for index := len(taskIds) - 1; index >= 0; index-- {
+			rank, err := fracdex.KeyBetween("", upperRankBoundary)
+			if err != nil {
+				return nil, err
+			}
+			ranks[index] = rank
+			upperRankBoundary = rank
+		}
+
+		if err := service.taskStore.TrashTasks(transaction, userId, taskIds, ranks); err != nil {
+			return nil, err
+		}
+
+		return service.createBatchTrashTasksResponse(taskIds, ranks), nil
 	})
 	if err != nil {
 		switch {
 		case errors.Is(err, stores.ErrTaskNotFound),
 			errors.Is(err, ErrTaskAlreadyTrashed):
-			return err
+			return nil, err
 		default:
-			return wrapUnexpectedError(err)
+			return nil, wrapUnexpectedError(err)
 		}
 	}
 
-	return nil
+	return response, nil
 }
 
 func (service *TaskService) RestoreTask(userId int64, taskId int64) (*transport.RestoreTaskResponse, error) {
@@ -301,7 +331,7 @@ func (service *TaskService) RestoreTask(userId int64, taskId int64) (*transport.
 		if err != nil {
 			return nil, err
 		}
-		if task.TrashedDate == nil {
+		if !task.Trashed {
 			return nil, ErrTaskAlreadyRestored
 		}
 
@@ -326,9 +356,7 @@ func (service *TaskService) RestoreTask(userId int64, taskId int64) (*transport.
 		if err != nil {
 			return nil, err
 		}
-		task.TrashedDate = nil
-		task.Rank = &rank
-		if err := service.taskStore.UpdateTaskTrashedState(transaction, task); err != nil {
+		if err := service.taskStore.RestoreTask(transaction, userId, taskId, rank); err != nil {
 			return nil, err
 		}
 
@@ -360,7 +388,7 @@ func (service *TaskService) ToggleTaskDone(userId int64, taskId int64) (*transpo
 			currentDate := shared.NewDate(time.Now())
 			task.Date = &currentDate
 		}
-		if task.TrashedDate != nil {
+		if task.Trashed {
 			if err := service.taskStore.UpdateTaskDoneState(transaction, task); err != nil {
 				return nil, err
 			}
@@ -384,7 +412,7 @@ func (service *TaskService) ToggleTaskDone(userId int64, taskId int64) (*transpo
 		if err != nil {
 			return nil, err
 		}
-		task.Rank = &rank
+		task.Rank = rank
 
 		if err := service.taskStore.UpdateTaskDoneState(transaction, task); err != nil {
 			return nil, err
@@ -403,31 +431,28 @@ func (service *TaskService) ToggleTaskDone(userId int64, taskId int64) (*transpo
 	return response, nil
 }
 
-func (service *TaskService) BatchCompleteTasks(userId int64, taskIds []int64) (*transport.BatchCompleteResponse, error) {
+func (service *TaskService) BatchCompleteTasks(userId int64, taskIds []int64) ([]transport.BatchCompleteTaskResponse, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("batch completing tasks failed")
 	currentDate := shared.NewDate(time.Now())
 
-	response, err := shared.ExecuteAsSerializableTransaction(service.db, func(transaction *sqlx.Tx) (*transport.BatchCompleteResponse, error) {
+	response, err := shared.ExecuteAsSerializableTransaction(service.db, func(transaction *sqlx.Tx) ([]transport.BatchCompleteTaskResponse, error) {
 		tasks, err := service.taskStore.GetTasksByIdsForUser(transaction, taskIds, userId)
 		if err != nil {
 			return nil, err
 		}
 
+		if err := service.checkThatTasksAreUntrashed(tasks); err != nil {
+			return nil, err
+		}
 		if err := service.checkThatTasksAreOpen(tasks); err != nil {
 			return nil, err
 		}
 		service.setDoneFlagAndIfNeededDate(tasks, currentDate)
 
-		untrashedTasks := service.extractUntrashedTasks(tasks)
-		if err := service.assignRanksForBatchDoneUpdate(transaction, userId, true, untrashedTasks); err != nil {
+		if err := service.assignRanksForBatchDoneUpdate(transaction, userId, true, tasks); err != nil {
 			return nil, err
 		}
-		if err := service.taskStore.BatchUpdateDoneForUntrashedTasks(transaction, userId, untrashedTasks, true); err != nil {
-			return nil, err
-		}
-
-		trashedTasks := service.extractTrashedTasks(tasks)
-		if err := service.taskStore.BatchUpdateDoneForTrashedTasks(transaction, userId, trashedTasks, true); err != nil {
+		if err := service.taskStore.BatchUpdateDoneForUntrashedTasks(transaction, userId, tasks, true); err != nil {
 			return nil, err
 		}
 
@@ -436,7 +461,8 @@ func (service *TaskService) BatchCompleteTasks(userId int64, taskIds []int64) (*
 	if err != nil {
 		switch {
 		case errors.Is(err, stores.ErrTaskNotFound),
-			errors.Is(err, ErrTaskAlreadyCompleted):
+			errors.Is(err, ErrTaskAlreadyCompleted),
+			errors.Is(err, ErrTaskIsTrashed):
 			return nil, err
 		default:
 			return nil, wrapUnexpectedError(err)
@@ -446,30 +472,27 @@ func (service *TaskService) BatchCompleteTasks(userId int64, taskIds []int64) (*
 	return response, nil
 }
 
-func (service *TaskService) BatchOpenTasks(userId int64, taskIds []int64) (*transport.BatchOpenResponse, error) {
+func (service *TaskService) BatchOpenTasks(userId int64, taskIds []int64) ([]transport.BatchOpenTaskResponse, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("batch opening tasks failed")
 
-	response, err := shared.ExecuteAsSerializableTransaction(service.db, func(transaction *sqlx.Tx) (*transport.BatchOpenResponse, error) {
+	response, err := shared.ExecuteAsSerializableTransaction(service.db, func(transaction *sqlx.Tx) ([]transport.BatchOpenTaskResponse, error) {
 		tasks, err := service.taskStore.GetTasksByIdsForUser(transaction, taskIds, userId)
 		if err != nil {
 			return nil, err
 		}
 
+		if err := service.checkThatTasksAreUntrashed(tasks); err != nil {
+			return nil, err
+		}
 		if err := service.checkThatTasksAreCompleted(tasks); err != nil {
 			return nil, err
 		}
 		service.unsetDoneFlag(tasks)
 
-		untrashedTasks := service.extractUntrashedTasks(tasks)
-		if err := service.assignRanksForBatchDoneUpdate(transaction, userId, false, untrashedTasks); err != nil {
+		if err := service.assignRanksForBatchDoneUpdate(transaction, userId, false, tasks); err != nil {
 			return nil, err
 		}
-		if err := service.taskStore.BatchUpdateDoneForUntrashedTasks(transaction, userId, untrashedTasks, false); err != nil {
-			return nil, err
-		}
-
-		trashedTasks := service.extractTrashedTasks(tasks)
-		if err := service.taskStore.BatchUpdateDoneForTrashedTasks(transaction, userId, trashedTasks, false); err != nil {
+		if err := service.taskStore.BatchUpdateDoneForUntrashedTasks(transaction, userId, tasks, false); err != nil {
 			return nil, err
 		}
 
@@ -478,7 +501,8 @@ func (service *TaskService) BatchOpenTasks(userId int64, taskIds []int64) (*tran
 	if err != nil {
 		switch {
 		case errors.Is(err, stores.ErrTaskNotFound),
-			errors.Is(err, ErrTaskAlreadyOpen):
+			errors.Is(err, ErrTaskAlreadyOpen),
+			errors.Is(err, ErrTaskIsTrashed):
 			return nil, err
 		default:
 			return nil, wrapUnexpectedError(err)
@@ -488,7 +512,130 @@ func (service *TaskService) BatchOpenTasks(userId int64, taskIds []int64) (*tran
 	return response, nil
 }
 
-func (service *TaskService) checkThatTasksAreOpen(tasks []domain.Task) error {
+func (service *TaskService) getPreviousTaskRankForTaskDragAndDrop(
+	transaction *sqlx.Tx,
+	userId int64,
+	taskId int64,
+	request transport.TaskDragAndDropRequest,
+) (string, error) {
+	if request.PreviousTaskId == nil {
+		return "", nil
+	}
+	if *request.PreviousTaskId == taskId {
+		return "", ErrRequestDataRepresentInvalidDragAndDropGesture
+	}
+
+	previousTask, err := service.taskStore.GetTaskByIdForUser(transaction, *request.PreviousTaskId, userId)
+	if err != nil {
+		if errors.Is(err, stores.ErrTaskNotFound) {
+			return "", ErrPreviousTaskNotFound
+		}
+		return "", err
+	}
+	previousTaskIsInTargetPartition := previousTask.Trashed == request.Trashed &&
+		(request.Trashed || datesAreEqual(previousTask.Date, request.Date) && previousTask.Done == request.Done)
+	if !previousTaskIsInTargetPartition {
+		return "", ErrRequestDataRepresentInvalidDragAndDropGesture
+	}
+
+	return previousTask.Rank, nil
+}
+
+func (service *TaskService) isValidDragAndDropAction(task *domain.Task, request transport.TaskDragAndDropRequest) bool {
+	isMovingFromDatedOpenUntrashedToDatedOpenUntrashed := service.isMovingFromDatedOpenUntrashedToDatedOpenUntrashed(task, request)
+	isMovingFromDatedOpenUntrashedToUndatedOpenUntrashed := service.isMovingFromDatedOpenUntrashedToUndatedOpenUntrashed(task, request)
+	isMovingFromUndatedOpenUntrashedToDatedOpenUntrashed := service.isMovingFromUndatedOpenUntrashedToDatedOpenUntrashed(task, request)
+	isMovingWithinDatedOpenUntrashed := service.isMovingWithinDatedOpenUntrashed(task, request)
+	isMovingWithinUndatedOpenUntrashed := service.isMovingWithinUndatedOpenUntrashed(task, request)
+
+	isValidBacklogAction := isMovingFromDatedOpenUntrashedToDatedOpenUntrashed ||
+		isMovingFromDatedOpenUntrashedToUndatedOpenUntrashed ||
+		isMovingFromUndatedOpenUntrashedToDatedOpenUntrashed ||
+		isMovingWithinDatedOpenUntrashed ||
+		isMovingWithinUndatedOpenUntrashed
+
+	isMovingFromDatedDoneUntrashedToDatedDoneUntrashed := service.isMovingFromDatedDoneUntrashedToDatedDoneUntrashed(task, request)
+	isMovingFromDatedDoneUntrashedToDatedDoneTrashed := service.isMovingFromDatedDoneUntrashedToDatedDoneTrashed(task, request)
+	isMovingFromTrashedToDatedDoneUntrashed := service.isMovingFromTrashedToDatedDoneUntrashed(task, request)
+	isMovingWithinDatedDoneUntrashed := service.isMovingWithinDatedDoneUntrashed(task, request)
+	isMovingWithinTrashed := service.isMovingWithinTrashed(task, request)
+
+	isValidArchiveAction := isMovingFromDatedDoneUntrashedToDatedDoneUntrashed ||
+		isMovingFromDatedDoneUntrashedToDatedDoneTrashed ||
+		isMovingFromTrashedToDatedDoneUntrashed ||
+		isMovingWithinDatedDoneUntrashed ||
+		isMovingWithinTrashed
+
+	return isValidBacklogAction || isValidArchiveAction
+}
+
+func (service *TaskService) isMovingFromDatedOpenUntrashedToDatedOpenUntrashed(task *domain.Task, request transport.TaskDragAndDropRequest) bool {
+	taskIsDatedOpenUntrashed := task.Date != nil && !task.Done && !task.Trashed
+	targetIsDifferentDatedOpenUntrashed := request.Date != nil && !datesAreEqual(task.Date, request.Date) && !request.Done && !request.Trashed
+	return taskIsDatedOpenUntrashed && targetIsDifferentDatedOpenUntrashed
+}
+
+func (service *TaskService) isMovingFromDatedOpenUntrashedToUndatedOpenUntrashed(task *domain.Task, request transport.TaskDragAndDropRequest) bool {
+	taskIsDatedOpenUntrashed := task.Date != nil && !task.Done && !task.Trashed
+	targetIsUndatedOpenUntrashed := request.Date == nil && !request.Done && !request.Trashed
+	return taskIsDatedOpenUntrashed && targetIsUndatedOpenUntrashed
+}
+
+func (service *TaskService) isMovingFromUndatedOpenUntrashedToDatedOpenUntrashed(task *domain.Task, request transport.TaskDragAndDropRequest) bool {
+	taskIsUndatedOpenUntrashed := task.Date == nil && !task.Done && !task.Trashed
+	targetIsDatedOpenUntrashed := request.Date != nil && !request.Done && !request.Trashed
+	return taskIsUndatedOpenUntrashed && targetIsDatedOpenUntrashed
+}
+
+func (service *TaskService) isMovingWithinDatedOpenUntrashed(task *domain.Task, request transport.TaskDragAndDropRequest) bool {
+	taskIsDatedOpenUntrashed := task.Date != nil && !task.Done && !task.Trashed
+	targetIsSameDatedOpenUntrashed := datesAreEqual(task.Date, request.Date) && !request.Done && !request.Trashed
+	return taskIsDatedOpenUntrashed && targetIsSameDatedOpenUntrashed
+}
+
+func (service *TaskService) isMovingWithinUndatedOpenUntrashed(task *domain.Task, request transport.TaskDragAndDropRequest) bool {
+	taskIsUndatedOpenUntrashed := task.Date == nil && !task.Done && !task.Trashed
+	targetIsUndatedOpenUntrashed := request.Date == nil && !request.Done && !request.Trashed
+	return taskIsUndatedOpenUntrashed && targetIsUndatedOpenUntrashed
+}
+
+func (service *TaskService) isMovingFromDatedDoneUntrashedToDatedDoneUntrashed(task *domain.Task, request transport.TaskDragAndDropRequest) bool {
+	taskIsDatedDoneUntrashed := task.Date != nil && task.Done && !task.Trashed
+	targetIsDifferentDatedDoneUntrashed := request.Date != nil && !datesAreEqual(task.Date, request.Date) && request.Done && !request.Trashed
+	return taskIsDatedDoneUntrashed && targetIsDifferentDatedDoneUntrashed
+}
+
+func (service *TaskService) isMovingFromDatedDoneUntrashedToDatedDoneTrashed(task *domain.Task, request transport.TaskDragAndDropRequest) bool {
+	taskIsDatedDoneUntrashed := task.Date != nil && task.Done && !task.Trashed
+	targetIsDatedDoneTrashed := request.Date != nil && request.Done && request.Trashed
+	return taskIsDatedDoneUntrashed && targetIsDatedDoneTrashed
+}
+
+func (service *TaskService) isMovingFromTrashedToDatedDoneUntrashed(task *domain.Task, request transport.TaskDragAndDropRequest) bool {
+	taskIsDatedDoneTrashed := task.Date != nil && task.Done && task.Trashed
+	taskIsDatedOpenTrashed := task.Date != nil && !task.Done && task.Trashed
+	taskIsUndatedOpenTrashed := task.Date == nil && !task.Done && task.Trashed
+	targetIsDatedDoneUntrashed := request.Date != nil && request.Done && !request.Trashed
+	return (taskIsDatedDoneTrashed || taskIsDatedOpenTrashed || taskIsUndatedOpenTrashed) && targetIsDatedDoneUntrashed
+}
+
+func (service *TaskService) isMovingWithinDatedDoneUntrashed(task *domain.Task, request transport.TaskDragAndDropRequest) bool {
+	taskIsDatedDoneUntrashed := task.Date != nil && task.Done && !task.Trashed
+	targetIsSameDatedDoneUntrashed := datesAreEqual(task.Date, request.Date) && request.Done && !request.Trashed
+	return taskIsDatedDoneUntrashed && targetIsSameDatedDoneUntrashed
+}
+
+func (service *TaskService) isMovingWithinTrashed(task *domain.Task, request transport.TaskDragAndDropRequest) bool {
+	isMovingWithinDatedDoneTrashed := task.Date != nil && task.Done && task.Trashed &&
+		datesAreEqual(task.Date, request.Date) && request.Done && request.Trashed
+	isMovingWithinDatedOpenTrashed := task.Date != nil && !task.Done && task.Trashed &&
+		datesAreEqual(task.Date, request.Date) && !request.Done && request.Trashed
+	isMovingWithinUndatedOpenTrashed := task.Date == nil && !task.Done && task.Trashed &&
+		datesAreEqual(task.Date, request.Date) && !request.Done && request.Trashed
+	return isMovingWithinDatedDoneTrashed || isMovingWithinDatedOpenTrashed || isMovingWithinUndatedOpenTrashed
+}
+
+func (service *TaskService) checkThatTasksAreOpen(tasks []*domain.Task) error {
 	for _, task := range tasks {
 		if task.Done {
 			return ErrTaskAlreadyCompleted
@@ -497,7 +644,7 @@ func (service *TaskService) checkThatTasksAreOpen(tasks []domain.Task) error {
 	return nil
 }
 
-func (service *TaskService) checkThatTasksAreCompleted(tasks []domain.Task) error {
+func (service *TaskService) checkThatTasksAreCompleted(tasks []*domain.Task) error {
 	for _, task := range tasks {
 		if !task.Done {
 			return ErrTaskAlreadyOpen
@@ -506,19 +653,28 @@ func (service *TaskService) checkThatTasksAreCompleted(tasks []domain.Task) erro
 	return nil
 }
 
-func (service *TaskService) setDoneFlagAndIfNeededDate(tasks []domain.Task, currentDate shared.Date) {
-	for index := range tasks {
-		tasks[index].Done = true
-		if tasks[index].Date == nil {
+func (service *TaskService) checkThatTasksAreUntrashed(tasks []*domain.Task) error {
+	for _, task := range tasks {
+		if task.Trashed {
+			return ErrTaskIsTrashed
+		}
+	}
+	return nil
+}
+
+func (service *TaskService) setDoneFlagAndIfNeededDate(tasks []*domain.Task, currentDate shared.Date) {
+	for _, task := range tasks {
+		task.Done = true
+		if task.Date == nil {
 			taskDate := currentDate
-			tasks[index].Date = &taskDate
+			task.Date = &taskDate
 		}
 	}
 }
 
-func (service *TaskService) unsetDoneFlag(tasks []domain.Task) {
-	for index := range tasks {
-		tasks[index].Done = false
+func (service *TaskService) unsetDoneFlag(tasks []*domain.Task) {
+	for _, task := range tasks {
+		task.Done = false
 	}
 }
 
@@ -526,94 +682,72 @@ func (service *TaskService) assignRanksForBatchDoneUpdate(
 	transaction *sqlx.Tx,
 	userId int64,
 	targetDoneState bool,
-	untrashedTasks []*domain.Task,
+	tasks []*domain.Task,
 ) error {
-	untrashedTaskDates := make([]shared.Date, 0)
-	untrashedTasksByDate := make(map[shared.Date][]*domain.Task)
-	for _, task := range untrashedTasks {
+	taskDates := make([]shared.Date, 0)
+	tasksByDate := make(map[shared.Date][]*domain.Task)
+	for _, task := range tasks {
 		taskDate := *task.Date
-		if _, exists := untrashedTasksByDate[taskDate]; !exists {
-			untrashedTaskDates = append(untrashedTaskDates, taskDate)
+		if _, exists := tasksByDate[taskDate]; !exists {
+			taskDates = append(taskDates, taskDate)
 		}
-		untrashedTasksByDate[taskDate] = append(untrashedTasksByDate[taskDate], task)
+		tasksByDate[taskDate] = append(tasksByDate[taskDate], task)
 	}
 
 	highestRanksByDate, err := service.taskStore.GetHighestUntrashedTaskRanksByDate(
 		transaction,
 		userId,
-		untrashedTaskDates,
+		taskDates,
 		targetDoneState,
 	)
 	if err != nil {
 		return err
 	}
 
-	for _, taskDate := range untrashedTaskDates {
+	for _, taskDate := range taskDates {
 		lowerRankBoundary := highestRanksByDate[taskDate]
-		for _, task := range untrashedTasksByDate[taskDate] {
+		for _, task := range tasksByDate[taskDate] {
 			rank, err := fracdex.KeyBetween(lowerRankBoundary, "")
 			if err != nil {
 				return err
 			}
-			task.Rank = &rank
+			task.Rank = rank
 			lowerRankBoundary = rank
 		}
 	}
 	return nil
 }
 
-func (service *TaskService) extractUntrashedTasks(tasks []domain.Task) []*domain.Task {
-	untrashedTasks := make([]*domain.Task, 0, len(tasks)/2)
-	for index := range tasks {
-		if tasks[index].TrashedDate == nil {
-			untrashedTasks = append(untrashedTasks, &tasks[index])
-		}
-	}
-	return untrashedTasks
-}
-
-func (service *TaskService) extractTrashedTasks(tasks []domain.Task) []*domain.Task {
-	trashedTasks := make([]*domain.Task, 0, len(tasks)/2)
-	for index := range tasks {
-		if tasks[index].TrashedDate != nil {
-			trashedTasks = append(trashedTasks, &tasks[index])
-		}
-	}
-	return trashedTasks
-}
-
-func (service *TaskService) createBatchCompleteTasksResponse(tasks []domain.Task) *transport.BatchCompleteResponse {
-	response := &transport.BatchCompleteResponse{
-		DatedUntrashedDoneTasks: make([]transport.TaskResponse, 0),
-		TrashedTasks:            make([]transport.TaskResponse, 0),
-	}
-	for index := range tasks {
-		task := &tasks[index]
-		taskResponse := *task.ToTaskResponse()
-		switch {
-		case task.TrashedDate != nil:
-			response.TrashedTasks = append(response.TrashedTasks, taskResponse)
-		default:
-			response.DatedUntrashedDoneTasks = append(response.DatedUntrashedDoneTasks, taskResponse)
-		}
+func (service *TaskService) createBatchCompleteTasksResponse(tasks []*domain.Task) []transport.BatchCompleteTaskResponse {
+	response := make([]transport.BatchCompleteTaskResponse, 0, len(tasks))
+	for _, task := range tasks {
+		response = append(response, transport.BatchCompleteTaskResponse{
+			Id:   task.Id,
+			Date: *task.Date,
+			Rank: task.Rank,
+		})
 	}
 	return response
 }
 
-func (service *TaskService) createBatchOpenTasksResponse(tasks []domain.Task) *transport.BatchOpenResponse {
-	response := &transport.BatchOpenResponse{
-		DatedUntrashedOpenTasks: make([]transport.TaskResponse, 0),
-		TrashedTasks:            make([]transport.TaskResponse, 0),
+func (service *TaskService) createBatchOpenTasksResponse(tasks []*domain.Task) []transport.BatchOpenTaskResponse {
+	response := make([]transport.BatchOpenTaskResponse, 0, len(tasks))
+	for _, task := range tasks {
+		response = append(response, transport.BatchOpenTaskResponse{
+			Id:   task.Id,
+			Rank: task.Rank,
+		})
 	}
-	for index := range tasks {
-		task := &tasks[index]
-		taskResponse := *task.ToTaskResponse()
-		switch {
-		case task.TrashedDate != nil:
-			response.TrashedTasks = append(response.TrashedTasks, taskResponse)
-		default:
-			response.DatedUntrashedOpenTasks = append(response.DatedUntrashedOpenTasks, taskResponse)
-		}
+	return response
+}
+
+func (service *TaskService) createBatchTrashTasksResponse(taskIds []int64, ranks []string) []transport.BatchTrashTaskResponse {
+	response := make([]transport.BatchTrashTaskResponse, 0, len(taskIds))
+	for index, taskId := range taskIds {
+		response = append(response, transport.BatchTrashTaskResponse{
+			Id:   taskId,
+			Rank: ranks[index],
+		})
 	}
 	return response
 }

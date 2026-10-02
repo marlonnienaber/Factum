@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const TaskDragAndDropResponseSchema = z.object({
+export const TaskDragAndDropResponseSchema = z.strictObject({
 	rank: z.string().min(1)
 });
 
