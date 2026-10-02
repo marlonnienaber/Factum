@@ -21,6 +21,7 @@ import {
 } from '$lib/utils/testing';
 import { getLocalTimeZone, today, type DateValue } from '@internationalized/date';
 import { generateKeyBetween, generateNKeysBetween } from 'fractional-indexing';
+import { type DndEvent, SOURCES, TRIGGERS } from 'svelte-dnd-action';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import Page from './+page.svelte';
 
@@ -543,11 +544,94 @@ describe('archive page tests', () => {
 
 		describe('drag and drop', () => {
 			describe('within untrashed task partition', () => {
-				it.todo('moves a task to the first index');
+				it('moves a task to the first index', async () => {
+					const expectedRank = generateKeyBetween(undefined, testData.pastCompletedPartition.firstTask.rank);
+					const response = getResponse({ rank: expectedRank });
+					fetchMock.mockResolvedValue(response);
 
-				it.todo('moves a task to the middle index');
+					const page = render(Page);
+					const taskList = page.getByLabelText(`Completed tasks dated ${testData.pastCompletedPartitionLabel}`);
+					const reorderedTasks = [
+						testData.pastCompletedPartition.thirdTask,
+						testData.pastCompletedPartition.firstTask,
+						testData.pastCompletedPartition.secondTask
+					];
+					await dropTask(taskList, reorderedTasks, testData.pastCompletedPartition.thirdTask.id);
 
-				it.todo('moves a task to the last index');
+					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+					const requestBody = JSON.stringify({
+						date: testData.pastCompletedPartitionDate.toString(),
+						done: true,
+						trashed: false
+					});
+					expectRequestUrl(fetchMock, `/api/tasks/${testData.pastCompletedPartition.thirdTask.id}/drag-and-drop`);
+					expectRequestMethod(fetchMock, 'PATCH');
+					expectRequestCredentialsMode(fetchMock, 'same-origin');
+					expectRequestBody(fetchMock, requestBody);
+					expectRequestContentType(fetchMock, 'application/json');
+					expectTaskOrder(taskList, reorderedTasks);
+				});
+
+				it('moves a task to the middle index', async () => {
+					const expectedRank = generateKeyBetween(
+						testData.pastCompletedPartition.firstTask.rank,
+						testData.pastCompletedPartition.secondTask.rank
+					);
+					const response = getResponse({ rank: expectedRank });
+					fetchMock.mockResolvedValue(response);
+
+					const page = render(Page);
+					const taskList = page.getByLabelText(`Completed tasks dated ${testData.pastCompletedPartitionLabel}`);
+					const reorderedTasks = [
+						testData.pastCompletedPartition.firstTask,
+						testData.pastCompletedPartition.thirdTask,
+						testData.pastCompletedPartition.secondTask
+					];
+					await dropTask(taskList, reorderedTasks, testData.pastCompletedPartition.thirdTask.id);
+
+					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+					const requestBody = JSON.stringify({
+						date: testData.pastCompletedPartitionDate.toString(),
+						done: true,
+						trashed: false,
+						previousTaskId: testData.pastCompletedPartition.firstTask.id
+					});
+					expectRequestUrl(fetchMock, `/api/tasks/${testData.pastCompletedPartition.thirdTask.id}/drag-and-drop`);
+					expectRequestMethod(fetchMock, 'PATCH');
+					expectRequestCredentialsMode(fetchMock, 'same-origin');
+					expectRequestBody(fetchMock, requestBody);
+					expectRequestContentType(fetchMock, 'application/json');
+					expectTaskOrder(taskList, reorderedTasks);
+				});
+
+				it('moves a task to the last index', async () => {
+					const expectedRank = generateKeyBetween(testData.pastCompletedPartition.thirdTask.rank, undefined);
+					const response = getResponse({ rank: expectedRank });
+					fetchMock.mockResolvedValue(response);
+
+					const page = render(Page);
+					const taskList = page.getByLabelText(`Completed tasks dated ${testData.pastCompletedPartitionLabel}`);
+					const reorderedTasks = [
+						testData.pastCompletedPartition.secondTask,
+						testData.pastCompletedPartition.thirdTask,
+						testData.pastCompletedPartition.firstTask
+					];
+					await dropTask(taskList, reorderedTasks, testData.pastCompletedPartition.firstTask.id);
+
+					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+					const requestBody = JSON.stringify({
+						date: testData.pastCompletedPartitionDate.toString(),
+						done: true,
+						trashed: false,
+						previousTaskId: testData.pastCompletedPartition.thirdTask.id
+					});
+					expectRequestUrl(fetchMock, `/api/tasks/${testData.pastCompletedPartition.firstTask.id}/drag-and-drop`);
+					expectRequestMethod(fetchMock, 'PATCH');
+					expectRequestCredentialsMode(fetchMock, 'same-origin');
+					expectRequestBody(fetchMock, requestBody);
+					expectRequestContentType(fetchMock, 'application/json');
+					expectTaskOrder(taskList, reorderedTasks);
+				});
 			});
 
 			describe('within trashed task partition', () => {
@@ -754,6 +838,28 @@ async function clickOnSelectTasksButton(page: RenderResult<typeof Page>): Promis
 async function clickOnTask(page: RenderResult<typeof Page>, title: string): Promise<void> {
 	const task = page.getByRole('listitem', { name: title });
 	await fireEvent.pointerUp(task);
+}
+
+async function dropTask(
+	taskList: HTMLElement,
+	newOrderedTasks: (DatedUntrashedDoneTaskResponse | TrashedTaskResponse)[],
+	draggedTaskId: number
+): Promise<void> {
+	const event = new CustomEvent<DndEvent<DatedUntrashedDoneTaskResponse | TrashedTaskResponse>>('finalize', {
+		detail: {
+			items: newOrderedTasks,
+			info: { trigger: TRIGGERS.DROPPED_INTO_ZONE, id: String(draggedTaskId), source: SOURCES.POINTER }
+		}
+	});
+	await fireEvent(taskList, event);
+}
+
+function expectTaskOrder(taskList: HTMLElement, tasks: (DatedUntrashedDoneTaskResponse | TrashedTaskResponse)[]): void {
+	const taskListContent = within(taskList);
+	const renderedTasks = taskListContent.getAllByRole('listitem');
+	const renderedTaskTitles = renderedTasks.map((task) => task.getAttribute('aria-label'));
+	const expectedTaskTitles = tasks.map((task) => task.title);
+	expect(renderedTaskTitles).toEqual(expectedTaskTitles);
 }
 
 function expectTaskNotToBePresent(taskList: HTMLElement, title: string): void {
