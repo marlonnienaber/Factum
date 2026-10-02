@@ -362,11 +362,62 @@ describe('archive page tests', () => {
 		});
 
 		describe('empty trash', () => {
-			it.todo('successfully empties trash without applied filters');
+			it('successfully empties trash without applied filters', async () => {
+				fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
 
-			it.todo('successfully empties trash with applied filters');
+				const page = render(Page);
+				const emptyTrashButton = page.getByRole('button', { name: 'Empty Trash' });
+				await userEvent.click(emptyTrashButton);
 
-			it.todo('hides empty trash if there are no trashed tasks');
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+				expectRequestUrl(fetchMock, '/api/tasks/trashed');
+				expectRequestMethod(fetchMock, 'DELETE');
+				expectRequestCredentialsMode(fetchMock, 'same-origin');
+				expectRequestBody(fetchMock, undefined);
+				for (const task of testData.trashedPartition.tasks) expectTaskNotToBePresent(page.container, task.title);
+				expect(trashedTaskStore.trashedTasks).toHaveLength(0);
+				expect(trashedTaskStore.trashedTasksExist).toBe(false);
+				expect(page.queryByRole('button', { name: 'Empty Trash' })).not.toBeInTheDocument();
+			});
+
+			it('successfully empties trash with applied filters', async () => {
+				fetchMock
+					.mockResolvedValueOnce(getResponse({ tasks: [], hasMore: false }))
+					.mockResolvedValueOnce(getResponse({ tasks: [], hasMore: false }))
+					.mockResolvedValueOnce(new Response(null, { status: 204 }));
+
+				const page = render(Page);
+				const excludePersonalButtons = page.getAllByRole('button', { name: 'Exclude Personal' });
+				await userEvent.click(excludePersonalButtons[0]!);
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+				const emptyTrashButton = page.getByRole('button', { name: 'Empty Trash' });
+				await userEvent.click(emptyTrashButton);
+
+				const emptyTrashDialog = page.getByRole('dialog', { name: 'Empty Trash?' });
+				expect(emptyTrashDialog).toHaveTextContent(
+					'Emptying the trash will permanently delete all trashed tasks, including tasks hidden by these filters.'
+				);
+				const deleteAllButton = within(emptyTrashDialog).getByRole('button', { name: 'Delete All' });
+				await userEvent.click(deleteAllButton);
+
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+				expectRequestUrl(fetchMock, '/api/tasks/trashed', 2);
+				expectRequestMethod(fetchMock, 'DELETE', 2);
+				expectRequestCredentialsMode(fetchMock, 'same-origin', 2);
+				expectRequestBody(fetchMock, undefined, 2);
+				expect(page.queryByRole('dialog', { name: 'Empty Trash?' })).not.toBeInTheDocument();
+				expect(trashedTaskStore.trashedTasks).toHaveLength(0);
+				expect(trashedTaskStore.trashedTasksExist).toBe(false);
+				expect(page.queryByRole('button', { name: 'Empty Trash' })).not.toBeInTheDocument();
+			});
+
+			it('hides empty trash if there are no trashed tasks', () => {
+				trashedTaskStore.reset();
+
+				const page = render(Page);
+
+				expect(page.queryByRole('button', { name: 'Empty Trash' })).not.toBeInTheDocument();
+			});
 		});
 
 		it.todo('shows trash info popover on info icon hover');
