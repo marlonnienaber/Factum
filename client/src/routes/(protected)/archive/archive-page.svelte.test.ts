@@ -19,7 +19,7 @@ import {
 	getResponse,
 	getTextareaById
 } from '$lib/utils/testing';
-import { getLocalTimeZone, today } from '@internationalized/date';
+import { getLocalTimeZone, today, type DateValue } from '@internationalized/date';
 import { generateKeyBetween, generateNKeysBetween } from 'fractional-indexing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import Page from './+page.svelte';
@@ -420,16 +420,112 @@ describe('archive page tests', () => {
 			});
 		});
 
-		it.todo('shows trash info popover on info icon hover');
+		it('shows trash info popover on info icon hover', async () => {
+			const page = render(Page);
+			const infoButton = page.getByRole('button', { name: 'About automatic task deletion' });
+			await userEvent.hover(infoButton);
+
+			expect(
+				await page.findByText('Trashed tasks are automatically deleted every day at midnight German time.')
+			).toBeInTheDocument();
+		});
 
 		describe('filtering', () => {
-			it.todo('applies category filter');
+			it('applies category filter', async () => {
+				const completedTasks = [
+					testData.pastCompletedPartition.secondTask,
+					testData.futureCompletedPartition.firstTask,
+					testData.futureCompletedPartition.thirdTask
+				];
+				const trashedTasks = [testData.trashedPartition.datedOpenTask];
+				mockFilterResponses(completedTasks, trashedTasks);
 
-			it.todo('applies start date filter');
+				const page = render(Page);
+				const excludePersonalButtons = page.getAllByRole('button', { name: 'Exclude Personal' });
+				await userEvent.click(excludePersonalButtons[0]!);
 
-			it.todo('applies end date filter');
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+				expectRequestUrl(fetchMock, '/api/tasks/dated-untrashed-done?categoryId=8');
+				expectRequestMethod(fetchMock, 'GET');
+				expectRequestCredentialsMode(fetchMock, 'same-origin');
+				expectRequestBody(fetchMock, undefined);
+				expectRequestUrl(fetchMock, '/api/tasks/trashed?categoryId=8', 1);
+				expectRequestMethod(fetchMock, 'GET', 1);
+				expectRequestCredentialsMode(fetchMock, 'same-origin', 1);
+				expectRequestBody(fetchMock, undefined, 1);
+				expect(datedUntrashedDoneTaskStore.datedUntrashedDoneTasks).toEqual(completedTasks);
+				expect(trashedTaskStore.trashedTasks).toEqual(trashedTasks);
+			});
 
-			it.todo('applies date range filter');
+			it('applies start date filter', async () => {
+				const completedTasks = testData.futureCompletedPartition.tasks;
+				const trashedTasks = [testData.trashedPartition.datedOpenTask];
+				mockFilterResponses(completedTasks, trashedTasks);
+
+				const page = render(Page);
+				await enterFilterDate(page, 'Start', todayDate);
+
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+				const queryParameters = `categoryId=7&categoryId=8&startDate=${todayDate.toString()}`;
+				expectRequestUrl(fetchMock, `/api/tasks/dated-untrashed-done?${queryParameters}`);
+				expectRequestMethod(fetchMock, 'GET');
+				expectRequestCredentialsMode(fetchMock, 'same-origin');
+				expectRequestBody(fetchMock, undefined);
+				expectRequestUrl(fetchMock, `/api/tasks/trashed?${queryParameters}`, 1);
+				expectRequestMethod(fetchMock, 'GET', 1);
+				expectRequestCredentialsMode(fetchMock, 'same-origin', 1);
+				expectRequestBody(fetchMock, undefined, 1);
+				expect(datedUntrashedDoneTaskStore.datedUntrashedDoneTasks).toEqual(completedTasks);
+				expect(trashedTaskStore.trashedTasks).toEqual(trashedTasks);
+			});
+
+			it('applies end date filter', async () => {
+				const completedTasks = testData.pastCompletedPartition.tasks;
+				const trashedTasks = [testData.trashedPartition.datedDoneTask];
+				mockFilterResponses(completedTasks, trashedTasks);
+
+				const page = render(Page);
+				await enterFilterDate(page, 'End', todayDate);
+
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+				const queryParameters = `categoryId=7&categoryId=8&endDate=${todayDate.toString()}`;
+				expectRequestUrl(fetchMock, `/api/tasks/dated-untrashed-done?${queryParameters}`);
+				expectRequestMethod(fetchMock, 'GET');
+				expectRequestCredentialsMode(fetchMock, 'same-origin');
+				expectRequestBody(fetchMock, undefined);
+				expectRequestUrl(fetchMock, `/api/tasks/trashed?${queryParameters}`, 1);
+				expectRequestMethod(fetchMock, 'GET', 1);
+				expectRequestCredentialsMode(fetchMock, 'same-origin', 1);
+				expectRequestBody(fetchMock, undefined, 1);
+				expect(datedUntrashedDoneTaskStore.datedUntrashedDoneTasks).toEqual(completedTasks);
+				expect(trashedTaskStore.trashedTasks).toEqual(trashedTasks);
+			});
+
+			it('applies date range filter', async () => {
+				const completedTasks = testData.pastCompletedPartition.tasks;
+				const trashedTasks = [testData.trashedPartition.datedDoneTask];
+				mockFilterResponses(completedTasks, trashedTasks);
+
+				const page = render(Page);
+				await enterFilterDate(page, 'Start', testData.pastCompletedPartitionDate);
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+				fetchMock.mockClear();
+				mockFilterResponses(completedTasks, trashedTasks);
+				await enterFilterDate(page, 'End', todayDate);
+
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+				const queryParameters = `categoryId=7&categoryId=8&startDate=${testData.pastCompletedPartitionDate.toString()}&endDate=${todayDate.toString()}`;
+				expectRequestUrl(fetchMock, `/api/tasks/dated-untrashed-done?${queryParameters}`);
+				expectRequestMethod(fetchMock, 'GET');
+				expectRequestCredentialsMode(fetchMock, 'same-origin');
+				expectRequestBody(fetchMock, undefined);
+				expectRequestUrl(fetchMock, `/api/tasks/trashed?${queryParameters}`, 1);
+				expectRequestMethod(fetchMock, 'GET', 1);
+				expectRequestCredentialsMode(fetchMock, 'same-origin', 1);
+				expectRequestBody(fetchMock, undefined, 1);
+				expect(datedUntrashedDoneTaskStore.datedUntrashedDoneTasks).toEqual(completedTasks);
+				expect(trashedTaskStore.trashedTasks).toEqual(trashedTasks);
+			});
 		});
 
 		describe('infinite scroll', () => {
@@ -507,10 +603,9 @@ describe('archive page tests', () => {
 });
 
 const fetchMock = vi.fn();
-const categories = [
-	{ id: 7, title: 'Personal', color: '#22c55e' },
-	{ id: 8, title: 'Work', color: '#3b82f6' }
-];
+const personalCategory = { id: 7, title: 'Personal', color: '#22c55e' };
+const workCategory = { id: 8, title: 'Work', color: '#3b82f6' };
+const categories = [personalCategory, workCategory];
 const todayDate = today(getLocalTimeZone());
 const testData = createTestData();
 
@@ -529,30 +624,40 @@ function createTestData() {
 	let taskId = 1;
 
 	const pastCompletedTaskDetails = [
-		{ title: 'Send the signed contract', description: 'Attach the final PDF and copy the project lead.' },
-		{ title: 'Book the conference hotel' },
-		{ title: 'Submit the travel expenses', description: 'Include the train and taxi receipts.' }
+		{
+			categoryId: personalCategory.id,
+			title: 'Send the signed contract',
+			description: 'Attach the final PDF and copy the project lead.'
+		},
+		{ categoryId: workCategory.id, title: 'Book the conference hotel' },
+		{
+			categoryId: personalCategory.id,
+			title: 'Submit the travel expenses',
+			description: 'Include the train and taxi receipts.'
+		}
 	] as const;
 	const pastCompletedTaskRanks = generateNKeysBetween(undefined, undefined, pastCompletedTaskDetails.length);
 	const pastCompletedTasks: DatedUntrashedDoneTaskResponse[] = pastCompletedTaskDetails.map((details, index) => ({
 		...details,
 		id: taskId++,
-		categoryId: categories[index % categories.length]!.id,
 		date: pastDate,
 		rank: pastCompletedTaskRanks[index],
 		done: true
 	}));
 
 	const futureCompletedTaskDetails = [
-		{ title: 'Prepare the workshop agenda' },
-		{ title: 'Review the quarterly report', description: 'Check the revenue figures and highlighted risks.' },
-		{ title: 'Confirm the catering order' }
+		{ categoryId: workCategory.id, title: 'Prepare the workshop agenda' },
+		{
+			categoryId: personalCategory.id,
+			title: 'Review the quarterly report',
+			description: 'Check the revenue figures and highlighted risks.'
+		},
+		{ categoryId: workCategory.id, title: 'Confirm the catering order' }
 	] as const;
 	const futureCompletedTaskRanks = generateNKeysBetween(undefined, undefined, futureCompletedTaskDetails.length);
 	const futureCompletedTasks: DatedUntrashedDoneTaskResponse[] = futureCompletedTaskDetails.map((details, index) => ({
 		...details,
 		id: taskId++,
-		categoryId: categories[(index + 1) % categories.length]!.id,
 		date: futureDate,
 		rank: futureCompletedTaskRanks[index],
 		done: true
@@ -561,7 +666,7 @@ function createTestData() {
 	const trashedTaskRanks = generateNKeysBetween(undefined, undefined, 3);
 	const undatedOpenTrashedTask: TrashedTaskResponse = {
 		id: taskId++,
-		categoryId: categories[0]!.id,
+		categoryId: personalCategory.id,
 		title: 'Compare mobile phone plans',
 		description: 'Check monthly costs and available data packages.',
 		done: false,
@@ -569,7 +674,7 @@ function createTestData() {
 	};
 	const datedOpenTrashedTask: TrashedTaskResponse = {
 		id: taskId++,
-		categoryId: categories[1]!.id,
+		categoryId: workCategory.id,
 		title: 'Schedule the annual checkup',
 		date: futureDate,
 		done: false,
@@ -577,7 +682,7 @@ function createTestData() {
 	};
 	const datedDoneTrashedTask: TrashedTaskResponse = {
 		id: taskId++,
-		categoryId: categories[0]!.id,
+		categoryId: personalCategory.id,
 		title: 'Renew the library books',
 		description: 'Extend every loan that expires this week.',
 		date: pastDate,
@@ -621,7 +726,7 @@ function addTasksExceedingMaximumBatchSize(): string[] {
 	const ranks = generateNKeysBetween(testData.pastCompletedPartition.thirdTask.rank, undefined, taskCount);
 	const tasks: DatedUntrashedDoneTaskResponse[] = ranks.map((rank, index) => ({
 		id: firstTaskId + index,
-		categoryId: categories[index % categories.length]!.id,
+		categoryId: personalCategory.id,
 		title: `Review completed project note ${index + 1}`,
 		description: `Review and organize completed project note ${index + 1}.`,
 		date: testData.pastCompletedPartitionDate,
@@ -687,4 +792,45 @@ function expectTaskToBePresent(
 	expect(task).toBeInTheDocument();
 	if (description !== undefined) expect(taskContent.getByText(description)).toBeInTheDocument();
 	expect(taskContent.getByText(categoryName)).toBeInTheDocument();
+}
+
+function mockFilterResponses(completedTasks: DatedUntrashedDoneTaskResponse[], trashedTasks: TrashedTaskResponse[]): void {
+	fetchMock
+		.mockResolvedValueOnce(
+			getResponse({
+				tasks: completedTasks.map((task) => ({
+					id: task.id,
+					categoryId: task.categoryId,
+					title: task.title,
+					description: task.description,
+					date: task.date.toString(),
+					rank: task.rank
+				})),
+				hasMore: false
+			})
+		)
+		.mockResolvedValueOnce(
+			getResponse({
+				tasks: trashedTasks.map((task) => ({
+					id: task.id,
+					categoryId: task.categoryId,
+					title: task.title,
+					description: task.description,
+					date: task.date?.toString(),
+					rank: task.rank,
+					done: task.done
+				})),
+				hasMore: false
+			})
+		);
+}
+
+async function enterFilterDate(page: RenderResult<typeof Page>, label: 'Start' | 'End', date: DateValue): Promise<void> {
+	await fireEvent.input(page.getByRole('textbox', { name: `${label} day` }), {
+		target: { value: String(date.day).padStart(2, '0') }
+	});
+	await fireEvent.input(page.getByRole('textbox', { name: `${label} month` }), {
+		target: { value: String(date.month).padStart(2, '0') }
+	});
+	await fireEvent.input(page.getByRole('textbox', { name: `${label} year` }), { target: { value: String(date.year) } });
 }
