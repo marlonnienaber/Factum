@@ -635,11 +635,93 @@ describe('archive page tests', () => {
 			});
 
 			describe('within trashed task partition', () => {
-				it.todo('moves a task to the first index');
+				it('moves a task to the first index', async () => {
+					const expectedRank = generateKeyBetween(undefined, testData.trashedPartition.undatedOpenTask.rank);
+					const response = getResponse({ rank: expectedRank });
+					fetchMock.mockResolvedValue(response);
 
-				it.todo('moves a task to the middle index');
+					const page = render(Page);
+					const taskList = page.getByLabelText('Trashed tasks');
+					const reorderedTasks = [
+						testData.trashedPartition.datedDoneTask,
+						testData.trashedPartition.undatedOpenTask,
+						testData.trashedPartition.datedOpenTask
+					];
+					await dropTask(taskList, reorderedTasks, testData.trashedPartition.datedDoneTask.id);
 
-				it.todo('moves a task to the last index');
+					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+					const requestBody = JSON.stringify({
+						date: testData.trashedPartition.datedDoneTask.date?.toString(),
+						done: true,
+						trashed: true
+					});
+					expectRequestUrl(fetchMock, `/api/tasks/${testData.trashedPartition.datedDoneTask.id}/drag-and-drop`);
+					expectRequestMethod(fetchMock, 'PATCH');
+					expectRequestCredentialsMode(fetchMock, 'same-origin');
+					expectRequestBody(fetchMock, requestBody);
+					expectRequestContentType(fetchMock, 'application/json');
+					expectTaskOrder(taskList, reorderedTasks);
+				});
+
+				it('moves a task to the middle index', async () => {
+					const expectedRank = generateKeyBetween(
+						testData.trashedPartition.undatedOpenTask.rank,
+						testData.trashedPartition.datedOpenTask.rank
+					);
+					const response = getResponse({ rank: expectedRank });
+					fetchMock.mockResolvedValue(response);
+
+					const page = render(Page);
+					const taskList = page.getByLabelText('Trashed tasks');
+					const reorderedTasks = [
+						testData.trashedPartition.undatedOpenTask,
+						testData.trashedPartition.datedDoneTask,
+						testData.trashedPartition.datedOpenTask
+					];
+					await dropTask(taskList, reorderedTasks, testData.trashedPartition.datedDoneTask.id);
+
+					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+					const requestBody = JSON.stringify({
+						date: testData.trashedPartition.datedDoneTask.date?.toString(),
+						done: true,
+						trashed: true,
+						previousTaskId: testData.trashedPartition.undatedOpenTask.id
+					});
+					expectRequestUrl(fetchMock, `/api/tasks/${testData.trashedPartition.datedDoneTask.id}/drag-and-drop`);
+					expectRequestMethod(fetchMock, 'PATCH');
+					expectRequestCredentialsMode(fetchMock, 'same-origin');
+					expectRequestBody(fetchMock, requestBody);
+					expectRequestContentType(fetchMock, 'application/json');
+					expectTaskOrder(taskList, reorderedTasks);
+				});
+
+				it('moves a task to the last index', async () => {
+					const expectedRank = generateKeyBetween(testData.trashedPartition.datedDoneTask.rank, undefined);
+					const response = getResponse({ rank: expectedRank });
+					fetchMock.mockResolvedValue(response);
+
+					const page = render(Page);
+					const taskList = page.getByLabelText('Trashed tasks');
+					const reorderedTasks = [
+						testData.trashedPartition.datedOpenTask,
+						testData.trashedPartition.datedDoneTask,
+						testData.trashedPartition.undatedOpenTask
+					];
+					await dropTask(taskList, reorderedTasks, testData.trashedPartition.undatedOpenTask.id);
+
+					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+					const requestBody = JSON.stringify({
+						done: false,
+						trashed: true,
+						previousTaskId: testData.trashedPartition.datedDoneTask.id
+					});
+					expectRequestUrl(fetchMock, `/api/tasks/${testData.trashedPartition.undatedOpenTask.id}/drag-and-drop`);
+					expectRequestMethod(fetchMock, 'PATCH');
+					expectRequestCredentialsMode(fetchMock, 'same-origin');
+					expectRequestBody(fetchMock, requestBody);
+					expectRequestContentType(fetchMock, 'application/json');
+					expectTaskOrder(taskList, reorderedTasks);
+				});
 			});
 
 			describe('from trashed task partition', () => {
