@@ -2,6 +2,7 @@
 	import InfiniteScrollContainer from '$lib/components/shared/infinite-scroll-container.svelte';
 	import Button from '$lib/components/shared/button.svelte';
 	import CategoryFilter from '$lib/components/archive/category-filter.svelte';
+	import EmptyTrashDialog from '$lib/components/archive/empty-trash-dialog.svelte';
 	import TimeFilter from '$lib/components/archive/time-filter.svelte';
 	import Popover from '$lib/components/shared/popover.svelte';
 	import TaskDialog from '$lib/components/taskCreation/task-dialog.svelte';
@@ -25,6 +26,7 @@
 	const maximumBatchSize = 50;
 
 	let taskDialogOpen = $state(false);
+	let emptyTrashDialogOpen = $state(false);
 	let taskDialogTask = $state<DatedUntrashedDoneTaskResponse | TrashedTaskResponse>();
 	let dragging = $state(false);
 	let selectionEnabled = $state(false);
@@ -32,6 +34,7 @@
 	let unselectedCategoryIds = $state<number[]>([]);
 	let startDate = $state<DateValue>();
 	let endDate = $state<DateValue>();
+	const filtersApplied = $derived(unselectedCategoryIds.length > 0 || startDate !== undefined || endDate !== undefined);
 	let trashedTaskDragItems = $state<TaskDragItem[]>([...trashedTaskStore.trashedTasks]);
 	let dateKeyToUntrashedTaskDragItemsRecord = $state<Record<string, TaskDragItem[]>>(createDateKeyToUntrashedTaskDragItemsRecord());
 
@@ -188,8 +191,12 @@
 		if (trashed) cancelTaskSelection();
 	}
 
-	function emptyTrash(): void {
-		void taskService.deleteTrashedTasks();
+	async function requestEmptyTrash(): Promise<void> {
+		if (filtersApplied) {
+			emptyTrashDialogOpen = true;
+		} else {
+			await taskService.deleteTrashedTasks();
+		}
 	}
 
 	function updateTaskSelection(taskId: number, selected: boolean): void {
@@ -238,7 +245,7 @@
 					{#snippet trailingIcon()}<MousePointer2 size={17} aria-hidden="true" />{/snippet}
 				</Button>
 				{#if trashedTaskStore.trashedTasksExist}
-					<Button variant="danger" disabled={taskService.taskMutationBlocked} onclick={emptyTrash}>
+					<Button variant="danger" disabled={taskService.taskMutationBlocked} onclick={requestEmptyTrash}>
 						Empty Trash
 						{#snippet trailingIcon()}<Trash2 size={17} aria-hidden="true" />{/snippet}
 					</Button>
@@ -347,6 +354,7 @@
 </div>
 
 <TaskDialog bind:open={taskDialogOpen} bind:task={taskDialogTask} />
+<EmptyTrashDialog bind:open={emptyTrashDialogOpen} />
 
 <style lang="scss">
 	.frame {
