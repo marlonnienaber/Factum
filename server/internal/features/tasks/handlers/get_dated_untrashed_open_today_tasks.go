@@ -11,15 +11,16 @@ import (
 
 func NewGetDatedUntrashedOpenTodayTasksHandler(taskStore *stores.TaskStore) shared.AuthenticatedHandlerFunc {
 	return func(c *shared.AuthenticatedContext) {
+		categoryIds, categoryIdsErr := shared.GetOptionalIdQueryParameterList(c, "categoryId", maximumCategoryFilterCount)
 		rank, rankErr := shared.GetOptionalRankQueryParameter(c, "rank")
 
-		if rankErr != nil {
+		if categoryIdsErr != nil || rankErr != nil {
 			c.JSON(http.StatusBadRequest, shared.InvalidQueryParameterErrorResponse)
 			return
 		}
 
 		today := shared.NewDate(time.Now())
-		response, err := taskStore.GetDatedUntrashedOpenTodayTasks(c.UserId, today, rank)
+		response, err := taskStore.GetDatedUntrashedOpenTodayTasks(c.UserId, categoryIds, today, rank)
 		if err != nil {
 			slog.Error("handling get dated untrashed open today tasks failed", "error", err)
 			c.JSON(http.StatusInternalServerError, shared.UnexpectedErrorResponse)

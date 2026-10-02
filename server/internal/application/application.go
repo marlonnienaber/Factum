@@ -56,6 +56,10 @@ func NewApplication(cfg configuration.Configuration, db *sqlx.DB) *gin.Engine {
 	api.GET("/tasks/undated", shared.RequireAuth(tasksHandlers.NewGetUndatedTasksHandler(taskStore)))
 	api.GET("/tasks/dated-untrashed-done", shared.RequireAuth(tasksHandlers.NewGetDatedUntrashedDoneTasksHandler(taskStore)))
 	api.GET(
+		"/tasks/dated-untrashed-done-today",
+		shared.RequireAuth(tasksHandlers.NewGetDatedUntrashedDoneTodayTasksHandler(taskStore)),
+	)
+	api.GET(
 		"/tasks/dated-untrashed-open-today",
 		shared.RequireAuth(tasksHandlers.NewGetDatedUntrashedOpenTodayTasksHandler(taskStore)),
 	)
