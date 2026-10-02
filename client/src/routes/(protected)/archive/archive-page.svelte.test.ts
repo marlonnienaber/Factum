@@ -13,11 +13,15 @@ import {
 	expectRequestContentType,
 	expectRequestCredentialsMode,
 	expectRequestMethod,
+	expectRequestPath,
 	expectRequestUrl,
 	expectTextareaToBeInvalid,
 	getInputById,
+	getRequestSearchParameter,
 	getResponse,
-	getTextareaById
+	getTextareaById,
+	intersectionObserverMock,
+	mockPendingFetch
 } from '$lib/utils/testing';
 import { getLocalTimeZone, today, type DateValue } from '@internationalized/date';
 import { generateKeyBetween, generateNKeysBetween } from 'fractional-indexing';
@@ -1025,15 +1029,201 @@ describe('archive page tests', () => {
 		});
 
 		describe('infinite scroll', () => {
-			it.todo('loads more untrashed tasks without applied filters');
+			it('loads more untrashed tasks without applied filters', async () => {
+				const nextTaskResponse = {
+					id: 13,
+					categoryId: workCategory.id,
+					title: 'Publish the meeting minutes',
+					date: testData.futureCompletedPartitionDate.toString(),
+					rank: generateKeyBetween(testData.futureCompletedPartition.thirdTask.rank, undefined)
+				};
+				const nextTask: DatedUntrashedDoneTaskResponse = {
+					...nextTaskResponse,
+					date: testData.futureCompletedPartitionDate,
+					done: true
+				};
+				const existingTrashedTasks = [...trashedTaskStore.trashedTasks];
+				const resolveFetch = mockPendingFetch(fetchMock);
 
-			it.todo('loads more untrashed tasks with applied filters');
+				const page = render(Page);
+				const completedColumn = getTaskColumn(page, 'Completed');
+				const loadingSentinel = getLoadingSentinel(completedColumn);
+				intersectionObserverMock.enterNode(loadingSentinel);
 
-			it.todo('loads more trashed tasks without applied filters');
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+				expectRequestPath(fetchMock, '/api/tasks/dated-untrashed-done');
+				expectRequestMethod(fetchMock, 'GET');
+				expectRequestCredentialsMode(fetchMock, 'same-origin');
+				expectRequestBody(fetchMock, undefined);
+				expect(getRequestSearchParameter(fetchMock, 'cursorDate')).toBe(testData.futureCompletedPartitionDate.toString());
+				expect(getRequestSearchParameter(fetchMock, 'cursorRank')).toBe(testData.futureCompletedPartition.thirdTask.rank);
+				expect(within(completedColumn).getByLabelText('Loading more items')).toBeInTheDocument();
+				expect(within(getTaskColumn(page, 'Trashed')).queryByLabelText('Loading more items')).not.toBeInTheDocument();
 
-			it.todo('loads more trashed tasks with applied filters');
+				resolveFetch(getResponse({ tasks: [nextTaskResponse], hasMore: false }));
 
-			it.todo('disables infinite scrolling while a task is being dragged');
+				await waitFor(() => expect(datedUntrashedDoneTaskStore.datedUntrashedDoneTasks).toContainEqual(nextTask));
+				expect(datedUntrashedDoneTaskStore.hasMore).toBe(false);
+				const taskList = page.getByLabelText(`Completed tasks dated ${testData.futureCompletedPartitionLabel}`);
+				expectTaskToBePresent(taskList, nextTask.title, nextTask.description, workCategory.title);
+				expect(completedColumn.querySelector('.loading-sentinel')).not.toBeInTheDocument();
+				expect(trashedTaskStore.trashedTasks).toEqual(existingTrashedTasks);
+			});
+
+			it('loads more untrashed tasks with applied filters', async () => {
+				const filteredCompletedTasks = [testData.futureCompletedPartition.firstTask, testData.futureCompletedPartition.thirdTask];
+				const filteredTrashedTasks = [testData.trashedPartition.datedOpenTask];
+				mockFilterResponses(filteredCompletedTasks, filteredTrashedTasks, true);
+				mockFilterResponses(filteredCompletedTasks, filteredTrashedTasks, true);
+				mockFilterResponses(filteredCompletedTasks, filteredTrashedTasks, true);
+
+				const page = render(Page);
+				const excludePersonalButtons = page.getAllByRole('button', { name: 'Exclude Personal' });
+				await userEvent.click(excludePersonalButtons[0]!);
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+				await enterFilterDate(page, 'Start', todayDate);
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
+				await enterFilterDate(page, 'End', testData.futureCompletedPartitionDate);
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(6));
+				fetchMock.mockClear();
+
+				const nextTaskResponse = {
+					id: 13,
+					categoryId: workCategory.id,
+					title: 'Publish the filtered meeting minutes',
+					date: testData.futureCompletedPartitionDate.toString(),
+					rank: generateKeyBetween(testData.futureCompletedPartition.thirdTask.rank, undefined)
+				};
+				const nextTask: DatedUntrashedDoneTaskResponse = {
+					...nextTaskResponse,
+					date: testData.futureCompletedPartitionDate,
+					done: true
+				};
+				const resolveFetch = mockPendingFetch(fetchMock);
+				const completedColumn = getTaskColumn(page, 'Completed');
+				intersectionObserverMock.enterNode(getLoadingSentinel(completedColumn));
+
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+				expectRequestPath(fetchMock, '/api/tasks/dated-untrashed-done');
+				expectRequestMethod(fetchMock, 'GET');
+				expectRequestCredentialsMode(fetchMock, 'same-origin');
+				expectRequestBody(fetchMock, undefined);
+				expect(getRequestSearchParameter(fetchMock, 'categoryId')).toBe(String(workCategory.id));
+				expect(getRequestSearchParameter(fetchMock, 'startDate')).toBe(todayDate.toString());
+				expect(getRequestSearchParameter(fetchMock, 'endDate')).toBe(testData.futureCompletedPartitionDate.toString());
+				expect(getRequestSearchParameter(fetchMock, 'cursorDate')).toBe(testData.futureCompletedPartitionDate.toString());
+				expect(getRequestSearchParameter(fetchMock, 'cursorRank')).toBe(testData.futureCompletedPartition.thirdTask.rank);
+
+				resolveFetch(getResponse({ tasks: [nextTaskResponse], hasMore: false }));
+
+				await waitFor(() => expect(datedUntrashedDoneTaskStore.datedUntrashedDoneTasks).toContainEqual(nextTask));
+				expect(datedUntrashedDoneTaskStore.hasMore).toBe(false);
+				expect(completedColumn.querySelector('.loading-sentinel')).not.toBeInTheDocument();
+			});
+
+			it('loads more trashed tasks without applied filters', async () => {
+				const nextTaskResponse = {
+					id: 13,
+					categoryId: personalCategory.id,
+					title: 'Discard obsolete project notes',
+					done: false,
+					rank: generateKeyBetween(testData.trashedPartition.datedDoneTask.rank, undefined)
+				};
+				const nextTask: TrashedTaskResponse = nextTaskResponse;
+				const existingCompletedTasks = [...datedUntrashedDoneTaskStore.datedUntrashedDoneTasks];
+				const resolveFetch = mockPendingFetch(fetchMock);
+
+				const page = render(Page);
+				const trashedColumn = getTaskColumn(page, 'Trashed');
+				const loadingSentinel = getLoadingSentinel(trashedColumn);
+				intersectionObserverMock.enterNode(loadingSentinel);
+
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+				expectRequestPath(fetchMock, '/api/tasks/trashed');
+				expectRequestMethod(fetchMock, 'GET');
+				expectRequestCredentialsMode(fetchMock, 'same-origin');
+				expectRequestBody(fetchMock, undefined);
+				expect(getRequestSearchParameter(fetchMock, 'rank')).toBe(testData.trashedPartition.datedDoneTask.rank);
+				expect(within(trashedColumn).getByLabelText('Loading more items')).toBeInTheDocument();
+				expect(within(getTaskColumn(page, 'Completed')).queryByLabelText('Loading more items')).not.toBeInTheDocument();
+
+				resolveFetch(getResponse({ tasks: [nextTaskResponse], hasMore: false }));
+
+				await waitFor(() => expect(trashedTaskStore.trashedTasks).toContainEqual(nextTask));
+				expect(trashedTaskStore.hasMore).toBe(false);
+				expectTaskToBePresent(trashedColumn, nextTask.title, nextTask.description, personalCategory.title);
+				expect(trashedColumn.querySelector('.loading-sentinel')).not.toBeInTheDocument();
+				expect(datedUntrashedDoneTaskStore.datedUntrashedDoneTasks).toEqual(existingCompletedTasks);
+			});
+
+			it('loads more trashed tasks with applied filters', async () => {
+				const filteredCompletedTasks = [testData.futureCompletedPartition.firstTask, testData.futureCompletedPartition.thirdTask];
+				const filteredTrashedTasks = [testData.trashedPartition.datedOpenTask];
+				mockFilterResponses(filteredCompletedTasks, filteredTrashedTasks, true);
+				mockFilterResponses(filteredCompletedTasks, filteredTrashedTasks, true);
+				mockFilterResponses(filteredCompletedTasks, filteredTrashedTasks, true);
+
+				const page = render(Page);
+				const excludePersonalButtons = page.getAllByRole('button', { name: 'Exclude Personal' });
+				await userEvent.click(excludePersonalButtons[0]!);
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+				await enterFilterDate(page, 'Start', todayDate);
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
+				await enterFilterDate(page, 'End', testData.futureCompletedPartitionDate);
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(6));
+				fetchMock.mockClear();
+
+				const nextTaskResponse = {
+					id: 13,
+					categoryId: workCategory.id,
+					title: 'Discard filtered project notes',
+					done: false,
+					rank: generateKeyBetween(testData.trashedPartition.datedOpenTask.rank, undefined)
+				};
+				const resolveFetch = mockPendingFetch(fetchMock);
+				const trashedColumn = getTaskColumn(page, 'Trashed');
+				intersectionObserverMock.enterNode(getLoadingSentinel(trashedColumn));
+
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+				expectRequestPath(fetchMock, '/api/tasks/trashed');
+				expectRequestMethod(fetchMock, 'GET');
+				expectRequestCredentialsMode(fetchMock, 'same-origin');
+				expectRequestBody(fetchMock, undefined);
+				expect(getRequestSearchParameter(fetchMock, 'categoryId')).toBe(String(workCategory.id));
+				expect(getRequestSearchParameter(fetchMock, 'startDate')).toBe(todayDate.toString());
+				expect(getRequestSearchParameter(fetchMock, 'endDate')).toBe(testData.futureCompletedPartitionDate.toString());
+				expect(getRequestSearchParameter(fetchMock, 'rank')).toBe(testData.trashedPartition.datedOpenTask.rank);
+
+				resolveFetch(getResponse({ tasks: [nextTaskResponse], hasMore: false }));
+
+				await waitFor(() => expect(trashedTaskStore.trashedTasks).toContainEqual(nextTaskResponse));
+				expect(trashedTaskStore.hasMore).toBe(false);
+				expect(trashedColumn.querySelector('.loading-sentinel')).not.toBeInTheDocument();
+			});
+
+			it('disables infinite scrolling while a task is being dragged', async () => {
+				const page = render(Page);
+				const completedColumn = getTaskColumn(page, 'Completed');
+				const trashedColumn = getTaskColumn(page, 'Trashed');
+				const completedLoadingSentinel = getLoadingSentinel(completedColumn);
+				const trashedLoadingSentinel = getLoadingSentinel(trashedColumn);
+
+				const completedTaskList = page.getByLabelText(`Completed tasks dated ${testData.pastCompletedPartitionLabel}`);
+				const event = new CustomEvent<DndEvent<DatedUntrashedDoneTaskResponse>>('consider', {
+					detail: {
+						items: testData.pastCompletedPartition.tasks,
+						info: {
+							trigger: TRIGGERS.DRAG_STARTED,
+							id: String(testData.pastCompletedPartition.firstTask.id),
+							source: SOURCES.POINTER
+						}
+					}
+				});
+				await fireEvent(completedTaskList, event);
+
+				intersectionObserverMock.enterNodes([completedLoadingSentinel, trashedLoadingSentinel]);
+				expect(fetchMock).not.toHaveBeenCalled();
+			});
 		});
 	});
 });
@@ -1211,9 +1401,15 @@ function expectTaskNotToBePresent(taskList: HTMLElement, title: string): void {
 }
 
 function getTaskColumn(page: RenderResult<typeof Page>, heading: string): HTMLElement {
-	const taskColumn = page.getByRole('heading', { name: heading }).parentElement;
+	const taskColumn = page.getByRole('heading', { name: heading }).closest('section');
 	if (!(taskColumn instanceof HTMLElement)) throw new Error(`Expected a task column headed "${heading}".`);
 	return taskColumn;
+}
+
+function getLoadingSentinel(taskColumn: HTMLElement): HTMLElement {
+	const loadingSentinel = taskColumn.querySelector('.loading-sentinel');
+	if (!(loadingSentinel instanceof HTMLElement)) throw new Error('Expected the task column to have a loading sentinel.');
+	return loadingSentinel;
 }
 
 async function openEditTaskDialog(page: RenderResult<typeof Page>, title: string): Promise<void> {
@@ -1252,7 +1448,11 @@ function expectTaskToBePresent(
 	expect(taskContent.getByText(categoryName)).toBeInTheDocument();
 }
 
-function mockFilterResponses(completedTasks: DatedUntrashedDoneTaskResponse[], trashedTasks: TrashedTaskResponse[]): void {
+function mockFilterResponses(
+	completedTasks: DatedUntrashedDoneTaskResponse[],
+	trashedTasks: TrashedTaskResponse[],
+	hasMore = false
+): void {
 	fetchMock
 		.mockResolvedValueOnce(
 			getResponse({
@@ -1264,7 +1464,7 @@ function mockFilterResponses(completedTasks: DatedUntrashedDoneTaskResponse[], t
 					date: task.date.toString(),
 					rank: task.rank
 				})),
-				hasMore: false
+				hasMore
 			})
 		)
 		.mockResolvedValueOnce(
@@ -1278,7 +1478,7 @@ function mockFilterResponses(completedTasks: DatedUntrashedDoneTaskResponse[], t
 					rank: task.rank,
 					done: task.done
 				})),
-				hasMore: false
+				hasMore
 			})
 		);
 }
