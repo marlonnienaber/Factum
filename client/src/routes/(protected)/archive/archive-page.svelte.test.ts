@@ -833,19 +833,183 @@ describe('archive page tests', () => {
 
 			describe('from untrashed task partition', () => {
 				describe('to untrashed task partition', () => {
-					it.todo('moves a task to the first index');
+					it('moves a task to the first index', async () => {
+						const expectedRank = generateKeyBetween(undefined, testData.futureCompletedPartition.firstTask.rank);
+						const response = getResponse({ rank: expectedRank });
+						fetchMock.mockResolvedValue(response);
 
-					it.todo('moves a task to the middle index');
+						const page = render(Page);
+						const sourceTaskList = page.getByLabelText(`Completed tasks dated ${testData.pastCompletedPartitionLabel}`);
+						const destinationTaskList = page.getByLabelText(`Completed tasks dated ${testData.futureCompletedPartitionLabel}`);
+						const reorderedTasks = [testData.pastCompletedPartition.thirdTask, ...testData.futureCompletedPartition.tasks];
+						await dropTask(destinationTaskList, reorderedTasks, testData.pastCompletedPartition.thirdTask.id);
 
-					it.todo('moves a task to the last index');
+						await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+						const requestBody = JSON.stringify({
+							date: testData.futureCompletedPartitionDate.toString(),
+							done: true,
+							trashed: false
+						});
+						expectRequestUrl(fetchMock, `/api/tasks/${testData.pastCompletedPartition.thirdTask.id}/drag-and-drop`);
+						expectRequestMethod(fetchMock, 'PATCH');
+						expectRequestCredentialsMode(fetchMock, 'same-origin');
+						expectRequestBody(fetchMock, requestBody);
+						expectRequestContentType(fetchMock, 'application/json');
+						expectTaskOrder(destinationTaskList, reorderedTasks);
+						await waitFor(() => expectTaskNotToBePresent(sourceTaskList, testData.pastCompletedPartition.thirdTask.title));
+					});
+
+					it('moves a task to the middle index', async () => {
+						const expectedRank = generateKeyBetween(
+							testData.futureCompletedPartition.firstTask.rank,
+							testData.futureCompletedPartition.secondTask.rank
+						);
+						const response = getResponse({ rank: expectedRank });
+						fetchMock.mockResolvedValue(response);
+
+						const page = render(Page);
+						const sourceTaskList = page.getByLabelText(`Completed tasks dated ${testData.pastCompletedPartitionLabel}`);
+						const destinationTaskList = page.getByLabelText(`Completed tasks dated ${testData.futureCompletedPartitionLabel}`);
+						const reorderedTasks = [
+							testData.futureCompletedPartition.firstTask,
+							testData.pastCompletedPartition.thirdTask,
+							testData.futureCompletedPartition.secondTask,
+							testData.futureCompletedPartition.thirdTask
+						];
+						await dropTask(destinationTaskList, reorderedTasks, testData.pastCompletedPartition.thirdTask.id);
+
+						await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+						const requestBody = JSON.stringify({
+							date: testData.futureCompletedPartitionDate.toString(),
+							done: true,
+							trashed: false,
+							previousTaskId: testData.futureCompletedPartition.firstTask.id
+						});
+						expectRequestUrl(fetchMock, `/api/tasks/${testData.pastCompletedPartition.thirdTask.id}/drag-and-drop`);
+						expectRequestMethod(fetchMock, 'PATCH');
+						expectRequestCredentialsMode(fetchMock, 'same-origin');
+						expectRequestBody(fetchMock, requestBody);
+						expectRequestContentType(fetchMock, 'application/json');
+						expectTaskOrder(destinationTaskList, reorderedTasks);
+						await waitFor(() => expectTaskNotToBePresent(sourceTaskList, testData.pastCompletedPartition.thirdTask.title));
+					});
+
+					it('moves a task to the last index', async () => {
+						const expectedRank = generateKeyBetween(testData.futureCompletedPartition.thirdTask.rank, undefined);
+						const response = getResponse({ rank: expectedRank });
+						fetchMock.mockResolvedValue(response);
+
+						const page = render(Page);
+						const sourceTaskList = page.getByLabelText(`Completed tasks dated ${testData.pastCompletedPartitionLabel}`);
+						const destinationTaskList = page.getByLabelText(`Completed tasks dated ${testData.futureCompletedPartitionLabel}`);
+						const reorderedTasks = [...testData.futureCompletedPartition.tasks, testData.pastCompletedPartition.thirdTask];
+						await dropTask(destinationTaskList, reorderedTasks, testData.pastCompletedPartition.thirdTask.id);
+
+						await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+						const requestBody = JSON.stringify({
+							date: testData.futureCompletedPartitionDate.toString(),
+							done: true,
+							trashed: false,
+							previousTaskId: testData.futureCompletedPartition.thirdTask.id
+						});
+						expectRequestUrl(fetchMock, `/api/tasks/${testData.pastCompletedPartition.thirdTask.id}/drag-and-drop`);
+						expectRequestMethod(fetchMock, 'PATCH');
+						expectRequestCredentialsMode(fetchMock, 'same-origin');
+						expectRequestBody(fetchMock, requestBody);
+						expectRequestContentType(fetchMock, 'application/json');
+						expectTaskOrder(destinationTaskList, reorderedTasks);
+						await waitFor(() => expectTaskNotToBePresent(sourceTaskList, testData.pastCompletedPartition.thirdTask.title));
+					});
 				});
 
 				describe('to trashed task partition', () => {
-					it.todo('moves a task to the first index');
+					it('moves a task to the first index', async () => {
+						const expectedRank = generateKeyBetween(undefined, testData.trashedPartition.undatedOpenTask.rank);
+						const response = getResponse({ rank: expectedRank });
+						fetchMock.mockResolvedValue(response);
 
-					it.todo('moves a task to the middle index');
+						const page = render(Page);
+						const sourceTaskList = page.getByLabelText(`Completed tasks dated ${testData.pastCompletedPartitionLabel}`);
+						const destinationTaskList = page.getByLabelText('Trashed tasks');
+						const reorderedTasks = [testData.pastCompletedPartition.thirdTask, ...testData.trashedPartition.tasks];
+						await dropTask(destinationTaskList, reorderedTasks, testData.pastCompletedPartition.thirdTask.id);
 
-					it.todo('moves a task to the last index');
+						await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+						const requestBody = JSON.stringify({
+							date: testData.pastCompletedPartitionDate.toString(),
+							done: true,
+							trashed: true
+						});
+						expectRequestUrl(fetchMock, `/api/tasks/${testData.pastCompletedPartition.thirdTask.id}/drag-and-drop`);
+						expectRequestMethod(fetchMock, 'PATCH');
+						expectRequestCredentialsMode(fetchMock, 'same-origin');
+						expectRequestBody(fetchMock, requestBody);
+						expectRequestContentType(fetchMock, 'application/json');
+						expectTaskOrder(destinationTaskList, reorderedTasks);
+						await waitFor(() => expectTaskNotToBePresent(sourceTaskList, testData.pastCompletedPartition.thirdTask.title));
+					});
+
+					it('moves a task to the middle index', async () => {
+						const expectedRank = generateKeyBetween(
+							testData.trashedPartition.undatedOpenTask.rank,
+							testData.trashedPartition.datedOpenTask.rank
+						);
+						const response = getResponse({ rank: expectedRank });
+						fetchMock.mockResolvedValue(response);
+
+						const page = render(Page);
+						const sourceTaskList = page.getByLabelText(`Completed tasks dated ${testData.pastCompletedPartitionLabel}`);
+						const destinationTaskList = page.getByLabelText('Trashed tasks');
+						const reorderedTasks = [
+							testData.trashedPartition.undatedOpenTask,
+							testData.pastCompletedPartition.thirdTask,
+							testData.trashedPartition.datedOpenTask,
+							testData.trashedPartition.datedDoneTask
+						];
+						await dropTask(destinationTaskList, reorderedTasks, testData.pastCompletedPartition.thirdTask.id);
+
+						await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+						const requestBody = JSON.stringify({
+							date: testData.pastCompletedPartitionDate.toString(),
+							done: true,
+							trashed: true,
+							previousTaskId: testData.trashedPartition.undatedOpenTask.id
+						});
+						expectRequestUrl(fetchMock, `/api/tasks/${testData.pastCompletedPartition.thirdTask.id}/drag-and-drop`);
+						expectRequestMethod(fetchMock, 'PATCH');
+						expectRequestCredentialsMode(fetchMock, 'same-origin');
+						expectRequestBody(fetchMock, requestBody);
+						expectRequestContentType(fetchMock, 'application/json');
+						expectTaskOrder(destinationTaskList, reorderedTasks);
+						await waitFor(() => expectTaskNotToBePresent(sourceTaskList, testData.pastCompletedPartition.thirdTask.title));
+					});
+
+					it('moves a task to the last index', async () => {
+						const expectedRank = generateKeyBetween(testData.trashedPartition.datedDoneTask.rank, undefined);
+						const response = getResponse({ rank: expectedRank });
+						fetchMock.mockResolvedValue(response);
+
+						const page = render(Page);
+						const sourceTaskList = page.getByLabelText(`Completed tasks dated ${testData.pastCompletedPartitionLabel}`);
+						const destinationTaskList = page.getByLabelText('Trashed tasks');
+						const reorderedTasks = [...testData.trashedPartition.tasks, testData.pastCompletedPartition.thirdTask];
+						await dropTask(destinationTaskList, reorderedTasks, testData.pastCompletedPartition.thirdTask.id);
+
+						await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+						const requestBody = JSON.stringify({
+							date: testData.pastCompletedPartitionDate.toString(),
+							done: true,
+							trashed: true,
+							previousTaskId: testData.trashedPartition.datedDoneTask.id
+						});
+						expectRequestUrl(fetchMock, `/api/tasks/${testData.pastCompletedPartition.thirdTask.id}/drag-and-drop`);
+						expectRequestMethod(fetchMock, 'PATCH');
+						expectRequestCredentialsMode(fetchMock, 'same-origin');
+						expectRequestBody(fetchMock, requestBody);
+						expectRequestContentType(fetchMock, 'application/json');
+						expectTaskOrder(destinationTaskList, reorderedTasks);
+						await waitFor(() => expectTaskNotToBePresent(sourceTaskList, testData.pastCompletedPartition.thirdTask.title));
+					});
 				});
 			});
 		});
