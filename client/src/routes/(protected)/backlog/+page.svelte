@@ -1,23 +1,18 @@
 <script lang="ts">
-	import {CheckCheck, MousePointer2, Plus, SquarePen, Trash2, XCircle} from '@lucide/svelte';
+	import { CheckCheck, MousePointer2, Plus, SquarePen, Trash2, XCircle } from '@lucide/svelte';
 	import Button from '$lib/components/shared/button.svelte';
 	import InfiniteScrollContainer from '$lib/components/shared/infinite-scroll-container.svelte';
 	import TaskDialog from '$lib/components/taskCreation/task-dialog.svelte';
 	import Task from '$lib/components/taskDisplay/task.svelte';
-	import {datedUntrashedOpenTaskStore} from '$lib/stores/dated-untrashed-open-task-store.svelte';
-	import {undatedTaskStore} from '$lib/stores/undated-task-store.svelte';
-	import {taskService} from '$lib/services/task-service.svelte';
-	import type {TaskDragAndDropRequest} from '$lib/types/requests/task-drag-and-drop-request';
-	import {getDateLabel} from '$lib/utils/date';
-	import {getLocalTimeZone, parseDate, today} from '@internationalized/date';
-	import type {DatedUntrashedOpenTaskResponse} from '$lib/types/responses/dated-untrashed-open-task-response';
-	import type {UndatedTaskResponse} from '$lib/types/responses/undated-task-response';
-	import {
-		type DndEvent,
-		dndzone,
-		SHADOW_ITEM_MARKER_PROPERTY_NAME as isShadowTask,
-		TRIGGERS
-	} from 'svelte-dnd-action';
+	import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-task-store.svelte';
+	import { undatedTaskStore } from '$lib/stores/undated-task-store.svelte';
+	import { taskService } from '$lib/services/task-service.svelte';
+	import type { TaskDragAndDropRequest } from '$lib/types/requests/task-drag-and-drop-request';
+	import { getDateLabel } from '$lib/utils/date';
+	import { getLocalTimeZone, parseDate, today } from '@internationalized/date';
+	import type { DatedUntrashedOpenTaskResponse } from '$lib/types/responses/dated-untrashed-open-task-response';
+	import type { UndatedTaskResponse } from '$lib/types/responses/undated-task-response';
+	import { type DndEvent, dndzone, SHADOW_ITEM_MARKER_PROPERTY_NAME as isShadowTask, TRIGGERS } from 'svelte-dnd-action';
 
 	type TaskDragItem = (DatedUntrashedOpenTaskResponse | UndatedTaskResponse) & {
 		[isShadowTask]?: boolean;

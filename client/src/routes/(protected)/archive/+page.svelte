@@ -36,7 +36,9 @@
 	let endDate = $state<DateValue>();
 	const filtersApplied = $derived(unselectedCategoryIds.length > 0 || startDate !== undefined || endDate !== undefined);
 	let trashedTaskDragItems = $state<TaskDragItem[]>([...trashedTaskStore.trashedTasks]);
-	let dateKeyToUntrashedTaskDragItemsRecord = $state<Record<string, TaskDragItem[]>>(createDateKeyToUntrashedTaskDragItemsRecord());
+	let dateKeyToUntrashedTaskDragItemsRecord = $state<Record<string, TaskDragItem[]>>(
+		createDateKeyToUntrashedTaskDragItemsRecord()
+	);
 
 	$effect.pre(() => {
 		if (dragging) return;
@@ -291,7 +293,7 @@
 							use:dndzone={{
 								items: taskDragItems,
 								dragDisabled: selectionEnabled || taskService.taskMutationBlocked,
-								dropTargetStyle:{ outline: 'none' }
+								dropTargetStyle: { outline: 'none' }
 							}}
 							onconsider={(event) => handleConsider(event, groupKey)}
 							onfinalize={(event) => handleFinalize(event, groupKey)}

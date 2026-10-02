@@ -97,51 +97,59 @@ export function getResponse(body: unknown, status = 200): Response {
 	});
 }
 
-export function expectRequestUrl(fetchMock: ReturnType<typeof vi.fn>, expectedUrl: string): void {
-	const requestUrl = fetchMock.mock.calls[0]?.[0];
+export function expectRequestUrl(fetchMock: ReturnType<typeof vi.fn>, expectedUrl: string, callIndex = 0): void {
+	const requestUrl = fetchMock.mock.calls[callIndex]?.[0];
 	expect(requestUrl).toBe(expectedUrl);
 }
 
-export function expectRequestPath(fetchMock: ReturnType<typeof vi.fn>, expectedPath: string): void {
-	const parsedRequestUrl = getParsedRequestUrl(fetchMock);
+export function expectRequestPath(fetchMock: ReturnType<typeof vi.fn>, expectedPath: string, callIndex = 0): void {
+	const parsedRequestUrl = getParsedRequestUrl(fetchMock, callIndex);
 	expect(parsedRequestUrl.pathname).toBe(expectedPath);
 }
 
-export function expectRequestMethod(fetchMock: ReturnType<typeof vi.fn>, expectedMethod: string): void {
-	const requestOptions = fetchMock.mock.calls[0]?.[1] as RequestInit;
+export function expectRequestMethod(fetchMock: ReturnType<typeof vi.fn>, expectedMethod: string, callIndex = 0): void {
+	const requestOptions = fetchMock.mock.calls[callIndex]?.[1] as RequestInit;
 	expect(requestOptions.method).toBe(expectedMethod);
 }
 
-export function expectRequestCredentialsMode(fetchMock: ReturnType<typeof vi.fn>, expectedMode: RequestCredentials): void {
-	const requestOptions = fetchMock.mock.calls[0]?.[1] as RequestInit;
+export function expectRequestCredentialsMode(
+	fetchMock: ReturnType<typeof vi.fn>,
+	expectedMode: RequestCredentials,
+	callIndex = 0
+): void {
+	const requestOptions = fetchMock.mock.calls[callIndex]?.[1] as RequestInit;
 	expect(requestOptions.credentials).toBe(expectedMode);
 }
 
-export function expectRequestBody(fetchMock: ReturnType<typeof vi.fn>, expectedBody: string | undefined): void {
-	const requestOptions = fetchMock.mock.calls[0]?.[1] as RequestInit;
+export function expectRequestBody(fetchMock: ReturnType<typeof vi.fn>, expectedBody: string | undefined, callIndex = 0): void {
+	const requestOptions = fetchMock.mock.calls[callIndex]?.[1] as RequestInit;
 	expect(requestOptions.body).toBe(expectedBody);
 }
 
-export function expectRequestContentType(fetchMock: ReturnType<typeof vi.fn>, expectedContentType: string): void {
-	const requestOptions = fetchMock.mock.calls[0]?.[1] as RequestInit;
+export function expectRequestContentType(fetchMock: ReturnType<typeof vi.fn>, expectedContentType: string, callIndex = 0): void {
+	const requestOptions = fetchMock.mock.calls[callIndex]?.[1] as RequestInit;
 	const requestHeaders = requestOptions.headers as Headers;
 	expect(requestHeaders).toBeInstanceOf(Headers);
 	const contentType = requestHeaders.get('Content-Type');
 	expect(contentType).toBe(expectedContentType);
 }
 
-export function getRequestSearchParameter(fetchMock: ReturnType<typeof vi.fn>, parameterName: string): string | null {
-	const parsedRequestUrl = getParsedRequestUrl(fetchMock);
+export function getRequestSearchParameter(
+	fetchMock: ReturnType<typeof vi.fn>,
+	parameterName: string,
+	callIndex = 0
+): string | null {
+	const parsedRequestUrl = getParsedRequestUrl(fetchMock, callIndex);
 	return parsedRequestUrl.searchParams.get(parameterName);
 }
 
-function getRequestUrl(fetchMock: ReturnType<typeof vi.fn>): string {
-	const requestUrl = fetchMock.mock.calls[0]?.[0];
+function getRequestUrl(fetchMock: ReturnType<typeof vi.fn>, callIndex: number): string {
+	const requestUrl = fetchMock.mock.calls[callIndex]?.[0];
 	if (typeof requestUrl !== 'string') throw new Error('Expected the request URL to be a string.');
 	return requestUrl;
 }
 
-function getParsedRequestUrl(fetchMock: ReturnType<typeof vi.fn>): URL {
-	const requestUrl = getRequestUrl(fetchMock);
+function getParsedRequestUrl(fetchMock: ReturnType<typeof vi.fn>, callIndex: number): URL {
+	const requestUrl = getRequestUrl(fetchMock, callIndex);
 	return new URL(requestUrl, document.baseURI);
 }

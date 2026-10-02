@@ -12,10 +12,9 @@ function addOrUpdateTasks(tasks: DatedUntrashedOpenTaskResponse[]): void {
 	const todayTasks = tasks.filter((task) => task.date.compare(currentDate) === 0);
 	const nonTodayTasks = tasks.filter((task) => task.date.compare(currentDate) !== 0);
 
-	datedUntrashedOpenTodayTasks = [
-		...datedUntrashedOpenTodayTasks.filter((task) => !taskIds.has(task.id)),
-		...todayTasks
-	].sort(compareTasksByDateAndRank);
+	datedUntrashedOpenTodayTasks = [...datedUntrashedOpenTodayTasks.filter((task) => !taskIds.has(task.id)), ...todayTasks].sort(
+		compareTasksByDateAndRank
+	);
 	datedUntrashedOpenNonTodayTasks = [
 		...datedUntrashedOpenNonTodayTasks.filter((task) => !taskIds.has(task.id)),
 		...nonTodayTasks

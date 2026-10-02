@@ -43,8 +43,8 @@
 					<Dialog.Description>
 						{#snippet child({ props: descriptionProps })}
 							<p {...descriptionProps} class="description">
-								Filters are currently applied. Emptying the trash will permanently delete all trashed tasks, including
-								tasks hidden by these filters.
+								Filters are currently applied. Emptying the trash will permanently delete all trashed tasks, including tasks
+								hidden by these filters.
 							</p>
 						{/snippet}
 					</Dialog.Description>
