@@ -529,7 +529,16 @@ describe('archive page tests', () => {
 		});
 
 		describe('infinite scroll', () => {
-			it.todo('does not enable infinite scrolling for exhausted partitions');
+			it('does not enable infinite scrolling for exhausted partitions', () => {
+				const page = render(Page);
+				const completedColumn = getTaskColumn(page, 'Completed');
+				const trashedColumn = page.getByLabelText('Trashed tasks').closest('section');
+				if (!(trashedColumn instanceof HTMLElement)) throw new Error('Expected the trashed task column.');
+
+				expect(completedColumn.querySelector('.loading-sentinel')).not.toBeInTheDocument();
+				expect(trashedColumn.querySelector('.loading-sentinel')).not.toBeInTheDocument();
+				expect(fetchMock).not.toHaveBeenCalled();
+			});
 		});
 
 		describe('drag and drop', () => {
