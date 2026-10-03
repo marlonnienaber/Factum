@@ -1,15 +1,15 @@
-import {fireEvent, render, type RenderResult, waitFor, within} from '@testing-library/svelte';
+import { fireEvent, render, type RenderResult, waitFor, within } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
-import {getLocalTimeZone, today} from '@internationalized/date';
-import {generateKeyBetween, generateNKeysBetween} from 'fractional-indexing';
-import {categoryStore} from '$lib/stores/category-store.svelte';
-import {datedUntrashedDoneTaskStore} from '$lib/stores/dated-untrashed-done-task-store.svelte';
-import {datedUntrashedOpenTaskStore} from '$lib/stores/dated-untrashed-open-task-store.svelte';
-import {todayProgressStore} from '$lib/stores/today-progress-store.svelte';
-import {trashedTaskStore} from '$lib/stores/trashed-task-store.svelte';
-import {undatedTaskStore} from '$lib/stores/undated-task-store.svelte';
-import type {DatedUntrashedDoneTaskResponse} from '$lib/types/responses/dated-untrashed-done-task-response';
-import type {DatedUntrashedOpenTaskResponse} from '$lib/types/responses/dated-untrashed-open-task-response';
+import { getLocalTimeZone, today } from '@internationalized/date';
+import { generateKeyBetween, generateNKeysBetween } from 'fractional-indexing';
+import { categoryStore } from '$lib/stores/category-store.svelte';
+import { datedUntrashedDoneTaskStore } from '$lib/stores/dated-untrashed-done-task-store.svelte';
+import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-task-store.svelte';
+import { todayProgressStore } from '$lib/stores/today-progress-store.svelte';
+import { trashedTaskStore } from '$lib/stores/trashed-task-store.svelte';
+import { undatedTaskStore } from '$lib/stores/undated-task-store.svelte';
+import type { DatedUntrashedDoneTaskResponse } from '$lib/types/responses/dated-untrashed-done-task-response';
+import type { DatedUntrashedOpenTaskResponse } from '$lib/types/responses/dated-untrashed-open-task-response';
 import {
 	expectInputToBeInvalid,
 	expectRequestBody,
@@ -24,7 +24,7 @@ import {
 	getSelectById,
 	getTextareaById
 } from '$lib/utils/testing';
-import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import Page from './+page.svelte';
 
 describe('workbench page tests', () => {
@@ -525,11 +525,39 @@ describe('workbench page tests', () => {
 		});
 
 		describe('filtering', () => {
-			it.todo('applies category filter');
+			it('applies category filter', async () => {
+				const openTasks = [testData.openPartition.secondTask, testData.openPartition.thirdTask];
+				const doneTasks = [testData.donePartition.thirdTask];
+				mockFilterResponses(openTasks, doneTasks);
+
+				const page = render(Page);
+				const excludePersonalButtons = page.getAllByRole('button', { name: 'Exclude Personal' });
+				await userEvent.click(excludePersonalButtons[0]!);
+
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+				expectRequestUrl(fetchMock, '/api/tasks/dated-untrashed-open-today?categoryId=8');
+				expectRequestMethod(fetchMock, 'GET');
+				expectRequestCredentialsMode(fetchMock, 'same-origin');
+				expectRequestBody(fetchMock, undefined);
+				expectRequestUrl(fetchMock, '/api/tasks/dated-untrashed-done-today?categoryId=8', 1);
+				expectRequestMethod(fetchMock, 'GET', 1);
+				expectRequestCredentialsMode(fetchMock, 'same-origin', 1);
+				expectRequestBody(fetchMock, undefined, 1);
+				expect(datedUntrashedOpenTaskStore.datedUntrashedOpenTodayTasks).toEqual(openTasks);
+				expect(datedUntrashedDoneTaskStore.datedUntrashedDoneTasks).toEqual(doneTasks);
+			});
 		});
 
 		describe('infinite scroll', () => {
-			it.todo('does not enable infinite scrolling for exhausted partitions');
+			it('does not enable infinite scrolling for exhausted partitions', () => {
+				const page = render(Page);
+				const openTaskColumn = getTaskColumn(page, 'Open');
+				const doneTaskColumn = getTaskColumn(page, 'Done');
+
+				expect(openTaskColumn.querySelector('.loading-sentinel')).not.toBeInTheDocument();
+				expect(doneTaskColumn.querySelector('.loading-sentinel')).not.toBeInTheDocument();
+				expect(fetchMock).not.toHaveBeenCalled();
+			});
 		});
 
 		describe('drag and drop', () => {
@@ -723,6 +751,27 @@ function expectTaskToBePresent(
 	expect(task).toBeInTheDocument();
 	if (description !== undefined) expect(taskContent.getByText(description)).toBeInTheDocument();
 	expect(taskContent.getByText(categoryName)).toBeInTheDocument();
+}
+
+function mockFilterResponses(openTasks: DatedUntrashedOpenTaskResponse[], doneTasks: DatedUntrashedDoneTaskResponse[]): void {
+	const serializeTasks = (tasks: (DatedUntrashedOpenTaskResponse | DatedUntrashedDoneTaskResponse)[]) =>
+		tasks.map((task) => ({
+			id: task.id,
+			categoryId: task.categoryId,
+			title: task.title,
+			description: task.description,
+			date: task.date.toString(),
+			rank: task.rank
+		}));
+	const openTasksResponse = getResponse({ tasks: serializeTasks(openTasks), hasMore: false });
+	const doneTasksResponse = getResponse({ tasks: serializeTasks(doneTasks), hasMore: false });
+	fetchMock.mockResolvedValueOnce(openTasksResponse).mockResolvedValueOnce(doneTasksResponse);
+}
+
+function getTaskColumn(page: RenderResult<typeof Page>, heading: string): HTMLElement {
+	const taskColumn = page.getByRole('heading', { name: heading }).closest('section');
+	if (!(taskColumn instanceof HTMLElement)) throw new Error(`Expected a task column headed "${heading}".`);
+	return taskColumn;
 }
 
 function addTasksExceedingMaximumBatchSize(): string[] {
