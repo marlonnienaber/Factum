@@ -17,13 +17,17 @@ import {
 	expectRequestContentType,
 	expectRequestCredentialsMode,
 	expectRequestMethod,
+	expectRequestPath,
 	expectRequestUrl,
 	expectSelectToBeInvalid,
 	expectTextareaToBeInvalid,
 	getInputById,
+	getRequestSearchParameter,
 	getResponse,
 	getSelectById,
-	getTextareaById
+	getTextareaById,
+	intersectionObserverMock,
+	mockPendingFetch
 } from '$lib/utils/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import Page from './+page.svelte';
@@ -1049,15 +1053,193 @@ describe('workbench page tests', () => {
 		});
 
 		describe('infinite scroll', () => {
-			it.todo('loads more open tasks without applied filters');
+			it('loads more open tasks without applied filters', async () => {
+				const nextTaskResponse = {
+					id: 7,
+					categoryId: personalCategory.id,
+					title: 'Plan the weekend groceries',
+					date: todayDate.toString(),
+					rank: generateKeyBetween(testData.openPartition.thirdTask.rank, undefined)
+				};
+				const nextTask: DatedUntrashedOpenTaskResponse = {
+					...nextTaskResponse,
+					date: todayDate,
+					done: false
+				};
+				const existingDoneTasks = [...datedUntrashedDoneTaskStore.datedUntrashedDoneTasks];
+				const resolveFetch = mockPendingFetch(fetchMock);
 
-			it.todo('loads more open tasks with applied filters');
+				const page = render(Page);
+				const openTaskColumn = getTaskColumn(page, 'Open');
+				const loadingSentinel = getLoadingSentinel(openTaskColumn);
+				intersectionObserverMock.enterNode(loadingSentinel);
 
-			it.todo('loads more done tasks without applied filters');
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+				expectRequestPath(fetchMock, '/api/tasks/dated-untrashed-open-today');
+				expectRequestMethod(fetchMock, 'GET');
+				expectRequestCredentialsMode(fetchMock, 'same-origin');
+				expectRequestBody(fetchMock, undefined);
+				expect(getRequestSearchParameter(fetchMock, 'rank')).toBe(testData.openPartition.thirdTask.rank);
+				expect(within(openTaskColumn).getByLabelText('Loading more items')).toBeInTheDocument();
+				expect(within(getTaskColumn(page, 'Done')).queryByLabelText('Loading more items')).not.toBeInTheDocument();
 
-			it.todo('loads more done tasks with applied filters');
+				resolveFetch(getResponse({ tasks: [nextTaskResponse], hasMore: false }));
 
-			it.todo('disables infinite scrolling while a task is being dragged');
+				await waitFor(() => expect(datedUntrashedOpenTaskStore.datedUntrashedOpenTodayTasks).toContainEqual(nextTask));
+				expect(datedUntrashedOpenTaskStore.todayTasksHasMore).toBe(false);
+				expectTaskToBePresent(openTaskColumn, nextTask.title, nextTask.description, personalCategory.title);
+				expect(openTaskColumn.querySelector('.loading-sentinel')).not.toBeInTheDocument();
+				expect(datedUntrashedDoneTaskStore.datedUntrashedDoneTasks).toEqual(existingDoneTasks);
+			});
+
+			it('loads more open tasks with applied filters', async () => {
+				const filteredOpenTasks = [testData.openPartition.secondTask, testData.openPartition.thirdTask];
+				const filteredDoneTasks = [testData.donePartition.thirdTask];
+				mockFilterResponses(filteredOpenTasks, filteredDoneTasks, true);
+
+				const page = render(Page);
+				const excludePersonalButtons = page.getAllByRole('button', { name: 'Exclude Personal' });
+				await userEvent.click(excludePersonalButtons[0]!);
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+				fetchMock.mockClear();
+
+				const nextTaskResponse = {
+					id: 7,
+					categoryId: workCategory.id,
+					title: "Prepare tomorrow's stand-up notes",
+					date: todayDate.toString(),
+					rank: generateKeyBetween(testData.openPartition.thirdTask.rank, undefined)
+				};
+				const nextTask: DatedUntrashedOpenTaskResponse = {
+					...nextTaskResponse,
+					date: todayDate,
+					done: false
+				};
+				const resolveFetch = mockPendingFetch(fetchMock);
+				const openTaskColumn = getTaskColumn(page, 'Open');
+				intersectionObserverMock.enterNode(getLoadingSentinel(openTaskColumn));
+
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+				expectRequestPath(fetchMock, '/api/tasks/dated-untrashed-open-today');
+				expectRequestMethod(fetchMock, 'GET');
+				expectRequestCredentialsMode(fetchMock, 'same-origin');
+				expectRequestBody(fetchMock, undefined);
+				expect(getRequestSearchParameter(fetchMock, 'categoryId')).toBe(String(workCategory.id));
+				expect(getRequestSearchParameter(fetchMock, 'rank')).toBe(testData.openPartition.thirdTask.rank);
+
+				resolveFetch(getResponse({ tasks: [nextTaskResponse], hasMore: false }));
+
+				await waitFor(() => expect(datedUntrashedOpenTaskStore.datedUntrashedOpenTodayTasks).toContainEqual(nextTask));
+				expect(datedUntrashedOpenTaskStore.todayTasksHasMore).toBe(false);
+				expectTaskToBePresent(openTaskColumn, nextTask.title, nextTask.description, workCategory.title);
+				expect(openTaskColumn.querySelector('.loading-sentinel')).not.toBeInTheDocument();
+			});
+
+			it('loads more done tasks without applied filters', async () => {
+				const nextTaskResponse = {
+					id: 7,
+					categoryId: personalCategory.id,
+					title: 'Confirm the dentist appointment',
+					date: todayDate.toString(),
+					rank: generateKeyBetween(testData.donePartition.thirdTask.rank, undefined)
+				};
+				const nextTask: DatedUntrashedDoneTaskResponse = {
+					...nextTaskResponse,
+					date: todayDate,
+					done: true
+				};
+				const existingOpenTasks = [...datedUntrashedOpenTaskStore.datedUntrashedOpenTodayTasks];
+				const resolveFetch = mockPendingFetch(fetchMock);
+
+				const page = render(Page);
+				const doneTaskColumn = getTaskColumn(page, 'Done');
+				const loadingSentinel = getLoadingSentinel(doneTaskColumn);
+				intersectionObserverMock.enterNode(loadingSentinel);
+
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+				expectRequestPath(fetchMock, '/api/tasks/dated-untrashed-done-today');
+				expectRequestMethod(fetchMock, 'GET');
+				expectRequestCredentialsMode(fetchMock, 'same-origin');
+				expectRequestBody(fetchMock, undefined);
+				expect(getRequestSearchParameter(fetchMock, 'rank')).toBe(testData.donePartition.thirdTask.rank);
+				expect(within(doneTaskColumn).getByLabelText('Loading more items')).toBeInTheDocument();
+				expect(within(getTaskColumn(page, 'Open')).queryByLabelText('Loading more items')).not.toBeInTheDocument();
+
+				resolveFetch(getResponse({ tasks: [nextTaskResponse], hasMore: false }));
+
+				await waitFor(() => expect(datedUntrashedDoneTaskStore.datedUntrashedDoneTasks).toContainEqual(nextTask));
+				expect(datedUntrashedDoneTaskStore.hasMore).toBe(false);
+				expectTaskToBePresent(doneTaskColumn, nextTask.title, nextTask.description, personalCategory.title);
+				expect(doneTaskColumn.querySelector('.loading-sentinel')).not.toBeInTheDocument();
+				expect(datedUntrashedOpenTaskStore.datedUntrashedOpenTodayTasks).toEqual(existingOpenTasks);
+			});
+
+			it('loads more done tasks with applied filters', async () => {
+				const filteredOpenTasks = [testData.openPartition.secondTask, testData.openPartition.thirdTask];
+				const filteredDoneTasks = [testData.donePartition.thirdTask];
+				mockFilterResponses(filteredOpenTasks, filteredDoneTasks, true);
+
+				const page = render(Page);
+				const excludePersonalButtons = page.getAllByRole('button', { name: 'Exclude Personal' });
+				await userEvent.click(excludePersonalButtons[0]!);
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+				fetchMock.mockClear();
+
+				const nextTaskResponse = {
+					id: 7,
+					categoryId: workCategory.id,
+					title: 'Publish the weekly status update',
+					date: todayDate.toString(),
+					rank: generateKeyBetween(testData.donePartition.thirdTask.rank, undefined)
+				};
+				const nextTask: DatedUntrashedDoneTaskResponse = {
+					...nextTaskResponse,
+					date: todayDate,
+					done: true
+				};
+				const resolveFetch = mockPendingFetch(fetchMock);
+				const doneTaskColumn = getTaskColumn(page, 'Done');
+				intersectionObserverMock.enterNode(getLoadingSentinel(doneTaskColumn));
+
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+				expectRequestPath(fetchMock, '/api/tasks/dated-untrashed-done-today');
+				expectRequestMethod(fetchMock, 'GET');
+				expectRequestCredentialsMode(fetchMock, 'same-origin');
+				expectRequestBody(fetchMock, undefined);
+				expect(getRequestSearchParameter(fetchMock, 'categoryId')).toBe(String(workCategory.id));
+				expect(getRequestSearchParameter(fetchMock, 'rank')).toBe(testData.donePartition.thirdTask.rank);
+
+				resolveFetch(getResponse({ tasks: [nextTaskResponse], hasMore: false }));
+
+				await waitFor(() => expect(datedUntrashedDoneTaskStore.datedUntrashedDoneTasks).toContainEqual(nextTask));
+				expect(datedUntrashedDoneTaskStore.hasMore).toBe(false);
+				expectTaskToBePresent(doneTaskColumn, nextTask.title, nextTask.description, workCategory.title);
+				expect(doneTaskColumn.querySelector('.loading-sentinel')).not.toBeInTheDocument();
+			});
+
+			it('disables infinite scrolling while a task is being dragged', async () => {
+				const page = render(Page);
+				const openTaskColumn = getTaskColumn(page, 'Open');
+				const doneTaskColumn = getTaskColumn(page, 'Done');
+				const openLoadingSentinel = getLoadingSentinel(openTaskColumn);
+				const doneLoadingSentinel = getLoadingSentinel(doneTaskColumn);
+
+				const openTaskList = page.getByLabelText('Open tasks');
+				const event = new CustomEvent<DndEvent<DatedUntrashedOpenTaskResponse>>('consider', {
+					detail: {
+						items: testData.openPartition.tasks,
+						info: {
+							trigger: TRIGGERS.DRAG_STARTED,
+							id: String(testData.openPartition.firstTask.id),
+							source: SOURCES.POINTER
+						}
+					}
+				});
+				await fireEvent(openTaskList, event);
+
+				intersectionObserverMock.enterNodes([openLoadingSentinel, doneLoadingSentinel]);
+				expect(fetchMock).not.toHaveBeenCalled();
+			});
 		});
 	});
 });
@@ -1188,7 +1370,11 @@ function expectTaskToBePresent(
 	expect(taskContent.getByText(categoryName)).toBeInTheDocument();
 }
 
-function mockFilterResponses(openTasks: DatedUntrashedOpenTaskResponse[], doneTasks: DatedUntrashedDoneTaskResponse[]): void {
+function mockFilterResponses(
+	openTasks: DatedUntrashedOpenTaskResponse[],
+	doneTasks: DatedUntrashedDoneTaskResponse[],
+	hasMore = false
+): void {
 	const serializeTasks = (tasks: (DatedUntrashedOpenTaskResponse | DatedUntrashedDoneTaskResponse)[]) =>
 		tasks.map((task) => ({
 			id: task.id,
@@ -1198,8 +1384,8 @@ function mockFilterResponses(openTasks: DatedUntrashedOpenTaskResponse[], doneTa
 			date: task.date.toString(),
 			rank: task.rank
 		}));
-	const openTasksResponse = getResponse({ tasks: serializeTasks(openTasks), hasMore: false });
-	const doneTasksResponse = getResponse({ tasks: serializeTasks(doneTasks), hasMore: false });
+	const openTasksResponse = getResponse({ tasks: serializeTasks(openTasks), hasMore });
+	const doneTasksResponse = getResponse({ tasks: serializeTasks(doneTasks), hasMore });
 	fetchMock.mockResolvedValueOnce(openTasksResponse).mockResolvedValueOnce(doneTasksResponse);
 }
 
@@ -1207,6 +1393,12 @@ function getTaskColumn(page: RenderResult<typeof Page>, heading: string): HTMLEl
 	const taskColumn = page.getByRole('heading', { name: heading }).closest('section');
 	if (!(taskColumn instanceof HTMLElement)) throw new Error(`Expected a task column headed "${heading}".`);
 	return taskColumn;
+}
+
+function getLoadingSentinel(taskColumn: HTMLElement): HTMLElement {
+	const loadingSentinel = taskColumn.querySelector('.loading-sentinel');
+	if (!(loadingSentinel instanceof HTMLElement)) throw new Error('Expected the task column to have a loading sentinel.');
+	return loadingSentinel;
 }
 
 async function dropTask(
