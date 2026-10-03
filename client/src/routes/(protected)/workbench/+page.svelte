@@ -11,12 +11,19 @@
 	import type { DatedUntrashedDoneTaskResponse } from '$lib/types/responses/dated-untrashed-done-task-response';
 	import type { DatedUntrashedOpenTaskResponse } from '$lib/types/responses/dated-untrashed-open-task-response';
 	import { getLocalTimeZone, today } from '@internationalized/date';
-	import { Ghost, Plus, SquarePen, Trash2 } from '@lucide/svelte';
+	import { CheckCheck, Ghost, MousePointer2, Plus, RotateCcw, SquarePen, Trash2, XCircle } from '@lucide/svelte';
 
+	const maximumBatchSize = 50;
 	const todayDate = today(getLocalTimeZone());
+
 	let taskDialogOpen = $state(false);
 	let taskDialogTask = $state<DatedUntrashedOpenTaskResponse | DatedUntrashedDoneTaskResponse>();
+	let selectionEnabled = $state(false);
+	let selectedTaskIds = $state<number[]>([]);
 	let unselectedCategoryIds = $state<number[]>([]);
+	const allSelectedTasksOpen = $derived(areAllSelectedTasksOpen());
+	const allSelectedTasksDone = $derived(areAllSelectedTasksDone());
+	const batchSizeExceeded = $derived(selectedTaskIds.length > maximumBatchSize);
 
 	function openCreateTaskDialog(): void {
 		taskDialogTask = undefined;
@@ -33,6 +40,37 @@
 			{ label: 'Edit', icon: SquarePen, onclick: () => openEditTaskDialog(task) },
 			{ label: 'Trash', icon: Trash2, onclick: () => taskService.trashTask(task.id) }
 		];
+	}
+
+	function cancelTaskSelection(): void {
+		selectionEnabled = false;
+		selectedTaskIds = [];
+	}
+
+	async function completeSelectedTasks(): Promise<void> {
+		if (!allSelectedTasksOpen || batchSizeExceeded) return;
+		const completed = await taskService.completeTasks(selectedTaskIds);
+		if (completed) cancelTaskSelection();
+	}
+
+	async function openSelectedTasks(): Promise<void> {
+		if (!allSelectedTasksDone || batchSizeExceeded) return;
+		const opened = await taskService.openTasks(selectedTaskIds);
+		if (opened) cancelTaskSelection();
+	}
+
+	async function trashSelectedTasks(): Promise<void> {
+		if (selectedTaskIds.length === 0 || batchSizeExceeded) return;
+		const trashed = await taskService.trashTasks(selectedTaskIds);
+		if (trashed) cancelTaskSelection();
+	}
+
+	function updateTaskSelection(taskId: number, selected: boolean): void {
+		if (selected && !selectedTaskIds.includes(taskId)) {
+			selectedTaskIds = [...selectedTaskIds, taskId];
+		} else if (!selected) {
+			selectedTaskIds = selectedTaskIds.filter((selectedTaskId) => selectedTaskId !== taskId);
+		}
 	}
 
 	function handleCategorySelectionChange(nextUnselectedCategoryIds: number[]): void {
@@ -66,6 +104,22 @@
 			return taskService.fetchDatedUntrashedDoneTodayTasks(lastLoadedTask.rank, getSelectedCategoryIds());
 		}
 	}
+
+	function areAllSelectedTasksOpen(): boolean {
+		const atLeastOneTaskSelected = selectedTaskIds.length > 0;
+		const everySelectedTaskIsOpen = selectedTaskIds.every((taskId) =>
+			datedUntrashedOpenTaskStore.datedUntrashedOpenTodayTasks.some((task) => task.id === taskId)
+		);
+		return atLeastOneTaskSelected && everySelectedTaskIsOpen;
+	}
+
+	function areAllSelectedTasksDone(): boolean {
+		const atLeastOneTaskSelected = selectedTaskIds.length > 0;
+		const everySelectedTaskIsDone = selectedTaskIds.every((taskId) =>
+			datedUntrashedDoneTaskStore.datedUntrashedDoneTasks.some((task) => task.id === taskId)
+		);
+		return atLeastOneTaskSelected && everySelectedTaskIsDone;
+	}
 </script>
 
 <svelte:head>
@@ -75,10 +129,36 @@
 <div class="frame">
 	<div class="left-column-container">
 		<div class="controls-section">
-			<Button onclick={openCreateTaskDialog}>
-				Add Task
-				{#snippet trailingIcon()}<Plus size={17} strokeWidth={2.5} />{/snippet}
-			</Button>
+			{#if selectionEnabled}
+				<Button onclick={cancelTaskSelection}>
+					Cancel
+					{#snippet trailingIcon()}<XCircle size={17} aria-hidden="true" />{/snippet}
+				</Button>
+				<Button disabled={!allSelectedTasksOpen || batchSizeExceeded} onclick={completeSelectedTasks}>
+					Complete
+					{#snippet trailingIcon()}<CheckCheck size={17} aria-hidden="true" />{/snippet}
+				</Button>
+				<Button disabled={!allSelectedTasksDone || batchSizeExceeded} onclick={openSelectedTasks}>
+					Open
+					{#snippet trailingIcon()}<RotateCcw size={17} aria-hidden="true" />{/snippet}
+				</Button>
+				<Button disabled={selectedTaskIds.length === 0 || batchSizeExceeded} onclick={trashSelectedTasks}>
+					Trash
+					{#snippet trailingIcon()}<Trash2 size={17} aria-hidden="true" />{/snippet}
+				</Button>
+				<span class:limit-exceeded={batchSizeExceeded} class="selection-count">
+					{selectedTaskIds.length} / {maximumBatchSize}
+				</span>
+			{:else}
+				<Button onclick={openCreateTaskDialog}>
+					Add Task
+					{#snippet trailingIcon()}<Plus size={17} strokeWidth={2.5} />{/snippet}
+				</Button>
+				<Button onclick={() => selectionEnabled = true}>
+					Select Tasks
+					{#snippet trailingIcon()}<MousePointer2 size={17} aria-hidden="true" />{/snippet}
+				</Button>
+			{/if}
 		</div>
 		<section class="category-selection-section">
 			<h1>Category Filter</h1>
@@ -106,9 +186,9 @@
 						{task}
 						actions={getTaskActions(task)}
 						isShadowItem={false}
-						selectionEnabled={false}
-						selected={false}
-						onSelectedChange={() => {}}
+						{selectionEnabled}
+						selected={selectedTaskIds.includes(task.id)}
+						onSelectedChange={updateTaskSelection}
 					/>
 				{/each}
 			</div>
@@ -123,9 +203,9 @@
 						{task}
 						actions={getTaskActions(task)}
 						isShadowItem={false}
-						selectionEnabled={false}
-						selected={false}
-						onSelectedChange={() => {}}
+						{selectionEnabled}
+						selected={selectedTaskIds.includes(task.id)}
+						onSelectedChange={updateTaskSelection}
 					/>
 				{/each}
 			</div>
@@ -174,6 +254,16 @@
 				padding: 0.75rem;
 				border: 1px solid var(--border);
 				border-radius: 0.75rem;
+
+				.selection-count {
+					margin-left: auto;
+					color: var(--text-subtle);
+					font-size: 0.865rem;
+
+					&.limit-exceeded {
+						color: var(--danger);
+					}
+				}
 			}
 
 			.category-selection-section {

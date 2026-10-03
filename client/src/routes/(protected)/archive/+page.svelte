@@ -16,7 +16,7 @@
 	import type { DatedUntrashedDoneTaskResponse } from '$lib/types/responses/dated-untrashed-done-task-response';
 	import type { TrashedTaskResponse } from '$lib/types/responses/trashed-task-response';
 	import type { TaskDragAndDropRequest } from '$lib/types/requests/task-drag-and-drop-request';
-	import { Ghost, Info, MousePointer2, RotateCcw, SquarePen, Trash2, XCircle } from '@lucide/svelte';
+	import { Ghost, Info, MousePointer2, RotateCcw, SquarePen, Trash2, TrashOff, XCircle } from '@lucide/svelte';
 	import { dndzone, SHADOW_ITEM_MARKER_PROPERTY_NAME as isShadowTask, TRIGGERS, type DndEvent } from 'svelte-dnd-action';
 
 	type TaskDragItem = (DatedUntrashedDoneTaskResponse | TrashedTaskResponse) & {
@@ -150,7 +150,7 @@
 				editAction,
 				{
 					label: 'Restore',
-					icon: RotateCcw,
+					icon: TrashOff,
 					variant: 'success' as const,
 					onclick: () => taskService.restoreTask(task.id)
 				}
@@ -217,23 +217,15 @@
 		<div class="controls-section">
 			{#if selectionEnabled}
 				<Button onclick={cancelTaskSelection}>
-					Cancel Selection
+					Cancel
 					{#snippet trailingIcon()}<XCircle size={17} aria-hidden="true" />{/snippet}
 				</Button>
-				<Button
-					variant="success"
-					disabled={selectedTaskIds.length === 0 || selectedTaskIds.length > maximumBatchSize}
-					onclick={openSelectedTasks}
-				>
-					Open All
+				<Button disabled={selectedTaskIds.length === 0 || selectedTaskIds.length > maximumBatchSize} onclick={openSelectedTasks}>
+					Open
 					{#snippet trailingIcon()}<RotateCcw size={17} aria-hidden="true" />{/snippet}
 				</Button>
-				<Button
-					variant="danger"
-					disabled={selectedTaskIds.length === 0 || selectedTaskIds.length > maximumBatchSize}
-					onclick={trashSelectedTasks}
-				>
-					Trash All
+				<Button disabled={selectedTaskIds.length === 0 || selectedTaskIds.length > maximumBatchSize} onclick={trashSelectedTasks}>
+					Trash
 					{#snippet trailingIcon()}<Trash2 size={17} aria-hidden="true" />{/snippet}
 				</Button>
 				<span class:limit-exceeded={selectedTaskIds.length > maximumBatchSize} class="selection-count">

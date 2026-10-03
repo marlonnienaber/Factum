@@ -165,18 +165,18 @@
 		<div class="controls-section">
 			{#if selectionEnabled}
 				<Button onclick={cancelTaskSelection}>
-					Cancel Selection
+					Cancel
 					{#snippet trailingIcon()}<XCircle size={17} aria-hidden="true" />{/snippet}
 				</Button>
 				<Button
 					disabled={selectedTaskIds.length === 0 || selectedTaskIds.length > maximumBatchSize}
 					onclick={completeSelectedTasks}
 				>
-					Complete All
+					Complete
 					{#snippet trailingIcon()}<CheckCheck size={17} aria-hidden="true" />{/snippet}
 				</Button>
 				<Button disabled={selectedTaskIds.length === 0 || selectedTaskIds.length > maximumBatchSize} onclick={trashSelectedTasks}>
-					Trash All
+					Trash
 					{#snippet trailingIcon()}<Trash2 size={17} aria-hidden="true" />{/snippet}
 				</Button>
 			{:else}
