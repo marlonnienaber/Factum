@@ -53,8 +53,13 @@ func NewApplication(cfg configuration.Configuration, db *sqlx.DB) *gin.Engine {
 	api.PATCH("/tasks/:id/toggle-done", shared.RequireAuth(tasksHandlers.NewToggleTaskDoneHandler(taskService)))
 	api.DELETE("/tasks/trashed", shared.RequireAuth(tasksHandlers.NewDeleteTrashedTasksHandler(taskStore)))
 	api.GET("/tasks/trashed/exists", shared.RequireAuth(tasksHandlers.NewGetTrashedTasksExistHandler(taskStore)))
+	api.GET("/tasks/today-progress", shared.RequireAuth(tasksHandlers.NewGetTodayProgressHandler(taskStore)))
 	api.GET("/tasks/undated", shared.RequireAuth(tasksHandlers.NewGetUndatedTasksHandler(taskStore)))
 	api.GET("/tasks/dated-untrashed-done", shared.RequireAuth(tasksHandlers.NewGetDatedUntrashedDoneTasksHandler(taskStore)))
+	api.GET(
+		"/tasks/dated-untrashed-done-today",
+		shared.RequireAuth(tasksHandlers.NewGetDatedUntrashedDoneTodayTasksHandler(taskStore)),
+	)
 	api.GET(
 		"/tasks/dated-untrashed-open-today",
 		shared.RequireAuth(tasksHandlers.NewGetDatedUntrashedOpenTodayTasksHandler(taskStore)),

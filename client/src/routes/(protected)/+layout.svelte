@@ -3,16 +3,14 @@
 	import { resolve } from '$app/paths';
 	import { authenticationService } from '$lib/services/authentication-service.svelte';
 	import { authenticationStore } from '$lib/stores/authentication-store.svelte';
-	import { categoryService } from '$lib/services/category-service.svelte';
-	import { taskService } from '$lib/services/task-service.svelte';
 	import { categoryStore } from '$lib/stores/category-store.svelte';
 	import { datedUntrashedDoneTaskStore } from '$lib/stores/dated-untrashed-done-task-store.svelte';
 	import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-task-store.svelte';
 	import { trashedTaskStore } from '$lib/stores/trashed-task-store.svelte';
 	import { themeStore } from '$lib/stores/theme-store.svelte';
+	import { todayProgressStore } from '$lib/stores/today-progress-store.svelte';
 	import { undatedTaskStore } from '$lib/stores/undated-task-store.svelte';
 	import { Moon, Sun } from '@lucide/svelte';
-	import { untrack } from 'svelte';
 	import logoBlack from '$lib/assets/logo-black.svg';
 	import logoWhite from '$lib/assets/logo-white.svg';
 
@@ -23,29 +21,20 @@
 	const isDarkTheme = $derived(themeStore.isDarkTheme);
 
 	$effect(() => {
-		if (authentication) {
-			untrack(() => {
-				void categoryService.fetchCategories();
-				void taskService.fetchDatedUntrashedDoneTasks();
-				void taskService.fetchDatedUntrashedOpenTodayTasks();
-				void taskService.fetchDatedUntrashedOpenNonTodayTasks();
-				void taskService.fetchUndatedTasks();
-				void taskService.fetchTrashedTasks();
-				void taskService.fetchTrashedTasksExist();
-			});
-		} else {
+		if (!authentication) {
 			if (!loading) {
 				if (notAttemptedToFetchAuthentication) {
 					void authenticationService.fetchCurrentAuthenticationIfNecessary();
 				} else {
+					categoryStore.reset();
+					datedUntrashedDoneTaskStore.reset();
+					datedUntrashedOpenTaskStore.reset();
+					undatedTaskStore.reset();
+					trashedTaskStore.reset();
+					todayProgressStore.reset();
 					void goto(resolve('/sign-in'));
 				}
 			}
-			categoryStore.reset();
-			datedUntrashedDoneTaskStore.reset();
-			datedUntrashedOpenTaskStore.reset();
-			undatedTaskStore.reset();
-			trashedTaskStore.reset();
 		}
 	});
 </script>
@@ -58,6 +47,7 @@
 				<span class="name">actum</span>
 			</div>
 			<div class="account-actions">
+				<a href={resolve('/workbench')}>Workbench</a>
 				<a href={resolve('/backlog')}>Backlog</a>
 				<a href={resolve('/archive')}>Archive</a>
 				<button class="theme-toggle-button" type="button" onclick={() => themeStore.toggleTheme()}>

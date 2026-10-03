@@ -66,7 +66,7 @@ describe('archive page tests', () => {
 				const page = render(Page);
 				await clickOnSelectTasksButton(page);
 				for (const task of tasks) await clickOnTask(page, task.title);
-				const trashAllButton = page.getByRole('button', { name: 'Trash All' });
+				const trashAllButton = page.getByRole('button', { name: 'Trash' });
 				await userEvent.click(trashAllButton);
 
 				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
@@ -101,7 +101,7 @@ describe('archive page tests', () => {
 				const page = render(Page);
 				await clickOnSelectTasksButton(page);
 				for (const task of tasks) await clickOnTask(page, task.title);
-				const openAllButton = page.getByRole('button', { name: 'Open All' });
+				const openAllButton = page.getByRole('button', { name: 'Open' });
 				await userEvent.click(openAllButton);
 
 				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
@@ -123,7 +123,7 @@ describe('archive page tests', () => {
 				const page = render(Page);
 				await clickOnSelectTasksButton(page);
 				await clickOnTask(page, task.title);
-				const cancelSelectionButton = page.getByRole('button', { name: 'Cancel Selection' });
+				const cancelSelectionButton = page.getByRole('button', { name: 'Cancel' });
 				await userEvent.click(cancelSelectionButton);
 
 				expect(page.getByRole('button', { name: 'Select Tasks' })).toBeInTheDocument();
@@ -135,8 +135,8 @@ describe('archive page tests', () => {
 				const page = render(Page);
 				await clickOnSelectTasksButton(page);
 
-				expect(page.getByRole('button', { name: 'Open All' })).toBeDisabled();
-				expect(page.getByRole('button', { name: 'Trash All' })).toBeDisabled();
+				expect(page.getByRole('button', { name: 'Open' })).toBeDisabled();
+				expect(page.getByRole('button', { name: 'Trash' })).toBeDisabled();
 				expect(page.getByText('0 / 50')).toBeInTheDocument();
 			});
 
@@ -147,7 +147,7 @@ describe('archive page tests', () => {
 				await clickOnSelectTasksButton(page);
 				for (const title of taskTitles) await clickOnTask(page, title);
 
-				expect(page.getByRole('button', { name: 'Open All' })).toBeDisabled();
+				expect(page.getByRole('button', { name: 'Open' })).toBeDisabled();
 				expect(page.getByText('51 / 50')).toBeInTheDocument();
 				expect(fetchMock).not.toHaveBeenCalled();
 			});
@@ -159,7 +159,7 @@ describe('archive page tests', () => {
 				await clickOnSelectTasksButton(page);
 				for (const title of taskTitles) await clickOnTask(page, title);
 
-				expect(page.getByRole('button', { name: 'Trash All' })).toBeDisabled();
+				expect(page.getByRole('button', { name: 'Trash' })).toBeDisabled();
 				expect(page.getByText('51 / 50')).toBeInTheDocument();
 				expect(fetchMock).not.toHaveBeenCalled();
 			});

@@ -542,10 +542,19 @@ func (service *TaskService) getPreviousTaskRankForTaskDragAndDrop(
 }
 
 func (service *TaskService) isValidDragAndDropAction(task *domain.Task, request transport.TaskDragAndDropRequest) bool {
+	isMovingFromDatedOpenUntrashedToDatedDoneUntrashed := service.isMovingFromDatedOpenUntrashedToDatedDoneUntrashed(task, request)
+	isMovingFromDatedDoneUntrashedToDatedOpenUntrashed := service.isMovingFromDatedDoneUntrashedToDatedOpenUntrashed(task, request)
+	isMovingWithinDatedOpenUntrashed := service.isMovingWithinDatedOpenUntrashed(task, request)
+	isMovingWithinDatedDoneUntrashed := service.isMovingWithinDatedDoneUntrashed(task, request)
+
+	isValidWorkbenchAction := isMovingFromDatedOpenUntrashedToDatedDoneUntrashed ||
+		isMovingFromDatedDoneUntrashedToDatedOpenUntrashed ||
+		isMovingWithinDatedOpenUntrashed ||
+		isMovingWithinDatedDoneUntrashed
+
 	isMovingFromDatedOpenUntrashedToDatedOpenUntrashed := service.isMovingFromDatedOpenUntrashedToDatedOpenUntrashed(task, request)
 	isMovingFromDatedOpenUntrashedToUndatedOpenUntrashed := service.isMovingFromDatedOpenUntrashedToUndatedOpenUntrashed(task, request)
 	isMovingFromUndatedOpenUntrashedToDatedOpenUntrashed := service.isMovingFromUndatedOpenUntrashedToDatedOpenUntrashed(task, request)
-	isMovingWithinDatedOpenUntrashed := service.isMovingWithinDatedOpenUntrashed(task, request)
 	isMovingWithinUndatedOpenUntrashed := service.isMovingWithinUndatedOpenUntrashed(task, request)
 
 	isValidBacklogAction := isMovingFromDatedOpenUntrashedToDatedOpenUntrashed ||
@@ -557,7 +566,6 @@ func (service *TaskService) isValidDragAndDropAction(task *domain.Task, request 
 	isMovingFromDatedDoneUntrashedToDatedDoneUntrashed := service.isMovingFromDatedDoneUntrashedToDatedDoneUntrashed(task, request)
 	isMovingFromDatedDoneUntrashedToDatedDoneTrashed := service.isMovingFromDatedDoneUntrashedToDatedDoneTrashed(task, request)
 	isMovingFromTrashedToDatedDoneUntrashed := service.isMovingFromTrashedToDatedDoneUntrashed(task, request)
-	isMovingWithinDatedDoneUntrashed := service.isMovingWithinDatedDoneUntrashed(task, request)
 	isMovingWithinTrashed := service.isMovingWithinTrashed(task, request)
 
 	isValidArchiveAction := isMovingFromDatedDoneUntrashedToDatedDoneUntrashed ||
@@ -566,7 +574,31 @@ func (service *TaskService) isValidDragAndDropAction(task *domain.Task, request 
 		isMovingWithinDatedDoneUntrashed ||
 		isMovingWithinTrashed
 
-	return isValidBacklogAction || isValidArchiveAction
+	return isValidWorkbenchAction || isValidBacklogAction || isValidArchiveAction
+}
+
+func (service *TaskService) isMovingFromDatedOpenUntrashedToDatedDoneUntrashed(task *domain.Task, request transport.TaskDragAndDropRequest) bool {
+	taskIsDatedOpenUntrashed := task.Date != nil && !task.Done && !task.Trashed
+	targetIsSameDatedDoneUntrashed := datesAreEqual(task.Date, request.Date) && request.Done && !request.Trashed
+	return taskIsDatedOpenUntrashed && targetIsSameDatedDoneUntrashed
+}
+
+func (service *TaskService) isMovingFromDatedDoneUntrashedToDatedOpenUntrashed(task *domain.Task, request transport.TaskDragAndDropRequest) bool {
+	taskIsDatedDoneUntrashed := task.Date != nil && task.Done && !task.Trashed
+	targetIsSameDatedOpenUntrashed := datesAreEqual(task.Date, request.Date) && !request.Done && !request.Trashed
+	return taskIsDatedDoneUntrashed && targetIsSameDatedOpenUntrashed
+}
+
+func (service *TaskService) isMovingWithinDatedOpenUntrashed(task *domain.Task, request transport.TaskDragAndDropRequest) bool {
+	taskIsDatedOpenUntrashed := task.Date != nil && !task.Done && !task.Trashed
+	targetIsSameDatedOpenUntrashed := datesAreEqual(task.Date, request.Date) && !request.Done && !request.Trashed
+	return taskIsDatedOpenUntrashed && targetIsSameDatedOpenUntrashed
+}
+
+func (service *TaskService) isMovingWithinDatedDoneUntrashed(task *domain.Task, request transport.TaskDragAndDropRequest) bool {
+	taskIsDatedDoneUntrashed := task.Date != nil && task.Done && !task.Trashed
+	targetIsSameDatedDoneUntrashed := datesAreEqual(task.Date, request.Date) && request.Done && !request.Trashed
+	return taskIsDatedDoneUntrashed && targetIsSameDatedDoneUntrashed
 }
 
 func (service *TaskService) isMovingFromDatedOpenUntrashedToDatedOpenUntrashed(task *domain.Task, request transport.TaskDragAndDropRequest) bool {
@@ -585,12 +617,6 @@ func (service *TaskService) isMovingFromUndatedOpenUntrashedToDatedOpenUntrashed
 	taskIsUndatedOpenUntrashed := task.Date == nil && !task.Done && !task.Trashed
 	targetIsDatedOpenUntrashed := request.Date != nil && !request.Done && !request.Trashed
 	return taskIsUndatedOpenUntrashed && targetIsDatedOpenUntrashed
-}
-
-func (service *TaskService) isMovingWithinDatedOpenUntrashed(task *domain.Task, request transport.TaskDragAndDropRequest) bool {
-	taskIsDatedOpenUntrashed := task.Date != nil && !task.Done && !task.Trashed
-	targetIsSameDatedOpenUntrashed := datesAreEqual(task.Date, request.Date) && !request.Done && !request.Trashed
-	return taskIsDatedOpenUntrashed && targetIsSameDatedOpenUntrashed
 }
 
 func (service *TaskService) isMovingWithinUndatedOpenUntrashed(task *domain.Task, request transport.TaskDragAndDropRequest) bool {
@@ -617,12 +643,6 @@ func (service *TaskService) isMovingFromTrashedToDatedDoneUntrashed(task *domain
 	taskIsUndatedOpenTrashed := task.Date == nil && !task.Done && task.Trashed
 	targetIsDatedDoneUntrashed := request.Date != nil && request.Done && !request.Trashed
 	return (taskIsDatedDoneTrashed || taskIsDatedOpenTrashed || taskIsUndatedOpenTrashed) && targetIsDatedDoneUntrashed
-}
-
-func (service *TaskService) isMovingWithinDatedDoneUntrashed(task *domain.Task, request transport.TaskDragAndDropRequest) bool {
-	taskIsDatedDoneUntrashed := task.Date != nil && task.Done && !task.Trashed
-	targetIsSameDatedDoneUntrashed := datesAreEqual(task.Date, request.Date) && request.Done && !request.Trashed
-	return taskIsDatedDoneUntrashed && targetIsSameDatedDoneUntrashed
 }
 
 func (service *TaskService) isMovingWithinTrashed(task *domain.Task, request transport.TaskDragAndDropRequest) bool {

@@ -129,7 +129,7 @@ describe('sign-in page tests', () => {
 		expectInputToBeValid(page, 'email-input');
 		expectInputToBeValid(page, 'password-input');
 		expect(gotoMock).toHaveBeenCalledTimes(1);
-		expect(gotoMock).toHaveBeenCalledWith('/backlog');
+		expect(gotoMock).toHaveBeenCalledWith('/workbench');
 	});
 });
 

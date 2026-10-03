@@ -6,20 +6,30 @@
 		children: Snippet;
 		loadMore: () => void | Promise<void>;
 		hasMore: boolean;
-		loading: boolean;
-		disabled: boolean;
+		disabled?: boolean;
 	};
 
-	const { children, loadMore, hasMore, loading, disabled }: Props = $props();
+	const { children, loadMore, hasMore, disabled = false }: Props = $props();
 	let scrollContainer = $state<HTMLDivElement>();
 	let loadingSentinel = $state<HTMLDivElement>();
+	let loading = $state(false);
+
+	async function handleLoadMore(): Promise<void> {
+		if (loading) return;
+		loading = true;
+		try {
+			await loadMore();
+		} finally {
+			loading = false;
+		}
+	}
 
 	$effect(() => {
-		if (scrollContainer === undefined || loadingSentinel === undefined || disabled || loading || !hasMore) return;
+		if (scrollContainer === undefined || loadingSentinel === undefined || disabled || !hasMore) return;
 
 		const observer = new IntersectionObserver(
 			(entries) => {
-				if (entries.some((entry) => entry.isIntersecting)) void loadMore();
+				if (entries.some((entry) => entry.isIntersecting)) void handleLoadMore();
 			},
 			{ root: scrollContainer }
 		);

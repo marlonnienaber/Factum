@@ -32,11 +32,21 @@ function addTodayPage(tasks: DatedUntrashedOpenTaskResponse[], pageHasMore: bool
 	todayTasksHasMore = pageHasMore;
 }
 
+function clearTodayPages(): void {
+	datedUntrashedOpenTodayTasks = [];
+	todayTasksHasMore = false;
+}
+
 function addNonTodayPage(tasks: DatedUntrashedOpenTaskResponse[], pageHasMore: boolean): void {
 	const taskIds = tasks.map((task) => task.id);
 	removeTasks(taskIds);
 	datedUntrashedOpenNonTodayTasks = [...datedUntrashedOpenNonTodayTasks, ...tasks].sort(compareTasksByDateAndRank);
 	nonTodayTasksHasMore = pageHasMore;
+}
+
+function clearNonTodayPages(): void {
+	datedUntrashedOpenNonTodayTasks = [];
+	nonTodayTasksHasMore = false;
 }
 
 function removeTask(id: number): void {
@@ -81,7 +91,9 @@ export const datedUntrashedOpenTaskStore = {
 	addOrUpdateTasks,
 	addOrUpdateTask,
 	addTodayPage,
+	clearTodayPages,
 	addNonTodayPage,
+	clearNonTodayPages,
 	removeTask,
 	removeTasks,
 	reset

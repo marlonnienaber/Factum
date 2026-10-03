@@ -16,7 +16,7 @@
 	import type { DatedUntrashedDoneTaskResponse } from '$lib/types/responses/dated-untrashed-done-task-response';
 	import type { TrashedTaskResponse } from '$lib/types/responses/trashed-task-response';
 	import type { TaskDragAndDropRequest } from '$lib/types/requests/task-drag-and-drop-request';
-	import { Ghost, Info, MousePointer2, RotateCcw, SquarePen, Trash2, XCircle } from '@lucide/svelte';
+	import { Ghost, Info, MousePointer2, RotateCcw, SquarePen, Trash2, TrashOff, XCircle } from '@lucide/svelte';
 	import { dndzone, SHADOW_ITEM_MARKER_PROPERTY_NAME as isShadowTask, TRIGGERS, type DndEvent } from 'svelte-dnd-action';
 
 	type TaskDragItem = (DatedUntrashedDoneTaskResponse | TrashedTaskResponse) & {
@@ -150,9 +150,8 @@
 				editAction,
 				{
 					label: 'Restore',
-					icon: RotateCcw,
+					icon: TrashOff,
 					variant: 'success' as const,
-					disabled: taskService.taskMutationBlocked,
 					onclick: () => taskService.restoreTask(task.id)
 				}
 			];
@@ -162,7 +161,6 @@
 			{
 				label: 'Trash',
 				icon: Trash2,
-				disabled: taskService.taskMutationBlocked,
 				onclick: () => taskService.trashTask(task.id)
 			}
 		];
@@ -219,23 +217,15 @@
 		<div class="controls-section">
 			{#if selectionEnabled}
 				<Button onclick={cancelTaskSelection}>
-					Cancel Selection
+					Cancel
 					{#snippet trailingIcon()}<XCircle size={17} aria-hidden="true" />{/snippet}
 				</Button>
-				<Button
-					variant="success"
-					disabled={selectedTaskIds.length === 0 || selectedTaskIds.length > maximumBatchSize || taskService.taskMutationBlocked}
-					onclick={openSelectedTasks}
-				>
-					Open All
+				<Button disabled={selectedTaskIds.length === 0 || selectedTaskIds.length > maximumBatchSize} onclick={openSelectedTasks}>
+					Open
 					{#snippet trailingIcon()}<RotateCcw size={17} aria-hidden="true" />{/snippet}
 				</Button>
-				<Button
-					variant="danger"
-					disabled={selectedTaskIds.length === 0 || selectedTaskIds.length > maximumBatchSize || taskService.taskMutationBlocked}
-					onclick={trashSelectedTasks}
-				>
-					Trash All
+				<Button disabled={selectedTaskIds.length === 0 || selectedTaskIds.length > maximumBatchSize} onclick={trashSelectedTasks}>
+					Trash
 					{#snippet trailingIcon()}<Trash2 size={17} aria-hidden="true" />{/snippet}
 				</Button>
 				<span class:limit-exceeded={selectedTaskIds.length > maximumBatchSize} class="selection-count">
@@ -247,7 +237,7 @@
 					{#snippet trailingIcon()}<MousePointer2 size={17} aria-hidden="true" />{/snippet}
 				</Button>
 				{#if trashedTaskStore.trashedTasksExist}
-					<Button variant="danger" disabled={taskService.taskMutationBlocked} onclick={requestEmptyTrash}>
+					<Button variant="danger" onclick={requestEmptyTrash}>
 						Empty Trash
 						{#snippet trailingIcon()}<Trash2 size={17} aria-hidden="true" />{/snippet}
 					</Button>
@@ -278,7 +268,6 @@
 		<h1>Completed</h1>
 		<InfiniteScrollContainer
 			hasMore={datedUntrashedDoneTaskStore.hasMore}
-			loading={taskService.datedUntrashedDoneTasksLoading}
 			disabled={dragging}
 			loadMore={loadMoreDatedUntrashedDoneTasks}
 		>
@@ -292,7 +281,7 @@
 							aria-label={`Completed tasks dated ${getDateLabel(groupDate)}`}
 							use:dndzone={{
 								items: taskDragItems,
-								dragDisabled: selectionEnabled || taskService.taskMutationBlocked,
+								dragDisabled: selectionEnabled,
 								dropTargetStyle: { outline: 'none' }
 							}}
 							onconsider={(event) => handleConsider(event, groupKey)}
@@ -322,18 +311,13 @@
 				<span class="trash-information">Trashed tasks are automatically deleted every day at midnight German time.</span>
 			</Popover>
 		</div>
-		<InfiniteScrollContainer
-			hasMore={trashedTaskStore.hasMore}
-			loading={taskService.trashedTasksLoading}
-			disabled={dragging}
-			loadMore={loadMoreTrashedTasks}
-		>
+		<InfiniteScrollContainer hasMore={trashedTaskStore.hasMore} disabled={dragging} loadMore={loadMoreTrashedTasks}>
 			<div
 				class="task-item-drop-zone"
 				aria-label="Trashed tasks"
 				use:dndzone={{
 					items: trashedTaskDragItems,
-					dragDisabled: selectionEnabled || taskService.taskMutationBlocked,
+					dragDisabled: selectionEnabled,
 					dropTargetStyle: { outline: 'none' }
 				}}
 				onconsider={handleConsider}

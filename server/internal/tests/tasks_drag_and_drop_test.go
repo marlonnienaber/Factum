@@ -184,7 +184,7 @@ func TestTasksDragAndDropPreviousTaskBelongsToAnotherPartition(t *testing.T) {
 	)
 }
 
-func TestTasksDragAndDropMovingWithinUndatedOpenUntrashed(t *testing.T) {
+func TestTasksDragAndDropMovingFromDatedOpenUntrashedToDatedDoneUntrashed(t *testing.T) {
 	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
 	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
 		Email: support.TestUser1Email, Password: support.TestUser1Password,
@@ -196,18 +196,52 @@ func TestTasksDragAndDropMovingWithinUndatedOpenUntrashed(t *testing.T) {
 	require.Equal(t, http.StatusCreated, categoryResp.Code)
 	var category categoriesTransport.CreateCategoryResponse
 	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
-	tasks := support.PrepareOpenUndatedUntrashedTasks(t, app, category.Id, cookies...)
-	expectedRank, err := fracdex.KeyBetween(tasks[1].Rank, tasks[2].Rank)
+	openTasks := support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
+	doneTasks := support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
+	expectedRank, err := fracdex.KeyBetween(doneTasks[1].Rank, doneTasks[2].Rank)
 	require.NoError(t, err, "generating expected rank failed")
 
 	payload, err := json.Marshal(tasksTransport.TaskDragAndDropRequest{
-		Date:           nil,
-		Done:           false,
+		Date:           &openTasks[0].Date,
+		Done:           true,
 		Trashed:        false,
-		PreviousTaskId: &tasks[1].Id,
+		PreviousTaskId: &doneTasks[1].Id,
 	})
 	require.NoError(t, err, "serializing request failed")
-	path := fmt.Sprintf("/api/tasks/%d/drag-and-drop", tasks[0].Id)
+	path := fmt.Sprintf("/api/tasks/%d/drag-and-drop", openTasks[0].Id)
+	resp := support.MakeJsonRequest(t, app, http.MethodPatch, path, payload, cookies...)
+	require.Equal(t, http.StatusOK, resp.Code)
+	var response tasksTransport.TaskDragAndDropResponse
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&response), "failed to decode drag and drop response")
+
+	require.Equal(t, expectedRank, response.Rank)
+}
+
+func TestTasksDragAndDropMovingFromDatedDoneUntrashedToDatedOpenUntrashed(t *testing.T) {
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
+	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
+		Email: support.TestUser1Email, Password: support.TestUser1Password,
+	})
+	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	cookies := signUpResp.Result().Cookies()
+
+	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
+	require.Equal(t, http.StatusCreated, categoryResp.Code)
+	var category categoriesTransport.CreateCategoryResponse
+	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
+	openTasks := support.PrepareOpenDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
+	doneTasks := support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
+	expectedRank, err := fracdex.KeyBetween(openTasks[1].Rank, openTasks[2].Rank)
+	require.NoError(t, err, "generating expected rank failed")
+
+	payload, err := json.Marshal(tasksTransport.TaskDragAndDropRequest{
+		Date:           &doneTasks[0].Date,
+		Done:           false,
+		Trashed:        false,
+		PreviousTaskId: &openTasks[1].Id,
+	})
+	require.NoError(t, err, "serializing request failed")
+	path := fmt.Sprintf("/api/tasks/%d/drag-and-drop", doneTasks[0].Id)
 	resp := support.MakeJsonRequest(t, app, http.MethodPatch, path, payload, cookies...)
 	require.Equal(t, http.StatusOK, resp.Code)
 	var response tasksTransport.TaskDragAndDropResponse
@@ -234,6 +268,70 @@ func TestTasksDragAndDropMovingWithinDatedOpenUntrashed(t *testing.T) {
 
 	payload, err := json.Marshal(tasksTransport.TaskDragAndDropRequest{
 		Date:           &tasks[0].Date,
+		Done:           false,
+		Trashed:        false,
+		PreviousTaskId: &tasks[1].Id,
+	})
+	require.NoError(t, err, "serializing request failed")
+	path := fmt.Sprintf("/api/tasks/%d/drag-and-drop", tasks[0].Id)
+	resp := support.MakeJsonRequest(t, app, http.MethodPatch, path, payload, cookies...)
+	require.Equal(t, http.StatusOK, resp.Code)
+	var response tasksTransport.TaskDragAndDropResponse
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&response), "failed to decode drag and drop response")
+
+	require.Equal(t, expectedRank, response.Rank)
+}
+
+func TestTasksDragAndDropMovingWithinDatedDoneUntrashed(t *testing.T) {
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
+	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
+		Email: support.TestUser1Email, Password: support.TestUser1Password,
+	})
+	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	cookies := signUpResp.Result().Cookies()
+
+	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
+	require.Equal(t, http.StatusCreated, categoryResp.Code)
+	var category categoriesTransport.CreateCategoryResponse
+	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
+	tasks := support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
+	expectedRank, err := fracdex.KeyBetween(tasks[1].Rank, tasks[2].Rank)
+	require.NoError(t, err, "generating expected rank failed")
+
+	payload, err := json.Marshal(tasksTransport.TaskDragAndDropRequest{
+		Date:           &tasks[0].Date,
+		Done:           true,
+		Trashed:        false,
+		PreviousTaskId: &tasks[1].Id,
+	})
+	require.NoError(t, err, "serializing request failed")
+	path := fmt.Sprintf("/api/tasks/%d/drag-and-drop", tasks[0].Id)
+	resp := support.MakeJsonRequest(t, app, http.MethodPatch, path, payload, cookies...)
+	require.Equal(t, http.StatusOK, resp.Code)
+	var response tasksTransport.TaskDragAndDropResponse
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&response), "failed to decode drag and drop response")
+
+	require.Equal(t, expectedRank, response.Rank)
+}
+
+func TestTasksDragAndDropMovingWithinUndatedOpenUntrashed(t *testing.T) {
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
+	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
+		Email: support.TestUser1Email, Password: support.TestUser1Password,
+	})
+	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	cookies := signUpResp.Result().Cookies()
+
+	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
+	require.Equal(t, http.StatusCreated, categoryResp.Code)
+	var category categoriesTransport.CreateCategoryResponse
+	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
+	tasks := support.PrepareOpenUndatedUntrashedTasks(t, app, category.Id, cookies...)
+	expectedRank, err := fracdex.KeyBetween(tasks[1].Rank, tasks[2].Rank)
+	require.NoError(t, err, "generating expected rank failed")
+
+	payload, err := json.Marshal(tasksTransport.TaskDragAndDropRequest{
+		Date:           nil,
 		Done:           false,
 		Trashed:        false,
 		PreviousTaskId: &tasks[1].Id,
@@ -441,38 +539,6 @@ func TestTasksDragAndDropMovingFromTrashedToDatedDoneUntrashed(t *testing.T) {
 	})
 	require.NoError(t, err, "serializing request failed")
 	path := fmt.Sprintf("/api/tasks/%d/drag-and-drop", trashedTasks[0].Id)
-	resp := support.MakeJsonRequest(t, app, http.MethodPatch, path, payload, cookies...)
-	require.Equal(t, http.StatusOK, resp.Code)
-	var response tasksTransport.TaskDragAndDropResponse
-	require.NoError(t, json.NewDecoder(resp.Body).Decode(&response), "failed to decode drag and drop response")
-
-	require.Equal(t, expectedRank, response.Rank)
-}
-
-func TestTasksDragAndDropMovingWithinDatedDoneUntrashed(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email: support.TestUser1Email, Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
-	cookies := signUpResp.Result().Cookies()
-
-	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
-	require.Equal(t, http.StatusCreated, categoryResp.Code)
-	var category categoriesTransport.CreateCategoryResponse
-	require.NoError(t, json.NewDecoder(categoryResp.Body).Decode(&category), "failed to decode category response")
-	tasks := support.PrepareDoneDatedUntrashedTasks(t, app, category.Id, support.TestTaskDate, cookies...)
-	expectedRank, err := fracdex.KeyBetween(tasks[1].Rank, tasks[2].Rank)
-	require.NoError(t, err, "generating expected rank failed")
-
-	payload, err := json.Marshal(tasksTransport.TaskDragAndDropRequest{
-		Date:           &tasks[0].Date,
-		Done:           true,
-		Trashed:        false,
-		PreviousTaskId: &tasks[1].Id,
-	})
-	require.NoError(t, err, "serializing request failed")
-	path := fmt.Sprintf("/api/tasks/%d/drag-and-drop", tasks[0].Id)
 	resp := support.MakeJsonRequest(t, app, http.MethodPatch, path, payload, cookies...)
 	require.Equal(t, http.StatusOK, resp.Code)
 	var response tasksTransport.TaskDragAndDropResponse

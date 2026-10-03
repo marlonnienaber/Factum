@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"testing"
 	"time"
 
@@ -45,6 +46,64 @@ func TestTasksGetDatedUntrashedOpenTodayTasksInvalidRankProvided(t *testing.T) {
 		app,
 		http.MethodGet,
 		"/api/tasks/dated-untrashed-open-today?"+url.Values{"rank": {"!"}}.Encode(),
+		nil,
+		cookies...,
+	)
+
+	support.AssertErrorResponse(
+		t,
+		resp,
+		http.StatusBadRequest,
+		"invalid_query_parameter",
+		"URL contains an invalid query parameter",
+	)
+}
+
+func TestTasksGetDatedUntrashedOpenTodayTasksInvalidCategoryIdProvided(t *testing.T) {
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
+	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
+	})
+	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	cookies := signUpResp.Result().Cookies()
+
+	resp := support.MakeJsonRequest(
+		t,
+		app,
+		http.MethodGet,
+		"/api/tasks/dated-untrashed-open-today?"+url.Values{"categoryId": {"invalid"}}.Encode(),
+		nil,
+		cookies...,
+	)
+
+	support.AssertErrorResponse(
+		t,
+		resp,
+		http.StatusBadRequest,
+		"invalid_query_parameter",
+		"URL contains an invalid query parameter",
+	)
+}
+
+func TestTasksGetDatedUntrashedOpenTodayTasksTooManyCategoryIdsProvided(t *testing.T) {
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
+	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
+	})
+	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	cookies := signUpResp.Result().Cookies()
+
+	categoryIds := make([]string, 31)
+	for index := range categoryIds {
+		categoryIds[index] = strconv.Itoa(index + 1)
+	}
+	resp := support.MakeJsonRequest(
+		t,
+		app,
+		http.MethodGet,
+		"/api/tasks/dated-untrashed-open-today?"+url.Values{"categoryId": categoryIds}.Encode(),
 		nil,
 		cookies...,
 	)
@@ -119,6 +178,57 @@ func TestTasksGetDatedUntrashedOpenTodayTasksWithCursor(t *testing.T) {
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
 
 	assert.Equal(t, tasks[1:], respBody.Tasks, "unexpected tasks")
+	assert.False(t, respBody.HasMore, "unexpected additional page")
+}
+
+func TestTasksGetDatedUntrashedOpenTodayTasksFiltersByCategoryIds(t *testing.T) {
+	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
+	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
+		Email:    support.TestUser1Email,
+		Password: support.TestUser1Password,
+	})
+	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	cookies := signUpResp.Result().Cookies()
+
+	firstCategoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
+	require.Equal(t, http.StatusCreated, firstCategoryResp.Code)
+	var firstCategory categoriesTransport.CreateCategoryResponse
+	require.NoError(t, json.NewDecoder(firstCategoryResp.Body).Decode(&firstCategory), "failed to decode first category response")
+
+	secondCategoryResp := support.MakeCreateCategoryRequest(t, app, "Personal", "#22c55e", cookies...)
+	require.Equal(t, http.StatusCreated, secondCategoryResp.Code)
+	var secondCategory categoriesTransport.CreateCategoryResponse
+	require.NoError(t, json.NewDecoder(secondCategoryResp.Body).Decode(&secondCategory), "failed to decode second category response")
+
+	thirdCategoryResp := support.MakeCreateCategoryRequest(t, app, "Errands", "#ef4444", cookies...)
+	require.Equal(t, http.StatusCreated, thirdCategoryResp.Code)
+	var thirdCategory categoriesTransport.CreateCategoryResponse
+	require.NoError(t, json.NewDecoder(thirdCategoryResp.Body).Decode(&thirdCategory), "failed to decode third category response")
+
+	today := shared.NewDate(time.Now())
+	firstCategoryTasks := support.PrepareOpenDatedUntrashedTasks(t, app, firstCategory.Id, today, cookies...)
+	secondCategoryTasks := support.PrepareOpenDatedUntrashedTasks(t, app, secondCategory.Id, today, cookies...)
+	expectedTasks := append(firstCategoryTasks, secondCategoryTasks...)
+	support.PrepareOpenDatedUntrashedTasks(t, app, thirdCategory.Id, today, cookies...)
+
+	resp := support.MakeJsonRequest(
+		t,
+		app,
+		http.MethodGet,
+		"/api/tasks/dated-untrashed-open-today?"+url.Values{
+			"categoryId": {
+				strconv.FormatInt(firstCategory.Id, 10),
+				strconv.FormatInt(secondCategory.Id, 10),
+			},
+		}.Encode(),
+		nil,
+		cookies...,
+	)
+	require.Equal(t, http.StatusOK, resp.Code)
+	var respBody tasksTransport.GetDatedUntrashedTasksResponse
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode task response")
+
+	assert.Equal(t, expectedTasks, respBody.Tasks, "unexpected tasks")
 	assert.False(t, respBody.HasMore, "unexpected additional page")
 }
 

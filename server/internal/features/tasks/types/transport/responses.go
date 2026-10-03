@@ -81,6 +81,11 @@ type GetTrashedTasksExistResponse struct {
 	TrashedTasksExist bool `json:"trashedTasksExist"`
 }
 
+type GetTodayProgressResponse struct {
+	OpenTaskCount int64 `db:"open_task_count" json:"openTaskCount"`
+	DoneTaskCount int64 `db:"done_task_count" json:"doneTaskCount"`
+}
+
 type BatchCompleteTaskResponse struct {
 	Id   int64       `json:"id"`
 	Date shared.Date `json:"date"`
