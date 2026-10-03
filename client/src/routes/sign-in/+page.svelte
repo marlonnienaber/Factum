@@ -20,7 +20,7 @@
 
 	$effect(() => {
 		if (authenticated) {
-			void goto(resolve('/backlog'));
+			void goto(resolve('/workbench'));
 		}
 	});
 

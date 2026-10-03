@@ -33,21 +33,24 @@
 	const categoryError = $derived(categoryTouched ? getValidationError('categoryId') : undefined);
 
 	const editing = $derived(task !== undefined);
-	const loading = $derived(taskService.taskMutationLoading);
 	const inputParseResult = $derived(taskInputSchema.safeParse({ title, description, categoryId }));
+	let saving = $state(false);
 
 	async function handleSubmit(): Promise<void> {
-		if (taskService.taskMutationBlocked || !inputParseResult.success) return;
-
-		const request = date ? { ...inputParseResult.data, date } : inputParseResult.data;
-		if (task) {
-			await taskService.updateTask({ ...request, id: task.id });
-		} else {
-			await taskService.createTask(request);
+		if (saving || !inputParseResult.success) return;
+		saving = true;
+		try {
+			const request = date ? { ...inputParseResult.data, date } : inputParseResult.data;
+			if (task) {
+				await taskService.updateTask({ ...request, id: task.id });
+			} else {
+				await taskService.createTask(request);
+			}
+			open = false;
+			task = undefined;
+		} finally {
+			saving = false;
 		}
-
-		open = false;
-		task = undefined;
 	}
 
 	function getValidationError(field: 'title' | 'description' | 'categoryId'): string | undefined {
@@ -59,7 +62,6 @@
 		if (open) {
 			title = task?.title ?? '';
 			description = task?.description ?? '';
-			// TODO: rather introduce discriminators in different task types and use them here?
 			date = task && 'date' in task ? task.date : undefined;
 			categoryId = task?.categoryId;
 			titleTouched = false;
@@ -126,8 +128,8 @@
 						<span>* required</span>
 						<Button
 							variant="success"
-							disabled={!inputParseResult.success || taskService.taskMutationBlocked}
-							onclick={handleSubmit}>{loading ? (editing ? 'Saving...' : 'Creating...') : editing ? 'Save' : 'Create'}</Button
+							disabled={!inputParseResult.success || saving}
+							onclick={handleSubmit}>{saving ? (editing ? 'Saving...' : 'Creating...') : editing ? 'Save' : 'Create'}</Button
 						>
 					</div>
 				</div>

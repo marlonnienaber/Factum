@@ -9,10 +9,18 @@
 	};
 
 	let { open = $bindable() }: Props = $props();
+	let deleting = $state(false);
 
 	async function confirm(): Promise<void> {
-		await taskService.deleteTrashedTasks();
-		open = false;
+		if (deleting) return;
+
+		deleting = true;
+		try {
+			await taskService.deleteTrashedTasks();
+			open = false;
+		} finally {
+			deleting = false;
+		}
 	}
 </script>
 
@@ -50,7 +58,7 @@
 					</Dialog.Description>
 					<div class="footer">
 						<Button onclick={() => (open = false)}>Cancel</Button>
-						<Button variant="danger" disabled={taskService.taskMutationBlocked} onclick={confirm}>Delete All</Button>
+						<Button variant="danger" disabled={deleting} onclick={confirm}>{deleting ? 'Deleting...' : 'Delete All'}</Button>
 					</div>
 				</div>
 			{/snippet}

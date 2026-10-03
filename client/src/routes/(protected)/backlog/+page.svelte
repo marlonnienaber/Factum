@@ -106,7 +106,6 @@
 			{
 				label: 'Trash',
 				icon: Trash2,
-				disabled: taskService.taskMutationBlocked,
 				onclick: () => taskService.trashTask(task.id)
 			}
 		];
@@ -170,16 +169,13 @@
 					{#snippet trailingIcon()}<XCircle size={17} aria-hidden="true" />{/snippet}
 				</Button>
 				<Button
-					disabled={selectedTaskIds.length === 0 || selectedTaskIds.length > maximumBatchSize || taskService.taskMutationBlocked}
+					disabled={selectedTaskIds.length === 0 || selectedTaskIds.length > maximumBatchSize}
 					onclick={completeSelectedTasks}
 				>
 					Complete All
 					{#snippet trailingIcon()}<CheckCheck size={17} aria-hidden="true" />{/snippet}
 				</Button>
-				<Button
-					disabled={selectedTaskIds.length === 0 || selectedTaskIds.length > maximumBatchSize || taskService.taskMutationBlocked}
-					onclick={trashSelectedTasks}
-				>
+				<Button disabled={selectedTaskIds.length === 0 || selectedTaskIds.length > maximumBatchSize} onclick={trashSelectedTasks}>
 					Trash All
 					{#snippet trailingIcon()}<Trash2 size={17} aria-hidden="true" />{/snippet}
 				</Button>
@@ -201,18 +197,13 @@
 		</div>
 		<div class="no-date-section">
 			<h1>No Date Assigned</h1>
-			<InfiniteScrollContainer
-				hasMore={undatedTaskStore.hasMore}
-				loading={taskService.undatedTasksLoading}
-				disabled={dragging}
-				loadMore={loadMoreUndatedTasks}
-			>
+			<InfiniteScrollContainer hasMore={undatedTaskStore.hasMore} disabled={dragging} loadMore={loadMoreUndatedTasks}>
 				<div
 					class="task-item-drop-zone"
 					aria-label="Tasks without a date"
 					use:dndzone={{
 						items: undatedTaskDragItems,
-						dragDisabled: selectionEnabled || taskService.taskMutationBlocked,
+						dragDisabled: selectionEnabled,
 						dropTargetStyle: { outline: 'none' }
 					}}
 					onconsider={handleConsider}
@@ -236,7 +227,6 @@
 		<h1>Date Assigned</h1>
 		<InfiniteScrollContainer
 			hasMore={datedUntrashedOpenTaskStore.nonTodayTasksHasMore}
-			loading={taskService.datedUntrashedOpenNonTodayTasksLoading}
 			disabled={dragging}
 			loadMore={loadMoreDatedUntrashedOpenNonTodayTasks}
 		>
@@ -250,7 +240,7 @@
 							aria-label={`Tasks dated ${getDateLabel(groupDate)}`}
 							use:dndzone={{
 								items: taskDragItems,
-								dragDisabled: selectionEnabled || taskService.taskMutationBlocked,
+								dragDisabled: selectionEnabled,
 								dropTargetStyle: { outline: 'none' }
 							}}
 							onconsider={(event) => handleConsider(event, groupKey)}
@@ -276,7 +266,6 @@
 		<h1>Today</h1>
 		<InfiniteScrollContainer
 			hasMore={datedUntrashedOpenTaskStore.todayTasksHasMore}
-			loading={taskService.datedUntrashedOpenTodayTasksLoading}
 			disabled={dragging}
 			loadMore={loadMoreDatedUntrashedOpenTodayTasks}
 		>
@@ -285,7 +274,7 @@
 				aria-label="Tasks dated Today"
 				use:dndzone={{
 					items: todayTaskDragItems,
-					dragDisabled: selectionEnabled || taskService.taskMutationBlocked,
+					dragDisabled: selectionEnabled,
 					dropTargetStyle: { outline: 'none' }
 				}}
 				onconsider={(event) => handleConsider(event, todayDateKey)}

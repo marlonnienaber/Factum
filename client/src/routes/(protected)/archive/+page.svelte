@@ -152,7 +152,6 @@
 					label: 'Restore',
 					icon: RotateCcw,
 					variant: 'success' as const,
-					disabled: taskService.taskMutationBlocked,
 					onclick: () => taskService.restoreTask(task.id)
 				}
 			];
@@ -162,7 +161,6 @@
 			{
 				label: 'Trash',
 				icon: Trash2,
-				disabled: taskService.taskMutationBlocked,
 				onclick: () => taskService.trashTask(task.id)
 			}
 		];
@@ -224,7 +222,7 @@
 				</Button>
 				<Button
 					variant="success"
-					disabled={selectedTaskIds.length === 0 || selectedTaskIds.length > maximumBatchSize || taskService.taskMutationBlocked}
+					disabled={selectedTaskIds.length === 0 || selectedTaskIds.length > maximumBatchSize}
 					onclick={openSelectedTasks}
 				>
 					Open All
@@ -232,7 +230,7 @@
 				</Button>
 				<Button
 					variant="danger"
-					disabled={selectedTaskIds.length === 0 || selectedTaskIds.length > maximumBatchSize || taskService.taskMutationBlocked}
+					disabled={selectedTaskIds.length === 0 || selectedTaskIds.length > maximumBatchSize}
 					onclick={trashSelectedTasks}
 				>
 					Trash All
@@ -247,7 +245,7 @@
 					{#snippet trailingIcon()}<MousePointer2 size={17} aria-hidden="true" />{/snippet}
 				</Button>
 				{#if trashedTaskStore.trashedTasksExist}
-					<Button variant="danger" disabled={taskService.taskMutationBlocked} onclick={requestEmptyTrash}>
+					<Button variant="danger" onclick={requestEmptyTrash}>
 						Empty Trash
 						{#snippet trailingIcon()}<Trash2 size={17} aria-hidden="true" />{/snippet}
 					</Button>
@@ -278,7 +276,6 @@
 		<h1>Completed</h1>
 		<InfiniteScrollContainer
 			hasMore={datedUntrashedDoneTaskStore.hasMore}
-			loading={taskService.datedUntrashedDoneTasksLoading}
 			disabled={dragging}
 			loadMore={loadMoreDatedUntrashedDoneTasks}
 		>
@@ -292,7 +289,7 @@
 							aria-label={`Completed tasks dated ${getDateLabel(groupDate)}`}
 							use:dndzone={{
 								items: taskDragItems,
-								dragDisabled: selectionEnabled || taskService.taskMutationBlocked,
+								dragDisabled: selectionEnabled,
 								dropTargetStyle: { outline: 'none' }
 							}}
 							onconsider={(event) => handleConsider(event, groupKey)}
@@ -322,18 +319,13 @@
 				<span class="trash-information">Trashed tasks are automatically deleted every day at midnight German time.</span>
 			</Popover>
 		</div>
-		<InfiniteScrollContainer
-			hasMore={trashedTaskStore.hasMore}
-			loading={taskService.trashedTasksLoading}
-			disabled={dragging}
-			loadMore={loadMoreTrashedTasks}
-		>
+		<InfiniteScrollContainer hasMore={trashedTaskStore.hasMore} disabled={dragging} loadMore={loadMoreTrashedTasks}>
 			<div
 				class="task-item-drop-zone"
 				aria-label="Trashed tasks"
 				use:dndzone={{
 					items: trashedTaskDragItems,
-					dragDisabled: selectionEnabled || taskService.taskMutationBlocked,
+					dragDisabled: selectionEnabled,
 					dropTargetStyle: { outline: 'none' }
 				}}
 				onconsider={handleConsider}
