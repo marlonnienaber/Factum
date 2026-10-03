@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { authenticationService } from '$lib/services/authentication-service.svelte';
+	import { themeService } from '$lib/services/theme-service.svelte';
 	import { authenticationStore } from '$lib/stores/authentication-store.svelte';
 	import { categoryStore } from '$lib/stores/category-store.svelte';
 	import { datedUntrashedDoneTaskStore } from '$lib/stores/dated-untrashed-done-task-store.svelte';
@@ -50,7 +51,7 @@
 				<a href={resolve('/workbench')}>Workbench</a>
 				<a href={resolve('/backlog')}>Backlog</a>
 				<a href={resolve('/archive')}>Archive</a>
-				<button class="theme-toggle-button" type="button" onclick={() => themeStore.toggleTheme()}>
+				<button class="theme-toggle-button" type="button" onclick={() => themeService.toggleTheme()}>
 					{#if isDarkTheme}
 						<Sun size={18} aria-hidden={true} />
 					{:else}

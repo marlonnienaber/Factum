@@ -4,14 +4,6 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<meta name="text-scale" content="scale" />
-		<script>
-			const themePreference = window.matchMedia('(prefers-color-scheme: dark)');
-			const applySystemTheme = () => {
-				document.documentElement.dataset.theme = themePreference.matches ? 'dark' : 'light';
-			};
-			applySystemTheme();
-			themePreference.addEventListener('change', applySystemTheme);
-		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="false">
