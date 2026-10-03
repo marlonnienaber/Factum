@@ -11,6 +11,7 @@ import { datedUntrashedDoneTaskStore } from '$lib/stores/dated-untrashed-done-ta
 import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-task-store.svelte';
 import { trashedTaskStore } from '$lib/stores/trashed-task-store.svelte';
 import { undatedTaskStore } from '$lib/stores/undated-task-store.svelte';
+import { todayProgressStore, type ProgressRelevantTaskState } from '$lib/stores/today-progress-store.svelte';
 import type { BatchTrashTasksRequest } from '$lib/types/requests/batch-trash-tasks-request';
 import type { BatchUpdateDoneRequest } from '$lib/types/requests/batch-update-done-request';
 import type { CreateTaskRequest } from '$lib/types/requests/create-task-request';
@@ -35,6 +36,7 @@ import {
 	GetTrashedTasksExistResponseSchema,
 	type GetTrashedTasksExistResponse
 } from '$lib/types/responses/get-trashed-tasks-exist-response';
+import { GetTodayProgressResponseSchema, type GetTodayProgressResponse } from '$lib/types/responses/get-today-progress-response';
 import type { TrashedTaskResponse } from '$lib/types/responses/trashed-task-response';
 import { TrashTaskResponseSchema, type TrashTaskResponse } from '$lib/types/responses/trash-task-response';
 import { RestoreTaskResponseSchema, type RestoreTaskResponse } from '$lib/types/responses/restore-task-response';
@@ -44,6 +46,22 @@ import { UpdateTaskResponseSchema, type UpdateTaskResponse } from '$lib/types/re
 import type { DateValue } from '@internationalized/date';
 import { SvelteURLSearchParams } from 'svelte/reactivity';
 import { toast } from 'svelte-sonner';
+
+function getProgressRelevantTaskState(taskId: number): ProgressRelevantTaskState | undefined {
+	const openTask = datedUntrashedOpenTaskStore.datedUntrashedOpenTasks.find((task) => task.id === taskId);
+	if (openTask !== undefined) return { date: openTask.date, done: false, trashed: false };
+
+	const doneTask = datedUntrashedDoneTaskStore.datedUntrashedDoneTasks.find((task) => task.id === taskId);
+	if (doneTask !== undefined) return { date: doneTask.date, done: true, trashed: false };
+
+	const undatedTask = undatedTaskStore.undatedTasks.find((task) => task.id === taskId);
+	if (undatedTask !== undefined) return { done: false, trashed: false };
+
+	const trashedTask = trashedTaskStore.trashedTasks.find((task) => task.id === taskId);
+	if (trashedTask !== undefined) return { date: trashedTask.date, done: trashedTask.done, trashed: true };
+
+	return undefined;
+}
 
 async function fetchDatedUntrashedDoneTasks(
 	cursor?: DatedUntrashedTasksCursor,
@@ -162,6 +180,14 @@ async function fetchTrashedTasksExist(): Promise<void> {
 	}
 }
 
+async function fetchTodayProgress(): Promise<void> {
+	const networkCall: NetworkCall<GetTodayProgressResponse> = await jsonGetWithoutBodyWithResponse(
+		'/api/tasks/today-progress',
+		GetTodayProgressResponseSchema
+	);
+	if (networkCall.status === 'success') todayProgressStore.setProgress(networkCall.result);
+}
+
 async function createTask(request: CreateTaskRequest): Promise<void> {
 	const networkCall: NetworkCall<CreateTaskResponse> = await jsonPostWithBodyWithResponse(
 		'/api/tasks',
@@ -169,6 +195,10 @@ async function createTask(request: CreateTaskRequest): Promise<void> {
 		CreateTaskResponseSchema
 	);
 	if (networkCall.status !== 'success') return;
+
+	const previousState = undefined;
+	const nextState = { date: request.date, done: false, trashed: false };
+	todayProgressStore.applyTaskTransition(previousState, nextState);
 
 	if (request.date !== undefined) {
 		datedUntrashedOpenTaskStore.addOrUpdateTask({
@@ -195,6 +225,14 @@ async function updateTask(request: UpdateTaskRequest): Promise<void> {
 		toast.error('An unexpected error occurred. Your data might be inconsistent. Please reload the page to resolve the issue.');
 		return;
 	}
+
+	const previousState = getProgressRelevantTaskState(request.id);
+	const nextState = {
+		date: updatedTask.date,
+		done: updatedTask.done,
+		trashed: updatedTask.trashed
+	};
+	todayProgressStore.applyTaskTransition(previousState, nextState);
 
 	undatedTaskStore.removeTask(request.id);
 	datedUntrashedOpenTaskStore.removeTask(request.id);
@@ -224,16 +262,26 @@ async function toggleTaskDone(id: number): Promise<void> {
 		ToggleTaskDoneResponseSchema
 	);
 	if (networkCall.status !== 'success') return;
+
+	if (networkCall.result.rank === undefined) {
+		toast.error('An unexpected error occurred. Your data might be inconsistent. Please reload the page to resolve the issue.');
+		return;
+	}
+
+	const previousState = getProgressRelevantTaskState(id);
+	const nextState = {
+		date: networkCall.result.date,
+		done: !task.done,
+		trashed: trashedTask !== undefined
+	};
+	todayProgressStore.applyTaskTransition(previousState, nextState);
+
 	if (trashedTask !== undefined) {
 		trashedTaskStore.addOrUpdateTask({
 			...trashedTask,
 			date: networkCall.result.date,
 			done: !trashedTask.done
 		});
-		return;
-	}
-	if (networkCall.result.rank === undefined) {
-		toast.error('An unexpected error occurred. Your data might be inconsistent. Please reload the page to resolve the issue.');
 		return;
 	}
 
@@ -286,6 +334,16 @@ async function completeTasks(taskIds: number[]): Promise<boolean> {
 		.filter((task) => task !== undefined);
 	if (completedTasks.length !== taskIds.length) return false;
 
+	for (const completedTask of completedTasks) {
+		const previousState = getProgressRelevantTaskState(completedTask.id);
+		const nextState = {
+			date: completedTask.date,
+			done: true,
+			trashed: false
+		};
+		todayProgressStore.applyTaskTransition(previousState, nextState);
+	}
+
 	undatedTaskStore.removeTasks(taskIds);
 	datedUntrashedOpenTaskStore.removeTasks(taskIds);
 	datedUntrashedDoneTaskStore.addOrUpdateTasks(completedTasks);
@@ -315,6 +373,16 @@ async function openTasks(taskIds: number[]): Promise<boolean> {
 		.filter((task) => task !== undefined);
 	if (openedTasks.length !== taskIds.length) return false;
 
+	for (const openedTask of openedTasks) {
+		const previousState = getProgressRelevantTaskState(openedTask.id);
+		const nextState = {
+			date: openedTask.date,
+			done: false,
+			trashed: false
+		};
+		todayProgressStore.applyTaskTransition(previousState, nextState);
+	}
+
 	datedUntrashedDoneTaskStore.removeTasks(taskIds);
 	datedUntrashedOpenTaskStore.addOrUpdateTasks(openedTasks);
 	return true;
@@ -332,6 +400,14 @@ async function trashTask(id: number): Promise<void> {
 		TrashTaskResponseSchema
 	);
 	if (networkCall.status !== 'success') return;
+
+	const previousState = getProgressRelevantTaskState(id);
+	const nextState = {
+		date: previousState?.date,
+		done: previousState?.done ?? false,
+		trashed: true
+	};
+	todayProgressStore.applyTaskTransition(previousState, nextState);
 
 	undatedTaskStore.removeTask(id);
 	datedUntrashedOpenTaskStore.removeTask(id);
@@ -382,6 +458,17 @@ async function trashTasks(taskIds: number[]): Promise<boolean> {
 		})
 		.filter((task) => task !== undefined);
 	if (trashedTasks.length !== taskIds.length) return false;
+
+	for (const taskId of taskIds) {
+		const previousState = getProgressRelevantTaskState(taskId);
+		const nextState = {
+			date: previousState?.date,
+			done: previousState?.done ?? false,
+			trashed: true
+		};
+		todayProgressStore.applyTaskTransition(previousState, nextState);
+	}
+
 	undatedTaskStore.removeTasks(taskIds);
 	datedUntrashedOpenTaskStore.removeTasks(taskIds);
 	datedUntrashedDoneTaskStore.removeTasks(taskIds);
@@ -398,6 +485,10 @@ async function restoreTask(id: number): Promise<void> {
 		RestoreTaskResponseSchema
 	);
 	if (networkCall.status !== 'success') return;
+
+	const previousState = { date: task.date, done: task.done, trashed: true };
+	const nextState = { date: task.date, done: task.done, trashed: false };
+	todayProgressStore.applyTaskTransition(previousState, nextState);
 
 	await fetchTrashedTasksExist();
 	trashedTaskStore.removeTask(id);
@@ -455,6 +546,14 @@ async function dragAndDropTask(id: number, request: TaskDragAndDropRequest): Pro
 		TaskDragAndDropResponseSchema
 	);
 	if (networkCall.status === 'failed') return;
+
+	const previousState = getProgressRelevantTaskState(id);
+	const nextState = {
+		date: request.date,
+		done: request.done,
+		trashed: request.trashed
+	};
+	todayProgressStore.applyTaskTransition(previousState, nextState);
 
 	if (request.trashed && completedTask !== undefined) {
 		datedUntrashedDoneTaskStore.removeTask(id);
@@ -529,6 +628,7 @@ export const taskService = {
 	fetchDatedUntrashedOpenNonTodayTasks,
 	fetchTrashedTasks,
 	fetchTrashedTasksExist,
+	fetchTodayProgress,
 	createTask,
 	updateTask,
 	toggleTaskDone,

@@ -3,11 +3,13 @@
 	import TaskDialog from '$lib/components/taskCreation/task-dialog.svelte';
 	import Button from '$lib/components/shared/button.svelte';
 	import InfiniteScrollContainer from '$lib/components/shared/infinite-scroll-container.svelte';
+	import ProgressBar from '$lib/components/shared/progress-bar.svelte';
 	import Task from '$lib/components/taskDisplay/task.svelte';
 	import { taskService } from '$lib/services/task-service.svelte';
 	import { categoryStore } from '$lib/stores/category-store.svelte';
 	import { datedUntrashedDoneTaskStore } from '$lib/stores/dated-untrashed-done-task-store.svelte';
 	import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-task-store.svelte';
+	import { todayProgressStore } from '$lib/stores/today-progress-store.svelte';
 	import type { DatedUntrashedDoneTaskResponse } from '$lib/types/responses/dated-untrashed-done-task-response';
 	import type { DatedUntrashedOpenTaskResponse } from '$lib/types/responses/dated-untrashed-open-task-response';
 	import type { TaskDragAndDropRequest } from '$lib/types/requests/task-drag-and-drop-request';
@@ -33,6 +35,8 @@
 	const allSelectedTasksOpen = $derived(areAllSelectedTasksOpen());
 	const allSelectedTasksDone = $derived(areAllSelectedTasksDone());
 	const batchSizeExceeded = $derived(selectedTaskIds.length > maximumBatchSize);
+	const totalTaskCount = $derived(todayProgressStore.openTaskCount + todayProgressStore.doneTaskCount);
+	const completionPercentage = $derived(getCompletionPercentage());
 
 	$effect.pre(() => {
 		if (dragging) return;
@@ -78,6 +82,11 @@
 
 	function getTaskDragItemKey(task: TaskDragItem): string {
 		return `${task.id}-${task[isShadowTask] ? 'shadow' : 'item'}`;
+	}
+
+	function getCompletionPercentage(): number {
+		if (totalTaskCount === 0) return 0;
+		return Math.floor((todayProgressStore.doneTaskCount / totalTaskCount) * 100);
 	}
 
 	function openCreateTaskDialog(): void {
@@ -230,6 +239,26 @@
 		</section>
 		<section class="progress-section">
 			<h1>Progress</h1>
+			<div class="progress-content">
+				<div class="progress-counts">
+					<div class="progress-count">
+						<span class="progress-count-value">{todayProgressStore.openTaskCount}</span>
+						<span class="progress-count-label">open</span>
+					</div>
+					<div class="progress-count-divider"></div>
+					<div class="progress-count">
+						<span class="progress-count-value">{todayProgressStore.doneTaskCount}</span>
+						<span class="progress-count-label">done</span>
+					</div>
+				</div>
+				<div class="progress-bar-wrapper">
+					<ProgressBar
+						percentage={completionPercentage}
+						label="Today's task completion"
+						valueText={`${completionPercentage}% (${todayProgressStore.doneTaskCount} of ${totalTaskCount} tasks done)`}
+					/>
+				</div>
+			</div>
 		</section>
 	</div>
 	<section class="open-tasks-section">
@@ -377,11 +406,65 @@
 			}
 
 			.progress-section {
+				display: grid;
+				grid-template-rows: auto minmax(0, 1fr);
 				min-height: 0;
 				box-sizing: border-box;
 				padding: 0.75rem;
+				row-gap: 0.75rem;
 				border: 1px solid var(--border);
 				border-radius: 0.75rem;
+
+				.progress-content {
+					display: flex;
+					flex-direction: column;
+					justify-content: center;
+					gap: 1.5rem;
+					justify-self: center;
+					width: min(19rem, 100%);
+					min-height: 0;
+
+					.progress-counts {
+						display: grid;
+						grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr);
+						align-items: center;
+						align-self: center;
+						column-gap: 3rem;
+						width: calc(100% - 2rem);
+						min-height: 0;
+
+						.progress-count {
+							display: flex;
+							flex-direction: column;
+							align-items: center;
+							justify-content: center;
+							gap: 0.5rem;
+
+							.progress-count-value {
+								font-size: clamp(4.5rem, 12vh, 8rem);
+								font-weight: 500;
+								line-height: 0.85;
+							}
+
+							.progress-count-label {
+								color: var(--text-subtle);
+								font-size: 1rem;
+								font-weight: 600;
+							}
+						}
+
+						.progress-count-divider {
+							width: 1px;
+							height: 70%;
+							background: var(--border);
+						}
+					}
+
+					.progress-bar-wrapper {
+						align-self: center;
+						width: 100%;
+					}
+				}
 			}
 		}
 

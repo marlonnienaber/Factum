@@ -8,6 +8,7 @@ export const load: LayoutLoad = async () => {
 		taskService.fetchUndatedTasks(),
 		taskService.fetchDatedUntrashedOpenNonTodayTasks(),
 		taskService.fetchTrashedTasks(),
-		taskService.fetchTrashedTasksExist()
+		taskService.fetchTrashedTasksExist(),
+		taskService.fetchTodayProgress()
 	]);
 };
