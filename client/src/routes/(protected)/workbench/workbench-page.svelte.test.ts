@@ -1,5 +1,7 @@
+import { fireEvent, render, type RenderResult, waitFor } from '@testing-library/svelte';
+import userEvent from '@testing-library/user-event';
 import { getLocalTimeZone, today } from '@internationalized/date';
-import {generateNKeysBetween} from 'fractional-indexing';
+import { generateNKeysBetween } from 'fractional-indexing';
 import { categoryStore } from '$lib/stores/category-store.svelte';
 import { datedUntrashedDoneTaskStore } from '$lib/stores/dated-untrashed-done-task-store.svelte';
 import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-task-store.svelte';
@@ -8,7 +10,16 @@ import { trashedTaskStore } from '$lib/stores/trashed-task-store.svelte';
 import { undatedTaskStore } from '$lib/stores/undated-task-store.svelte';
 import type { DatedUntrashedDoneTaskResponse } from '$lib/types/responses/dated-untrashed-done-task-response';
 import type { DatedUntrashedOpenTaskResponse } from '$lib/types/responses/dated-untrashed-open-task-response';
-import {beforeEach, describe, it, vi} from 'vitest';
+import {
+	expectRequestBody,
+	expectRequestContentType,
+	expectRequestCredentialsMode,
+	expectRequestMethod,
+	expectRequestUrl,
+	getResponse
+} from '$lib/utils/testing';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import Page from './+page.svelte';
 
 describe('workbench page tests', () => {
 	beforeEach(() => {
@@ -35,21 +46,177 @@ describe('workbench page tests', () => {
 		});
 
 		describe('task batch operations', () => {
-			it.todo('successfully trashes all tasks');
+			it('successfully trashes tasks', async () => {
+				const tasks = [
+					testData.openPartition.firstTask,
+					testData.openPartition.secondTask,
+					testData.donePartition.thirdTask
+				] as const;
+				const taskIds = tasks.map((task) => task.id);
+				const trashedTaskRanks = generateNKeysBetween(undefined, undefined, tasks.length);
+				const trashedTasks = tasks.map((task, index) => ({ id: task.id, rank: trashedTaskRanks[index] }));
+				const response = getResponse(trashedTasks);
+				fetchMock.mockResolvedValue(response);
 
-			it.todo('successfully completes all open tasks');
+				const page = render(Page);
+				await clickOnSelectTasksButton(page);
+				for (const task of tasks) await clickOnTask(page, task.title);
+				const trashAllButton = page.getByRole('button', { name: 'Trash' });
+				await userEvent.click(trashAllButton);
 
-			it.todo('successfully opens all done tasks');
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+				const requestBody = JSON.stringify({ taskIds });
+				expectRequestUrl(fetchMock, '/api/tasks/batch-trash');
+				expectRequestMethod(fetchMock, 'PATCH');
+				expectRequestCredentialsMode(fetchMock, 'same-origin');
+				expectRequestBody(fetchMock, requestBody);
+				expectRequestContentType(fetchMock, 'application/json');
+				for (const task of tasks) expectTaskNotToBePresent(page, task.title);
+				expect(datedUntrashedOpenTaskStore.datedUntrashedOpenTodayTasks).toHaveLength(1);
+				expect(datedUntrashedDoneTaskStore.datedUntrashedDoneTasks).toHaveLength(2);
+				expect(trashedTaskStore.trashedTasks).toHaveLength(3);
+				const selectTasksButton = page.getByRole('button', { name: 'Select Tasks' });
+				expect(selectTasksButton).toBeInTheDocument();
+			});
 
-			it.todo('disables batch opening if an open task is selected');
+			it('successfully completes all open tasks', async () => {
+				const tasks = testData.openPartition.tasks;
+				const taskIds = tasks.map((task) => task.id);
+				const completedTaskRanks = generateNKeysBetween(undefined, testData.donePartition.firstTask.rank, tasks.length);
+				const completedTasks = tasks.map((task, index) => ({
+					id: task.id,
+					date: todayDate.toString(),
+					rank: completedTaskRanks[index]
+				}));
+				const response = getResponse(completedTasks);
+				fetchMock.mockResolvedValue(response);
 
-			it.todo('disables batch completion if a done task is selected');
+				const page = render(Page);
+				await clickOnSelectTasksButton(page);
+				for (const task of tasks) await clickOnTask(page, task.title);
+				const completeAllButton = page.getByRole('button', { name: 'Complete' });
+				await userEvent.click(completeAllButton);
 
-			it.todo('disables batch operations when more than 50 tasks are selected');
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+				const requestBody = JSON.stringify({ taskIds });
+				expectRequestUrl(fetchMock, '/api/tasks/batch-complete');
+				expectRequestMethod(fetchMock, 'PATCH');
+				expectRequestCredentialsMode(fetchMock, 'same-origin');
+				expectRequestBody(fetchMock, requestBody);
+				expectRequestContentType(fetchMock, 'application/json');
+				expect(datedUntrashedOpenTaskStore.datedUntrashedOpenTodayTasks).toHaveLength(0);
+				expect(datedUntrashedDoneTaskStore.datedUntrashedDoneTasks).toHaveLength(6);
+				const selectTasksButton = page.getByRole('button', { name: 'Select Tasks' });
+				expect(selectTasksButton).toBeInTheDocument();
+			});
 
-			it.todo('disables batch operations when no task is selected');
+			it('successfully opens all done tasks', async () => {
+				const tasks = testData.donePartition.tasks;
+				const taskIds = tasks.map((task) => task.id);
+				const openedTaskRanks = generateNKeysBetween(undefined, testData.openPartition.firstTask.rank, tasks.length);
+				const openedTasks = tasks.map((task, index) => ({ id: task.id, rank: openedTaskRanks[index] }));
+				const response = getResponse(openedTasks);
+				fetchMock.mockResolvedValue(response);
 
-			it.todo('successfully cancels a batch operation');
+				const page = render(Page);
+				await clickOnSelectTasksButton(page);
+				for (const task of tasks) await clickOnTask(page, task.title);
+				const openAllButton = page.getByRole('button', { name: 'Open' });
+				await userEvent.click(openAllButton);
+
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+				const requestBody = JSON.stringify({ taskIds });
+				expectRequestUrl(fetchMock, '/api/tasks/batch-open');
+				expectRequestMethod(fetchMock, 'PATCH');
+				expectRequestCredentialsMode(fetchMock, 'same-origin');
+				expectRequestBody(fetchMock, requestBody);
+				expectRequestContentType(fetchMock, 'application/json');
+				expect(datedUntrashedOpenTaskStore.datedUntrashedOpenTodayTasks).toHaveLength(6);
+				expect(datedUntrashedDoneTaskStore.datedUntrashedDoneTasks).toHaveLength(0);
+				const selectTasksButton = page.getByRole('button', { name: 'Select Tasks' });
+				expect(selectTasksButton).toBeInTheDocument();
+			});
+
+			it('disables batch opening if an open task is selected', async () => {
+				const task = testData.openPartition.firstTask;
+
+				const page = render(Page);
+				await clickOnSelectTasksButton(page);
+				await clickOnTask(page, task.title);
+
+				const openAllButton = page.getByRole('button', { name: 'Open' });
+				const completeAllButton = page.getByRole('button', { name: 'Complete' });
+				const trashAllButton = page.getByRole('button', { name: 'Trash' });
+				expect(openAllButton).toBeDisabled();
+				expect(completeAllButton).toBeEnabled();
+				expect(trashAllButton).toBeEnabled();
+				expect(fetchMock).not.toHaveBeenCalled();
+			});
+
+			it('disables batch completion if a done task is selected', async () => {
+				const task = testData.donePartition.firstTask;
+
+				const page = render(Page);
+				await clickOnSelectTasksButton(page);
+				await clickOnTask(page, task.title);
+
+				const completeAllButton = page.getByRole('button', { name: 'Complete' });
+				const openAllButton = page.getByRole('button', { name: 'Open' });
+				const trashAllButton = page.getByRole('button', { name: 'Trash' });
+				expect(completeAllButton).toBeDisabled();
+				expect(openAllButton).toBeEnabled();
+				expect(trashAllButton).toBeEnabled();
+				expect(fetchMock).not.toHaveBeenCalled();
+			});
+
+			it('disables batch operations when more than 50 tasks are selected', async () => {
+				const taskTitles = addTasksExceedingMaximumBatchSize();
+
+				const page = render(Page);
+				await clickOnSelectTasksButton(page);
+				for (const title of taskTitles) await clickOnTask(page, title);
+
+				const completeAllButton = page.getByRole('button', { name: 'Complete' });
+				const openAllButton = page.getByRole('button', { name: 'Open' });
+				const trashAllButton = page.getByRole('button', { name: 'Trash' });
+				expect(completeAllButton).toBeDisabled();
+				expect(openAllButton).toBeDisabled();
+				expect(trashAllButton).toBeDisabled();
+				expect(page.getByText('51 / 50')).toBeInTheDocument();
+				expect(fetchMock).not.toHaveBeenCalled();
+			});
+
+			it('disables batch operations when no task is selected', async () => {
+				const page = render(Page);
+				await clickOnSelectTasksButton(page);
+
+				const completeAllButton = page.getByRole('button', { name: 'Complete' });
+				const openAllButton = page.getByRole('button', { name: 'Open' });
+				const trashAllButton = page.getByRole('button', { name: 'Trash' });
+				expect(completeAllButton).toBeDisabled();
+				expect(openAllButton).toBeDisabled();
+				expect(trashAllButton).toBeDisabled();
+				expect(page.getByText('0 / 50')).toBeInTheDocument();
+				expect(fetchMock).not.toHaveBeenCalled();
+			});
+
+			it('successfully cancels a batch operation', async () => {
+				const task = testData.openPartition.firstTask;
+
+				const page = render(Page);
+				await clickOnSelectTasksButton(page);
+				await clickOnTask(page, task.title);
+				const cancelSelectionButton = page.getByRole('button', { name: 'Cancel' });
+				await userEvent.click(cancelSelectionButton);
+
+				const selectTasksButton = page.getByRole('button', { name: 'Select Tasks' });
+				expect(selectTasksButton).toBeInTheDocument();
+				const completeTaskButton = page.getByRole('checkbox', {
+					name: `Mark "${task.title}" as completed`
+				});
+				expect(completeTaskButton).toBeInTheDocument();
+				expect(fetchMock).not.toHaveBeenCalled();
+			});
 		});
 
 		describe('task operations', () => {
@@ -65,6 +232,18 @@ describe('workbench page tests', () => {
 				it.todo('edits open task');
 
 				it.todo('edits done task');
+			});
+
+			describe('task creation', () => {
+				it.todo('reacts correctly to missing task title');
+
+				it.todo('reacts correctly to too long task title');
+
+				it.todo('reacts correctly to too long task description');
+
+				it.todo('cancels and closes the edit-task dialog');
+
+				it.todo('adds a task'); // check especially that today date is set as default
 			});
 
 			describe('task trashing', () => {
@@ -224,4 +403,36 @@ function createTestData() {
 	};
 
 	return { openPartition, donePartition };
+}
+
+function addTasksExceedingMaximumBatchSize(): string[] {
+	const taskCount = 51;
+	const firstTaskId = 10;
+	const ranks = generateNKeysBetween(testData.openPartition.thirdTask.rank, undefined, taskCount);
+	const tasks: DatedUntrashedOpenTaskResponse[] = ranks.map((rank, index) => ({
+		id: firstTaskId + index,
+		categoryId: personalCategory.id,
+		title: `Review open project note ${index + 1}`,
+		description: `Review and organize open project note ${index + 1}.`,
+		date: todayDate,
+		rank,
+		done: false
+	}));
+	datedUntrashedOpenTaskStore.addOrUpdateTasks(tasks);
+	return tasks.map((task) => task.title);
+}
+
+async function clickOnSelectTasksButton(page: RenderResult<typeof Page>): Promise<void> {
+	const selectTasksButton = page.getByRole('button', { name: 'Select Tasks' });
+	await userEvent.click(selectTasksButton);
+}
+
+async function clickOnTask(page: RenderResult<typeof Page>, title: string): Promise<void> {
+	const task = page.getByRole('listitem', { name: title });
+	await fireEvent.pointerUp(task);
+}
+
+function expectTaskNotToBePresent(page: RenderResult<typeof Page>, title: string): void {
+	const task = page.queryByRole('listitem', { name: title });
+	expect(task).not.toBeInTheDocument();
 }
