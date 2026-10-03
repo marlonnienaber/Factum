@@ -17,9 +17,10 @@
 	type Props = {
 		open: boolean;
 		task?: DatedUntrashedDoneTaskResponse | DatedUntrashedOpenTaskResponse | UndatedTaskResponse | TrashedTaskResponse;
+		defaultDate?: CalendarDate;
 	};
 
-	let { open = $bindable(), task = $bindable() }: Props = $props();
+	let { open = $bindable(), task = $bindable(), defaultDate }: Props = $props();
 	let title = $state('');
 	let description = $state('');
 	let date = $state<CalendarDate>();
@@ -62,7 +63,7 @@
 		if (open) {
 			title = task?.title ?? '';
 			description = task?.description ?? '';
-			date = task && 'date' in task ? task.date : undefined;
+			date = task && 'date' in task ? task.date : defaultDate;
 			categoryId = task?.categoryId;
 			titleTouched = false;
 			descriptionTouched = false;
@@ -129,8 +130,10 @@
 						<Button
 							variant="success"
 							disabled={!inputParseResult.success || saving}
-							onclick={handleSubmit}>{saving ? (editing ? 'Saving...' : 'Creating...') : editing ? 'Save' : 'Create'}</Button
+							onclick={handleSubmit}
 						>
+							{saving ? (editing ? 'Saving...' : 'Creating...') : editing ? 'Save' : 'Create'}
+						</Button>
 					</div>
 				</div>
 			{/snippet}

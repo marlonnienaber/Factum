@@ -1,13 +1,18 @@
 <script lang="ts">
 	import CategoryFilter from '$lib/components/archive/category-filter.svelte';
+	import TaskDialog from '$lib/components/taskCreation/task-dialog.svelte';
+	import Button from '$lib/components/shared/button.svelte';
 	import InfiniteScrollContainer from '$lib/components/shared/infinite-scroll-container.svelte';
 	import Task from '$lib/components/taskDisplay/task.svelte';
 	import { taskService } from '$lib/services/task-service.svelte';
 	import { categoryStore } from '$lib/stores/category-store.svelte';
 	import { datedUntrashedDoneTaskStore } from '$lib/stores/dated-untrashed-done-task-store.svelte';
 	import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-task-store.svelte';
-	import { Ghost } from '@lucide/svelte';
+	import { getLocalTimeZone, today } from '@internationalized/date';
+	import { Ghost, Plus } from '@lucide/svelte';
 
+	const todayDate = today(getLocalTimeZone());
+	let taskDialogOpen = $state(false);
 	let unselectedCategoryIds = $state<number[]>([]);
 
 	function handleCategorySelectionChange(nextUnselectedCategoryIds: number[]): void {
@@ -49,7 +54,12 @@
 
 <div class="frame">
 	<div class="left-column-container">
-		<div class="controls-section"></div>
+		<div class="controls-section">
+			<Button onclick={() => taskDialogOpen = true}>
+				Add Task
+				{#snippet trailingIcon()}<Plus size={17} strokeWidth={2.5} />{/snippet}
+			</Button>
+		</div>
 		<section class="category-selection-section">
 			<h1>Category Filter</h1>
 			<div class="category-filter-container">
@@ -88,6 +98,8 @@
 		</InfiniteScrollContainer>
 	</section>
 </div>
+
+<TaskDialog bind:open={taskDialogOpen} defaultDate={todayDate} />
 
 <style lang="scss">
 	.frame {
