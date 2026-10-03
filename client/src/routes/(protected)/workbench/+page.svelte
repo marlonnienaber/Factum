@@ -8,12 +8,32 @@
 	import { categoryStore } from '$lib/stores/category-store.svelte';
 	import { datedUntrashedDoneTaskStore } from '$lib/stores/dated-untrashed-done-task-store.svelte';
 	import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-task-store.svelte';
+	import type { DatedUntrashedDoneTaskResponse } from '$lib/types/responses/dated-untrashed-done-task-response';
+	import type { DatedUntrashedOpenTaskResponse } from '$lib/types/responses/dated-untrashed-open-task-response';
 	import { getLocalTimeZone, today } from '@internationalized/date';
-	import { Ghost, Plus } from '@lucide/svelte';
+	import { Ghost, Plus, SquarePen, Trash2 } from '@lucide/svelte';
 
 	const todayDate = today(getLocalTimeZone());
 	let taskDialogOpen = $state(false);
+	let taskDialogTask = $state<DatedUntrashedOpenTaskResponse | DatedUntrashedDoneTaskResponse>();
 	let unselectedCategoryIds = $state<number[]>([]);
+
+	function openCreateTaskDialog(): void {
+		taskDialogTask = undefined;
+		taskDialogOpen = true;
+	}
+
+	function openEditTaskDialog(task: DatedUntrashedOpenTaskResponse | DatedUntrashedDoneTaskResponse): void {
+		taskDialogTask = task;
+		taskDialogOpen = true;
+	}
+
+	function getTaskActions(task: DatedUntrashedOpenTaskResponse | DatedUntrashedDoneTaskResponse) {
+		return [
+			{ label: 'Edit', icon: SquarePen, onclick: () => openEditTaskDialog(task) },
+			{ label: 'Trash', icon: Trash2, onclick: () => taskService.trashTask(task.id) }
+		];
+	}
 
 	function handleCategorySelectionChange(nextUnselectedCategoryIds: number[]): void {
 		unselectedCategoryIds = nextUnselectedCategoryIds;
@@ -55,7 +75,7 @@
 <div class="frame">
 	<div class="left-column-container">
 		<div class="controls-section">
-			<Button onclick={() => taskDialogOpen = true}>
+			<Button onclick={openCreateTaskDialog}>
 				Add Task
 				{#snippet trailingIcon()}<Plus size={17} strokeWidth={2.5} />{/snippet}
 			</Button>
@@ -82,7 +102,14 @@
 		<InfiniteScrollContainer hasMore={datedUntrashedOpenTaskStore.todayTasksHasMore} loadMore={loadMoreOpenTasks}>
 			<div class="task-list" aria-label="Open tasks">
 				{#each datedUntrashedOpenTaskStore.datedUntrashedOpenTodayTasks as task (task.id)}
-					<Task {task} actions={[]} isShadowItem={false} selectionEnabled={false} selected={false} onSelectedChange={() => {}} />
+					<Task
+						{task}
+						actions={getTaskActions(task)}
+						isShadowItem={false}
+						selectionEnabled={false}
+						selected={false}
+						onSelectedChange={() => {}}
+					/>
 				{/each}
 			</div>
 		</InfiniteScrollContainer>
@@ -92,14 +119,21 @@
 		<InfiniteScrollContainer hasMore={datedUntrashedDoneTaskStore.hasMore} loadMore={loadMoreDoneTasks}>
 			<div class="task-list" aria-label="Done tasks">
 				{#each datedUntrashedDoneTaskStore.datedUntrashedDoneTasks as task (task.id)}
-					<Task {task} actions={[]} isShadowItem={false} selectionEnabled={false} selected={false} onSelectedChange={() => {}} />
+					<Task
+						{task}
+						actions={getTaskActions(task)}
+						isShadowItem={false}
+						selectionEnabled={false}
+						selected={false}
+						onSelectedChange={() => {}}
+					/>
 				{/each}
 			</div>
 		</InfiniteScrollContainer>
 	</section>
 </div>
 
-<TaskDialog bind:open={taskDialogOpen} defaultDate={todayDate} />
+<TaskDialog bind:open={taskDialogOpen} bind:task={taskDialogTask} defaultDate={todayDate} />
 
 <style lang="scss">
 	.frame {
