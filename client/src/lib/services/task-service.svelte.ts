@@ -476,6 +476,26 @@ async function dragAndDropTask(id: number, request: TaskDragAndDropRequest): Pro
 		});
 		return;
 	}
+	if (!request.trashed && request.done && datedTask !== undefined && request.date !== undefined) {
+		datedUntrashedOpenTaskStore.removeTask(id);
+		datedUntrashedDoneTaskStore.addOrUpdateTask({
+			...datedTask,
+			date: request.date,
+			done: true,
+			rank: networkCall.result.rank
+		});
+		return;
+	}
+	if (!request.trashed && !request.done && completedTask !== undefined && request.date !== undefined) {
+		datedUntrashedDoneTaskStore.removeTask(id);
+		datedUntrashedOpenTaskStore.addOrUpdateTask({
+			...completedTask,
+			date: request.date,
+			done: false,
+			rank: networkCall.result.rank
+		});
+		return;
+	}
 	if (completedTask !== undefined && request.date !== undefined) {
 		datedUntrashedDoneTaskStore.addOrUpdateTask({
 			...completedTask,

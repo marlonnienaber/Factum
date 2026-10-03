@@ -10,20 +10,75 @@
 	import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-task-store.svelte';
 	import type { DatedUntrashedDoneTaskResponse } from '$lib/types/responses/dated-untrashed-done-task-response';
 	import type { DatedUntrashedOpenTaskResponse } from '$lib/types/responses/dated-untrashed-open-task-response';
+	import type { TaskDragAndDropRequest } from '$lib/types/requests/task-drag-and-drop-request';
 	import { getLocalTimeZone, today } from '@internationalized/date';
 	import { CheckCheck, Ghost, MousePointer2, Plus, RotateCcw, SquarePen, Trash2, XCircle } from '@lucide/svelte';
+	import { dndzone, SHADOW_ITEM_MARKER_PROPERTY_NAME as isShadowTask, TRIGGERS, type DndEvent } from 'svelte-dnd-action';
+
+	type TaskDragItem = (DatedUntrashedOpenTaskResponse | DatedUntrashedDoneTaskResponse) & {
+		[isShadowTask]?: boolean;
+	};
 
 	const maximumBatchSize = 50;
 	const todayDate = today(getLocalTimeZone());
 
 	let taskDialogOpen = $state(false);
 	let taskDialogTask = $state<DatedUntrashedOpenTaskResponse | DatedUntrashedDoneTaskResponse>();
+	let dragging = $state(false);
 	let selectionEnabled = $state(false);
 	let selectedTaskIds = $state<number[]>([]);
 	let unselectedCategoryIds = $state<number[]>([]);
+	let openTaskDragItems = $state<TaskDragItem[]>([...datedUntrashedOpenTaskStore.datedUntrashedOpenTodayTasks]);
+	let doneTaskDragItems = $state<TaskDragItem[]>([...datedUntrashedDoneTaskStore.datedUntrashedDoneTasks]);
 	const allSelectedTasksOpen = $derived(areAllSelectedTasksOpen());
 	const allSelectedTasksDone = $derived(areAllSelectedTasksDone());
 	const batchSizeExceeded = $derived(selectedTaskIds.length > maximumBatchSize);
+
+	$effect.pre(() => {
+		if (dragging) return;
+		openTaskDragItems = [...datedUntrashedOpenTaskStore.datedUntrashedOpenTodayTasks];
+		doneTaskDragItems = [...datedUntrashedDoneTaskStore.datedUntrashedDoneTasks];
+	});
+
+	function handleConsider(event: CustomEvent<DndEvent<TaskDragItem>>, done: boolean): void {
+		dragging = true;
+		setTaskDragItems(event.detail.items, done);
+	}
+
+	async function handleFinalize(event: CustomEvent<DndEvent<TaskDragItem>>, done: boolean): Promise<void> {
+		const taskDragItems = event.detail.items;
+		setTaskDragItems(taskDragItems, done);
+
+		const taskDragItemId = Number(event.detail.info.id);
+		const wasTaskDragItemDroppedIntoZone = event.detail.info.trigger === TRIGGERS.DROPPED_INTO_ZONE;
+		const taskExists =
+			datedUntrashedOpenTaskStore.datedUntrashedOpenTodayTasks.some((task) => task.id === taskDragItemId) ||
+			datedUntrashedDoneTaskStore.datedUntrashedDoneTasks.some((task) => task.id === taskDragItemId);
+		if (wasTaskDragItemDroppedIntoZone && taskExists) {
+			const taskDragItemIndex = taskDragItems.findIndex((task) => task.id === taskDragItemId);
+			const request: TaskDragAndDropRequest = {
+				date: todayDate,
+				done,
+				trashed: false,
+				previousTaskId: taskDragItems[taskDragItemIndex - 1]?.id
+			};
+			await taskService.dragAndDropTask(taskDragItemId, request);
+		}
+
+		dragging = false;
+	}
+
+	function setTaskDragItems(taskDragItems: TaskDragItem[], done: boolean): void {
+		if (done) {
+			doneTaskDragItems = taskDragItems;
+		} else {
+			openTaskDragItems = taskDragItems;
+		}
+	}
+
+	function getTaskDragItemKey(task: TaskDragItem): string {
+		return `${task.id}-${task[isShadowTask] ? 'shadow' : 'item'}`;
+	}
 
 	function openCreateTaskDialog(): void {
 		taskDialogTask = undefined;
@@ -179,13 +234,27 @@
 	</div>
 	<section class="open-tasks-section">
 		<h1>Open</h1>
-		<InfiniteScrollContainer hasMore={datedUntrashedOpenTaskStore.todayTasksHasMore} loadMore={loadMoreOpenTasks}>
-			<div class="task-list" aria-label="Open tasks">
-				{#each datedUntrashedOpenTaskStore.datedUntrashedOpenTodayTasks as task (task.id)}
+		<InfiniteScrollContainer
+			hasMore={datedUntrashedOpenTaskStore.todayTasksHasMore}
+			disabled={dragging}
+			loadMore={loadMoreOpenTasks}
+		>
+			<div
+				class="task-item-drop-zone"
+				aria-label="Open tasks"
+				use:dndzone={{
+					items: openTaskDragItems,
+					dragDisabled: selectionEnabled,
+					dropTargetStyle: { outline: 'none' }
+				}}
+				onconsider={(event) => handleConsider(event, false)}
+				onfinalize={(event) => handleFinalize(event, false)}
+			>
+				{#each openTaskDragItems as task (getTaskDragItemKey(task))}
 					<Task
 						{task}
 						actions={getTaskActions(task)}
-						isShadowItem={false}
+						isShadowItem={Boolean(task[isShadowTask])}
 						{selectionEnabled}
 						selected={selectedTaskIds.includes(task.id)}
 						onSelectedChange={updateTaskSelection}
@@ -196,13 +265,23 @@
 	</section>
 	<section class="done-tasks-section">
 		<h1>Done</h1>
-		<InfiniteScrollContainer hasMore={datedUntrashedDoneTaskStore.hasMore} loadMore={loadMoreDoneTasks}>
-			<div class="task-list" aria-label="Done tasks">
-				{#each datedUntrashedDoneTaskStore.datedUntrashedDoneTasks as task (task.id)}
+		<InfiniteScrollContainer hasMore={datedUntrashedDoneTaskStore.hasMore} disabled={dragging} loadMore={loadMoreDoneTasks}>
+			<div
+				class="task-item-drop-zone"
+				aria-label="Done tasks"
+				use:dndzone={{
+					items: doneTaskDragItems,
+					dragDisabled: selectionEnabled,
+					dropTargetStyle: { outline: 'none' }
+				}}
+				onconsider={(event) => handleConsider(event, true)}
+				onfinalize={(event) => handleFinalize(event, true)}
+			>
+				{#each doneTaskDragItems as task (getTaskDragItemKey(task))}
 					<Task
 						{task}
 						actions={getTaskActions(task)}
-						isShadowItem={false}
+						isShadowItem={Boolean(task[isShadowTask])}
 						{selectionEnabled}
 						selected={selectedTaskIds.includes(task.id)}
 						onSelectedChange={updateTaskSelection}
@@ -234,7 +313,7 @@
 			font-weight: 500;
 		}
 
-		.task-list {
+		.task-item-drop-zone {
 			display: flex;
 			flex-direction: column;
 			gap: 0.75rem;
@@ -329,5 +408,10 @@
 			border-radius: 0.75rem;
 			gap: 0.75rem;
 		}
+	}
+
+	/*noinspection CssUnusedSymbol*/
+	:global(#dnd-action-dragged-el) {
+		opacity: 1 !important;
 	}
 </style>
