@@ -630,7 +630,7 @@ describe('backlog page tests', () => {
 				const page = render(Page);
 				await clickOnSelectTasksButton(page);
 				for (const task of tasks) await clickOnTask(page, task.title);
-				const completeAllButton = page.getByRole('button', { name: 'Complete All' });
+				const completeAllButton = page.getByRole('button', { name: 'Complete' });
 				await userEvent.click(completeAllButton);
 
 				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
@@ -662,7 +662,7 @@ describe('backlog page tests', () => {
 				const page = render(Page);
 				await clickOnSelectTasksButton(page);
 				for (const task of tasks) await clickOnTask(page, task.title);
-				const trashAllButton = page.getByRole('button', { name: 'Trash All' });
+				const trashAllButton = page.getByRole('button', { name: 'Trash' });
 				await userEvent.click(trashAllButton);
 
 				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
@@ -684,7 +684,7 @@ describe('backlog page tests', () => {
 				const page = render(Page);
 				await clickOnSelectTasksButton(page);
 				await clickOnTask(page, task.title);
-				const cancelSelectionButton = page.getByRole('button', { name: 'Cancel Selection' });
+				const cancelSelectionButton = page.getByRole('button', { name: 'Cancel' });
 				await userEvent.click(cancelSelectionButton);
 
 				const selectTasksButton = page.getByRole('button', { name: 'Select Tasks' });
@@ -700,8 +700,8 @@ describe('backlog page tests', () => {
 				const page = render(Page);
 				await clickOnSelectTasksButton(page);
 
-				const completeAllButton = page.getByRole('button', { name: 'Complete All' });
-				const trashAllButton = page.getByRole('button', { name: 'Trash All' });
+				const completeAllButton = page.getByRole('button', { name: 'Complete' });
+				const trashAllButton = page.getByRole('button', { name: 'Trash' });
 				expect(completeAllButton).toBeDisabled();
 				expect(trashAllButton).toBeDisabled();
 				expect(page.getByText('0 / 50')).toBeInTheDocument();
@@ -714,7 +714,7 @@ describe('backlog page tests', () => {
 				await clickOnSelectTasksButton(page);
 				for (const title of taskTitles) await clickOnTask(page, title);
 
-				const trashAllButton = page.getByRole('button', { name: 'Trash All' });
+				const trashAllButton = page.getByRole('button', { name: 'Trash' });
 				expect(trashAllButton).toBeDisabled();
 				expect(page.getByText('51 / 50')).toBeInTheDocument();
 				expect(fetchMock).not.toHaveBeenCalled();
@@ -727,7 +727,7 @@ describe('backlog page tests', () => {
 				await clickOnSelectTasksButton(page);
 				for (const title of taskTitles) await clickOnTask(page, title);
 
-				const completeAllButton = page.getByRole('button', { name: 'Complete All' });
+				const completeAllButton = page.getByRole('button', { name: 'Complete' });
 				expect(completeAllButton).toBeDisabled();
 				expect(page.getByText('51 / 50')).toBeInTheDocument();
 				expect(fetchMock).not.toHaveBeenCalled();
