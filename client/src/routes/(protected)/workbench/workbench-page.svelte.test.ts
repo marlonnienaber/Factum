@@ -1,24 +1,30 @@
-import { fireEvent, render, type RenderResult, waitFor } from '@testing-library/svelte';
+import {fireEvent, render, type RenderResult, waitFor, within} from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
-import { getLocalTimeZone, today } from '@internationalized/date';
-import { generateNKeysBetween } from 'fractional-indexing';
-import { categoryStore } from '$lib/stores/category-store.svelte';
-import { datedUntrashedDoneTaskStore } from '$lib/stores/dated-untrashed-done-task-store.svelte';
-import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-task-store.svelte';
-import { todayProgressStore } from '$lib/stores/today-progress-store.svelte';
-import { trashedTaskStore } from '$lib/stores/trashed-task-store.svelte';
-import { undatedTaskStore } from '$lib/stores/undated-task-store.svelte';
-import type { DatedUntrashedDoneTaskResponse } from '$lib/types/responses/dated-untrashed-done-task-response';
-import type { DatedUntrashedOpenTaskResponse } from '$lib/types/responses/dated-untrashed-open-task-response';
+import {getLocalTimeZone, today} from '@internationalized/date';
+import {generateKeyBetween, generateNKeysBetween} from 'fractional-indexing';
+import {categoryStore} from '$lib/stores/category-store.svelte';
+import {datedUntrashedDoneTaskStore} from '$lib/stores/dated-untrashed-done-task-store.svelte';
+import {datedUntrashedOpenTaskStore} from '$lib/stores/dated-untrashed-open-task-store.svelte';
+import {todayProgressStore} from '$lib/stores/today-progress-store.svelte';
+import {trashedTaskStore} from '$lib/stores/trashed-task-store.svelte';
+import {undatedTaskStore} from '$lib/stores/undated-task-store.svelte';
+import type {DatedUntrashedDoneTaskResponse} from '$lib/types/responses/dated-untrashed-done-task-response';
+import type {DatedUntrashedOpenTaskResponse} from '$lib/types/responses/dated-untrashed-open-task-response';
 import {
+	expectInputToBeInvalid,
 	expectRequestBody,
 	expectRequestContentType,
 	expectRequestCredentialsMode,
 	expectRequestMethod,
 	expectRequestUrl,
-	getResponse
+	expectSelectToBeInvalid,
+	expectTextareaToBeInvalid,
+	getInputById,
+	getResponse,
+	getSelectById,
+	getTextareaById
 } from '$lib/utils/testing';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import Page from './+page.svelte';
 
 describe('workbench page tests', () => {
@@ -37,6 +43,11 @@ describe('workbench page tests', () => {
 			openTaskCount: testData.openPartition.tasks.length,
 			doneTaskCount: testData.donePartition.tasks.length
 		});
+	});
+
+	afterEach(async () => {
+		if (document.querySelector('[role="dialog"]')) await userEvent.keyboard('{Escape}');
+		document.body.removeAttribute('style');
 	});
 
 	describe('has no more tasks scenario', () => {
@@ -221,35 +232,295 @@ describe('workbench page tests', () => {
 
 		describe('task operations', () => {
 			describe('task editing', () => {
-				it.todo('reacts correctly to missing task title');
+				it('reacts correctly to missing task title', async () => {
+					const task = testData.openPartition.firstTask;
 
-				it.todo('reacts correctly to too long task title');
+					const page = render(Page);
+					await openEditTaskDialog(page, task.title);
+					const titleInput = await enterTaskTitle(page, '');
+					await fireEvent.blur(titleInput);
 
-				it.todo('reacts correctly to too long task description');
+					const saveButton = page.getByRole('button', { name: 'Save' });
+					expect(saveButton).toBeDisabled();
+					await expectInputToBeInvalid(page, 'task-title', 'Title must have at least 1 character');
+				});
 
-				it.todo('cancels and closes the edit-task dialog');
+				it('reacts correctly to too long task title', async () => {
+					const task = testData.openPartition.firstTask;
 
-				it.todo('edits open task');
+					const page = render(Page);
+					await openEditTaskDialog(page, task.title);
+					const tooLongTitle = 'Plan the weekend hiking route '.repeat(4);
+					const titleInput = await enterTaskTitle(page, tooLongTitle);
+					await fireEvent.blur(titleInput);
 
-				it.todo('edits done task');
+					const saveButton = page.getByRole('button', { name: 'Save' });
+					expect(saveButton).toBeDisabled();
+					await expectInputToBeInvalid(page, 'task-title', 'Title must have at most 100 characters');
+				});
+
+				it('reacts correctly to too long task description', async () => {
+					const task = testData.openPartition.firstTask;
+
+					const page = render(Page);
+					await openEditTaskDialog(page, task.title);
+					const tooLongDescription = 'Compare the available trails, travel times, and weather forecast. '.repeat(9);
+					const descriptionInput = await enterTaskDescription(page, tooLongDescription);
+					await fireEvent.blur(descriptionInput);
+
+					const saveButton = page.getByRole('button', { name: 'Save' });
+					expect(saveButton).toBeDisabled();
+					await expectTextareaToBeInvalid(page, 'task-description', 'Description must have at most 500 characters');
+				});
+
+				it('cancels and closes the edit-task dialog', async () => {
+					const task = testData.openPartition.firstTask;
+
+					const page = render(Page);
+					await openEditTaskDialog(page, task.title);
+					const cancelButton = page.getByRole('button', { name: 'Cancel' });
+					await userEvent.click(cancelButton);
+
+					const editTaskDialog = page.queryByRole('dialog', { name: 'Edit Task' });
+					expect(editTaskDialog).not.toBeInTheDocument();
+				});
+
+				it('edits open task', async () => {
+					const task = testData.openPartition.firstTask;
+					const category = categories.find((category) => category.id === task.categoryId)!;
+					const newTitle = 'Buy groceries for the weekend';
+					const newDescription = 'Pick up vegetables, bread, and coffee.';
+
+					const response = getResponse({
+						id: task.id,
+						categoryId: task.categoryId,
+						title: newTitle,
+						description: newDescription,
+						date: task.date.toString(),
+						rank: task.rank,
+						done: false,
+						trashed: false
+					});
+					fetchMock.mockResolvedValue(response);
+
+					const page = render(Page);
+					await openEditTaskDialog(page, task.title);
+					await enterTaskTitle(page, newTitle);
+					await enterTaskDescription(page, newDescription);
+					const saveButton = page.getByRole('button', { name: 'Save' });
+					await userEvent.click(saveButton);
+
+					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+					const editTaskDialog = page.queryByRole('dialog', { name: 'Edit Task' });
+					expect(editTaskDialog).not.toBeInTheDocument();
+					const serializedDate = task.date.toString();
+					const requestBody = JSON.stringify({
+						title: newTitle,
+						description: newDescription,
+						categoryId: task.categoryId,
+						date: serializedDate,
+						id: task.id
+					});
+					expectRequestUrl(fetchMock, '/api/tasks');
+					expectRequestMethod(fetchMock, 'PUT');
+					expectRequestCredentialsMode(fetchMock, 'same-origin');
+					expectRequestBody(fetchMock, requestBody);
+					expectRequestContentType(fetchMock, 'application/json');
+					const openTaskList = page.getByLabelText('Open tasks');
+					expectTaskToBePresent(openTaskList, newTitle, newDescription, category.title);
+				});
+
+				it('edits done task', async () => {
+					const task = testData.donePartition.firstTask;
+					const category = categories.find((category) => category.id === task.categoryId)!;
+					const newTitle = 'Review the final project proposal';
+					const newDescription = 'Resolve the remaining comments on the final draft.';
+
+					const response = getResponse({
+						id: task.id,
+						categoryId: task.categoryId,
+						title: newTitle,
+						description: newDescription,
+						date: task.date.toString(),
+						rank: task.rank,
+						done: true,
+						trashed: false
+					});
+					fetchMock.mockResolvedValue(response);
+
+					const page = render(Page);
+					await openEditTaskDialog(page, task.title);
+					await enterTaskTitle(page, newTitle);
+					await enterTaskDescription(page, newDescription);
+					const saveButton = page.getByRole('button', { name: 'Save' });
+					await userEvent.click(saveButton);
+
+					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+					const editTaskDialog = page.queryByRole('dialog', { name: 'Edit Task' });
+					expect(editTaskDialog).not.toBeInTheDocument();
+					const serializedDate = task.date.toString();
+					const requestBody = JSON.stringify({
+						title: newTitle,
+						description: newDescription,
+						categoryId: task.categoryId,
+						date: serializedDate,
+						id: task.id
+					});
+					expectRequestUrl(fetchMock, '/api/tasks');
+					expectRequestMethod(fetchMock, 'PUT');
+					expectRequestCredentialsMode(fetchMock, 'same-origin');
+					expectRequestBody(fetchMock, requestBody);
+					expectRequestContentType(fetchMock, 'application/json');
+					const doneTaskList = page.getByLabelText('Done tasks');
+					expectTaskToBePresent(doneTaskList, newTitle, newDescription, category.title);
+				});
 			});
 
 			describe('task creation', () => {
-				it.todo('reacts correctly to missing task title');
+				it('reacts correctly to missing task title', async () => {
+					const page = render(Page);
+					await openCreateTaskDialog(page);
+					await selectCategory(page, personalCategory.title);
+					const titleInput = getInputById(page, 'task-title');
+					await userEvent.click(titleInput);
+					await userEvent.tab();
 
-				it.todo('reacts correctly to too long task title');
+					const createButton = page.getByRole('button', { name: 'Create' });
+					expect(createButton).toBeDisabled();
+					await expectInputToBeInvalid(page, 'task-title', 'Title must have at least 1 character');
+				});
 
-				it.todo('reacts correctly to too long task description');
+				it('reacts correctly to too long task title', async () => {
+					const page = render(Page);
+					await openCreateTaskDialog(page);
+					await selectCategory(page, personalCategory.title);
+					const tooLongTitle = 'Plan the weekend hiking route '.repeat(4);
+					const titleInput = await enterTaskTitle(page, tooLongTitle);
+					await fireEvent.blur(titleInput);
 
-				it.todo('cancels and closes the edit-task dialog');
+					const createButton = page.getByRole('button', { name: 'Create' });
+					expect(createButton).toBeDisabled();
+					await expectInputToBeInvalid(page, 'task-title', 'Title must have at most 100 characters');
+				});
 
-				it.todo('adds a task'); // check especially that today date is set as default
+				it('reacts correctly to too long task description', async () => {
+					const page = render(Page);
+					await openCreateTaskDialog(page);
+					await selectCategory(page, personalCategory.title);
+					await enterTaskTitle(page, 'Plan a team workshop');
+					const tooLongDescription = 'Compare the available trails, travel times, and weather forecast. '.repeat(9);
+					const descriptionInput = await enterTaskDescription(page, tooLongDescription);
+					await fireEvent.blur(descriptionInput);
+
+					const createButton = page.getByRole('button', { name: 'Create' });
+					expect(createButton).toBeDisabled();
+					await expectTextareaToBeInvalid(page, 'task-description', 'Description must have at most 500 characters');
+				});
+
+				it('reacts correctly to missing task category', async () => {
+					const page = render(Page);
+					await openCreateTaskDialog(page);
+					await enterTaskTitle(page, 'Schedule an annual checkup');
+					const categorySelect = getSelectById(page, 'task-category');
+					await userEvent.click(categorySelect);
+					await userEvent.keyboard('{Escape}');
+					await userEvent.tab();
+
+					const createButton = page.getByRole('button', { name: 'Create' });
+					expect(createButton).toBeDisabled();
+					await expectSelectToBeInvalid(page, 'task-category', 'Category is required');
+				});
+
+				it('cancels and closes the create-task dialog', async () => {
+					const page = render(Page);
+					await openCreateTaskDialog(page);
+					const cancelButton = page.getByRole('button', { name: 'Cancel' });
+					await userEvent.click(cancelButton);
+
+					const createTaskDialog = page.queryByRole('dialog', { name: 'Create Task' });
+					expect(createTaskDialog).not.toBeInTheDocument();
+				});
+
+				it('adds a task', async () => {
+					const title = 'Prepare the quarterly presentation';
+					const description = 'Summarize project results and prepare the final slides.';
+					const rank = generateKeyBetween(testData.openPartition.thirdTask.rank, undefined);
+					const taskId = 7;
+
+					const response = getResponse({ id: taskId, rank }, 201);
+					fetchMock.mockResolvedValue(response);
+
+					const page = render(Page);
+					await openCreateTaskDialog(page);
+					await enterTaskTitle(page, title);
+					await enterTaskDescription(page, description);
+					await selectCategory(page, personalCategory.title);
+					const createButton = page.getByRole('button', { name: 'Create' });
+					await userEvent.click(createButton);
+
+					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+					const createTaskDialog = page.queryByRole('dialog', { name: 'Create Task' });
+					expect(createTaskDialog).not.toBeInTheDocument();
+					const requestBody = JSON.stringify({
+						title,
+						description,
+						categoryId: personalCategory.id,
+						date: todayDate.toString()
+					});
+					expectRequestUrl(fetchMock, '/api/tasks');
+					expectRequestMethod(fetchMock, 'POST');
+					expectRequestCredentialsMode(fetchMock, 'same-origin');
+					expectRequestBody(fetchMock, requestBody);
+					expectRequestContentType(fetchMock, 'application/json');
+					const openTaskList = page.getByLabelText('Open tasks');
+					expectTaskToBePresent(openTaskList, title, description, personalCategory.title);
+				});
 			});
 
 			describe('task trashing', () => {
-				it.todo('trashes open task');
+				it('trashes open task', async () => {
+					const task = testData.openPartition.firstTask;
+					const trashedTaskRank = generateKeyBetween(undefined, undefined);
+					const response = getResponse({ rank: trashedTaskRank });
+					fetchMock.mockResolvedValue(response);
 
-				it.todo('trashed done task');
+					const page = render(Page);
+					const moreOptionsButton = page.getByRole('button', { name: `More options for "${task.title}"` });
+					await fireEvent.click(moreOptionsButton);
+					const trashButton = await page.findByRole('button', { name: 'Trash' });
+					await userEvent.click(trashButton);
+
+					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+					const requestUrl = `/api/tasks/${task.id}/trash`;
+					expectRequestUrl(fetchMock, requestUrl);
+					expectRequestMethod(fetchMock, 'PATCH');
+					expectRequestCredentialsMode(fetchMock, 'same-origin');
+					expectRequestBody(fetchMock, undefined);
+					expectTaskNotToBePresent(page, task.title);
+					expect(trashedTaskStore.trashedTasks).toContainEqual({ ...task, rank: trashedTaskRank });
+				});
+
+				it('trashes done task', async () => {
+					const task = testData.donePartition.firstTask;
+					const trashedTaskRank = generateKeyBetween(undefined, undefined);
+					const response = getResponse({ rank: trashedTaskRank });
+					fetchMock.mockResolvedValue(response);
+
+					const page = render(Page);
+					const moreOptionsButton = page.getByRole('button', { name: `More options for "${task.title}"` });
+					await fireEvent.click(moreOptionsButton);
+					const trashButton = await page.findByRole('button', { name: 'Trash' });
+					await userEvent.click(trashButton);
+
+					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+					const requestUrl = `/api/tasks/${task.id}/trash`;
+					expectRequestUrl(fetchMock, requestUrl);
+					expectRequestMethod(fetchMock, 'PATCH');
+					expectRequestCredentialsMode(fetchMock, 'same-origin');
+					expectRequestBody(fetchMock, undefined);
+					expectTaskNotToBePresent(page, task.title);
+					expect(trashedTaskStore.trashedTasks).toContainEqual({ ...task, rank: trashedTaskRank });
+				});
 			});
 		});
 
@@ -403,6 +674,55 @@ function createTestData() {
 	};
 
 	return { openPartition, donePartition };
+}
+
+async function openCreateTaskDialog(page: RenderResult<typeof Page>): Promise<void> {
+	const addTaskButton = page.getByRole('button', { name: 'Add Task' });
+	await userEvent.click(addTaskButton);
+}
+
+async function openEditTaskDialog(page: RenderResult<typeof Page>, title: string): Promise<void> {
+	const moreOptionsButton = page.getByRole('button', { name: `More options for "${title}"` });
+	await fireEvent.click(moreOptionsButton);
+	const editButton = await page.findByRole('button', { name: 'Edit' });
+	await userEvent.click(editButton);
+}
+
+async function enterTaskTitle(page: RenderResult<typeof Page>, title: string): Promise<HTMLInputElement> {
+	const titleInput = getInputById(page, 'task-title');
+	await fireEvent.input(titleInput, { target: { value: title } });
+	return titleInput;
+}
+
+async function enterTaskDescription(
+	page: RenderResult<typeof Page>,
+	description: string | undefined
+): Promise<HTMLTextAreaElement> {
+	const descriptionInput = getTextareaById(page, 'task-description');
+	await fireEvent.input(descriptionInput, { target: { value: description ?? '' } });
+	return descriptionInput;
+}
+
+async function selectCategory(page: RenderResult<typeof Page>, categoryName: string): Promise<void> {
+	const categorySelect = getSelectById(page, 'task-category');
+	categorySelect.focus();
+	const firstCategoryNameCharacter = categoryName[0];
+	const categoryTypeaheadKey = firstCategoryNameCharacter?.toLowerCase();
+	await fireEvent.keyDown(categorySelect, { key: categoryTypeaheadKey });
+}
+
+function expectTaskToBePresent(
+	taskList: HTMLElement,
+	title: string,
+	description: string | undefined,
+	categoryName: string
+): void {
+	const taskListContent = within(taskList);
+	const task = taskListContent.getByRole('listitem', { name: title });
+	const taskContent = within(task);
+	expect(task).toBeInTheDocument();
+	if (description !== undefined) expect(taskContent.getByText(description)).toBeInTheDocument();
+	expect(taskContent.getByText(categoryName)).toBeInTheDocument();
 }
 
 function addTasksExceedingMaximumBatchSize(): string[] {
