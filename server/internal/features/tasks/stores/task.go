@@ -55,6 +55,25 @@ func (store *TaskStore) DoTrashedTasksExist(userId int64) (bool, error) {
 	return trashedTasksExist, nil
 }
 
+func (store *TaskStore) GetTodayProgress(userId int64, today shared.Date) (*transport.GetTodayProgressResponse, error) {
+	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("retrieving today's task progress failed")
+
+	var response transport.GetTodayProgressResponse
+	err := store.db.Get(&response, `
+		SELECT COUNT(*) FILTER (WHERE done = FALSE) AS open_task_count,
+		       COUNT(*) FILTER (WHERE done = TRUE) AS done_task_count
+		FROM tasks
+		WHERE user_id = $1
+		  AND date = $2
+		  AND trashed = FALSE
+	`, userId, today)
+	if err != nil {
+		return nil, wrapUnexpectedError(err)
+	}
+
+	return &response, nil
+}
+
 func (store *TaskStore) DeleteTrashedTasks(userId int64) error {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("deleting trashed tasks failed")
 
