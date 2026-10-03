@@ -2,6 +2,7 @@ import { fireEvent, render, type RenderResult, waitFor, within } from '@testing-
 import userEvent from '@testing-library/user-event';
 import { getLocalTimeZone, today } from '@internationalized/date';
 import { generateKeyBetween, generateNKeysBetween } from 'fractional-indexing';
+import { type DndEvent, SOURCES, TRIGGERS } from 'svelte-dnd-action';
 import { categoryStore } from '$lib/stores/category-store.svelte';
 import { datedUntrashedDoneTaskStore } from '$lib/stores/dated-untrashed-done-task-store.svelte';
 import { datedUntrashedOpenTaskStore } from '$lib/stores/dated-untrashed-open-task-store.svelte';
@@ -562,35 +563,353 @@ describe('workbench page tests', () => {
 
 		describe('drag and drop', () => {
 			describe('within open partition', () => {
-				it.todo('moves a task to the first index');
+				it('moves a task to the first index', async () => {
+					const task = testData.openPartition.thirdTask;
+					const expectedRank = generateKeyBetween(undefined, testData.openPartition.firstTask.rank);
+					const response = getResponse({ rank: expectedRank });
+					fetchMock.mockResolvedValue(response);
 
-				it.todo('moves a task to the middle index');
+					const page = render(Page);
+					const openTaskList = page.getByLabelText('Open tasks');
+					const reorderedTasks = [task, testData.openPartition.firstTask, testData.openPartition.secondTask];
+					await dropTask(openTaskList, reorderedTasks, task.id);
 
-				it.todo('moves a task to the last index');
+					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+					const requestBody = JSON.stringify({
+						date: todayDate.toString(),
+						done: false,
+						trashed: false
+					});
+					const requestUrl = `/api/tasks/${task.id}/drag-and-drop`;
+					expectRequestUrl(fetchMock, requestUrl);
+					expectRequestMethod(fetchMock, 'PATCH');
+					expectRequestCredentialsMode(fetchMock, 'same-origin');
+					expectRequestBody(fetchMock, requestBody);
+					expectRequestContentType(fetchMock, 'application/json');
+					expectTaskOrder(openTaskList, reorderedTasks);
+				});
+
+				it('moves a task to the middle index', async () => {
+					const task = testData.openPartition.thirdTask;
+					const expectedRank = generateKeyBetween(testData.openPartition.firstTask.rank, testData.openPartition.secondTask.rank);
+					const response = getResponse({ rank: expectedRank });
+					fetchMock.mockResolvedValue(response);
+
+					const page = render(Page);
+					const openTaskList = page.getByLabelText('Open tasks');
+					const reorderedTasks = [testData.openPartition.firstTask, task, testData.openPartition.secondTask];
+					await dropTask(openTaskList, reorderedTasks, task.id);
+
+					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+					const requestBody = JSON.stringify({
+						date: todayDate.toString(),
+						done: false,
+						trashed: false,
+						previousTaskId: testData.openPartition.firstTask.id
+					});
+					const requestUrl = `/api/tasks/${task.id}/drag-and-drop`;
+					expectRequestUrl(fetchMock, requestUrl);
+					expectRequestMethod(fetchMock, 'PATCH');
+					expectRequestCredentialsMode(fetchMock, 'same-origin');
+					expectRequestBody(fetchMock, requestBody);
+					expectRequestContentType(fetchMock, 'application/json');
+					expectTaskOrder(openTaskList, reorderedTasks);
+				});
+
+				it('moves a task to the last index', async () => {
+					const task = testData.openPartition.firstTask;
+					const expectedRank = generateKeyBetween(testData.openPartition.thirdTask.rank, undefined);
+					const response = getResponse({ rank: expectedRank });
+					fetchMock.mockResolvedValue(response);
+
+					const page = render(Page);
+					const openTaskList = page.getByLabelText('Open tasks');
+					const reorderedTasks = [testData.openPartition.secondTask, testData.openPartition.thirdTask, task];
+					await dropTask(openTaskList, reorderedTasks, task.id);
+
+					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+					const requestBody = JSON.stringify({
+						date: todayDate.toString(),
+						done: false,
+						trashed: false,
+						previousTaskId: testData.openPartition.thirdTask.id
+					});
+					const requestUrl = `/api/tasks/${task.id}/drag-and-drop`;
+					expectRequestUrl(fetchMock, requestUrl);
+					expectRequestMethod(fetchMock, 'PATCH');
+					expectRequestCredentialsMode(fetchMock, 'same-origin');
+					expectRequestBody(fetchMock, requestBody);
+					expectRequestContentType(fetchMock, 'application/json');
+					expectTaskOrder(openTaskList, reorderedTasks);
+				});
 			});
 
 			describe('within done partition', () => {
-				it.todo('moves a task to the first index');
+				it('moves a task to the first index', async () => {
+					const task = testData.donePartition.thirdTask;
+					const expectedRank = generateKeyBetween(undefined, testData.donePartition.firstTask.rank);
+					const response = getResponse({ rank: expectedRank });
+					fetchMock.mockResolvedValue(response);
 
-				it.todo('moves a task to the middle index');
+					const page = render(Page);
+					const doneTaskList = page.getByLabelText('Done tasks');
+					const reorderedTasks = [task, testData.donePartition.firstTask, testData.donePartition.secondTask];
+					await dropTask(doneTaskList, reorderedTasks, task.id);
 
-				it.todo('moves a task to the last index');
+					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+					const requestBody = JSON.stringify({
+						date: todayDate.toString(),
+						done: true,
+						trashed: false
+					});
+					const requestUrl = `/api/tasks/${task.id}/drag-and-drop`;
+					expectRequestUrl(fetchMock, requestUrl);
+					expectRequestMethod(fetchMock, 'PATCH');
+					expectRequestCredentialsMode(fetchMock, 'same-origin');
+					expectRequestBody(fetchMock, requestBody);
+					expectRequestContentType(fetchMock, 'application/json');
+					expectTaskOrder(doneTaskList, reorderedTasks);
+				});
+
+				it('moves a task to the middle index', async () => {
+					const task = testData.donePartition.thirdTask;
+					const expectedRank = generateKeyBetween(testData.donePartition.firstTask.rank, testData.donePartition.secondTask.rank);
+					const response = getResponse({ rank: expectedRank });
+					fetchMock.mockResolvedValue(response);
+
+					const page = render(Page);
+					const doneTaskList = page.getByLabelText('Done tasks');
+					const reorderedTasks = [testData.donePartition.firstTask, task, testData.donePartition.secondTask];
+					await dropTask(doneTaskList, reorderedTasks, task.id);
+
+					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+					const requestBody = JSON.stringify({
+						date: todayDate.toString(),
+						done: true,
+						trashed: false,
+						previousTaskId: testData.donePartition.firstTask.id
+					});
+					const requestUrl = `/api/tasks/${task.id}/drag-and-drop`;
+					expectRequestUrl(fetchMock, requestUrl);
+					expectRequestMethod(fetchMock, 'PATCH');
+					expectRequestCredentialsMode(fetchMock, 'same-origin');
+					expectRequestBody(fetchMock, requestBody);
+					expectRequestContentType(fetchMock, 'application/json');
+					expectTaskOrder(doneTaskList, reorderedTasks);
+				});
+
+				it('moves a task to the last index', async () => {
+					const task = testData.donePartition.firstTask;
+					const expectedRank = generateKeyBetween(testData.donePartition.thirdTask.rank, undefined);
+					const response = getResponse({ rank: expectedRank });
+					fetchMock.mockResolvedValue(response);
+
+					const page = render(Page);
+					const doneTaskList = page.getByLabelText('Done tasks');
+					const reorderedTasks = [testData.donePartition.secondTask, testData.donePartition.thirdTask, task];
+					await dropTask(doneTaskList, reorderedTasks, task.id);
+
+					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+					const requestBody = JSON.stringify({
+						date: todayDate.toString(),
+						done: true,
+						trashed: false,
+						previousTaskId: testData.donePartition.thirdTask.id
+					});
+					const requestUrl = `/api/tasks/${task.id}/drag-and-drop`;
+					expectRequestUrl(fetchMock, requestUrl);
+					expectRequestMethod(fetchMock, 'PATCH');
+					expectRequestCredentialsMode(fetchMock, 'same-origin');
+					expectRequestBody(fetchMock, requestBody);
+					expectRequestContentType(fetchMock, 'application/json');
+					expectTaskOrder(doneTaskList, reorderedTasks);
+				});
 			});
 
 			describe('from open to done partition', () => {
-				it.todo('moves a task to the first index');
+				it('moves a task to the first index', async () => {
+					const task = testData.openPartition.thirdTask;
+					const expectedRank = generateKeyBetween(undefined, testData.donePartition.firstTask.rank);
+					const response = getResponse({ rank: expectedRank });
+					fetchMock.mockResolvedValue(response);
 
-				it.todo('moves a task to the middle index');
+					const page = render(Page);
+					const sourceTaskList = page.getByLabelText('Open tasks');
+					const destinationTaskList = page.getByLabelText('Done tasks');
+					const reorderedTasks = [task, ...testData.donePartition.tasks];
+					await dropTask(destinationTaskList, reorderedTasks, task.id);
 
-				it.todo('moves a task to the last index');
+					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+					const requestBody = JSON.stringify({
+						date: todayDate.toString(),
+						done: true,
+						trashed: false
+					});
+					const requestUrl = `/api/tasks/${task.id}/drag-and-drop`;
+					expectRequestUrl(fetchMock, requestUrl);
+					expectRequestMethod(fetchMock, 'PATCH');
+					expectRequestCredentialsMode(fetchMock, 'same-origin');
+					expectRequestBody(fetchMock, requestBody);
+					expectRequestContentType(fetchMock, 'application/json');
+					expectTaskOrder(destinationTaskList, reorderedTasks);
+					await waitFor(() => expectTaskNotToBePresentInTaskList(sourceTaskList, task.title));
+				});
+
+				it('moves a task to the middle index', async () => {
+					const task = testData.openPartition.thirdTask;
+					const expectedRank = generateKeyBetween(testData.donePartition.firstTask.rank, testData.donePartition.secondTask.rank);
+					const response = getResponse({ rank: expectedRank });
+					fetchMock.mockResolvedValue(response);
+
+					const page = render(Page);
+					const sourceTaskList = page.getByLabelText('Open tasks');
+					const destinationTaskList = page.getByLabelText('Done tasks');
+					const reorderedTasks = [
+						testData.donePartition.firstTask,
+						task,
+						testData.donePartition.secondTask,
+						testData.donePartition.thirdTask
+					];
+					await dropTask(destinationTaskList, reorderedTasks, task.id);
+
+					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+					const requestBody = JSON.stringify({
+						date: todayDate.toString(),
+						done: true,
+						trashed: false,
+						previousTaskId: testData.donePartition.firstTask.id
+					});
+					const requestUrl = `/api/tasks/${task.id}/drag-and-drop`;
+					expectRequestUrl(fetchMock, requestUrl);
+					expectRequestMethod(fetchMock, 'PATCH');
+					expectRequestCredentialsMode(fetchMock, 'same-origin');
+					expectRequestBody(fetchMock, requestBody);
+					expectRequestContentType(fetchMock, 'application/json');
+					expectTaskOrder(destinationTaskList, reorderedTasks);
+					await waitFor(() => expectTaskNotToBePresentInTaskList(sourceTaskList, task.title));
+				});
+
+				it('moves a task to the last index', async () => {
+					const task = testData.openPartition.thirdTask;
+					const expectedRank = generateKeyBetween(testData.donePartition.thirdTask.rank, undefined);
+					const response = getResponse({ rank: expectedRank });
+					fetchMock.mockResolvedValue(response);
+
+					const page = render(Page);
+					const sourceTaskList = page.getByLabelText('Open tasks');
+					const destinationTaskList = page.getByLabelText('Done tasks');
+					const reorderedTasks = [...testData.donePartition.tasks, task];
+					await dropTask(destinationTaskList, reorderedTasks, task.id);
+
+					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+					const requestBody = JSON.stringify({
+						date: todayDate.toString(),
+						done: true,
+						trashed: false,
+						previousTaskId: testData.donePartition.thirdTask.id
+					});
+					const requestUrl = `/api/tasks/${task.id}/drag-and-drop`;
+					expectRequestUrl(fetchMock, requestUrl);
+					expectRequestMethod(fetchMock, 'PATCH');
+					expectRequestCredentialsMode(fetchMock, 'same-origin');
+					expectRequestBody(fetchMock, requestBody);
+					expectRequestContentType(fetchMock, 'application/json');
+					expectTaskOrder(destinationTaskList, reorderedTasks);
+					await waitFor(() => expectTaskNotToBePresentInTaskList(sourceTaskList, task.title));
+				});
 			});
 
 			describe('from done to open partition', () => {
-				it.todo('moves a task to the first index');
+				it('moves a task to the first index', async () => {
+					const task = testData.donePartition.thirdTask;
+					const expectedRank = generateKeyBetween(undefined, testData.openPartition.firstTask.rank);
+					const response = getResponse({ rank: expectedRank });
+					fetchMock.mockResolvedValue(response);
 
-				it.todo('moves a task to the middle index');
+					const page = render(Page);
+					const sourceTaskList = page.getByLabelText('Done tasks');
+					const destinationTaskList = page.getByLabelText('Open tasks');
+					const reorderedTasks = [task, ...testData.openPartition.tasks];
+					await dropTask(destinationTaskList, reorderedTasks, task.id);
 
-				it.todo('moves a task to the last index');
+					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+					const requestBody = JSON.stringify({
+						date: todayDate.toString(),
+						done: false,
+						trashed: false
+					});
+					const requestUrl = `/api/tasks/${task.id}/drag-and-drop`;
+					expectRequestUrl(fetchMock, requestUrl);
+					expectRequestMethod(fetchMock, 'PATCH');
+					expectRequestCredentialsMode(fetchMock, 'same-origin');
+					expectRequestBody(fetchMock, requestBody);
+					expectRequestContentType(fetchMock, 'application/json');
+					expectTaskOrder(destinationTaskList, reorderedTasks);
+					await waitFor(() => expectTaskNotToBePresentInTaskList(sourceTaskList, task.title));
+				});
+
+				it('moves a task to the middle index', async () => {
+					const task = testData.donePartition.thirdTask;
+					const expectedRank = generateKeyBetween(testData.openPartition.firstTask.rank, testData.openPartition.secondTask.rank);
+					const response = getResponse({ rank: expectedRank });
+					fetchMock.mockResolvedValue(response);
+
+					const page = render(Page);
+					const sourceTaskList = page.getByLabelText('Done tasks');
+					const destinationTaskList = page.getByLabelText('Open tasks');
+					const reorderedTasks = [
+						testData.openPartition.firstTask,
+						task,
+						testData.openPartition.secondTask,
+						testData.openPartition.thirdTask
+					];
+					await dropTask(destinationTaskList, reorderedTasks, task.id);
+
+					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+					const requestBody = JSON.stringify({
+						date: todayDate.toString(),
+						done: false,
+						trashed: false,
+						previousTaskId: testData.openPartition.firstTask.id
+					});
+					const requestUrl = `/api/tasks/${task.id}/drag-and-drop`;
+					expectRequestUrl(fetchMock, requestUrl);
+					expectRequestMethod(fetchMock, 'PATCH');
+					expectRequestCredentialsMode(fetchMock, 'same-origin');
+					expectRequestBody(fetchMock, requestBody);
+					expectRequestContentType(fetchMock, 'application/json');
+					expectTaskOrder(destinationTaskList, reorderedTasks);
+					await waitFor(() => expectTaskNotToBePresentInTaskList(sourceTaskList, task.title));
+				});
+
+				it('moves a task to the last index', async () => {
+					const task = testData.donePartition.thirdTask;
+					const expectedRank = generateKeyBetween(testData.openPartition.thirdTask.rank, undefined);
+					const response = getResponse({ rank: expectedRank });
+					fetchMock.mockResolvedValue(response);
+
+					const page = render(Page);
+					const sourceTaskList = page.getByLabelText('Done tasks');
+					const destinationTaskList = page.getByLabelText('Open tasks');
+					const reorderedTasks = [...testData.openPartition.tasks, task];
+					await dropTask(destinationTaskList, reorderedTasks, task.id);
+
+					await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+					const requestBody = JSON.stringify({
+						date: todayDate.toString(),
+						done: false,
+						trashed: false,
+						previousTaskId: testData.openPartition.thirdTask.id
+					});
+					const requestUrl = `/api/tasks/${task.id}/drag-and-drop`;
+					expectRequestUrl(fetchMock, requestUrl);
+					expectRequestMethod(fetchMock, 'PATCH');
+					expectRequestCredentialsMode(fetchMock, 'same-origin');
+					expectRequestBody(fetchMock, requestBody);
+					expectRequestContentType(fetchMock, 'application/json');
+					expectTaskOrder(destinationTaskList, reorderedTasks);
+					await waitFor(() => expectTaskNotToBePresentInTaskList(sourceTaskList, task.title));
+				});
 			});
 		});
 
@@ -772,6 +1091,36 @@ function getTaskColumn(page: RenderResult<typeof Page>, heading: string): HTMLEl
 	const taskColumn = page.getByRole('heading', { name: heading }).closest('section');
 	if (!(taskColumn instanceof HTMLElement)) throw new Error(`Expected a task column headed "${heading}".`);
 	return taskColumn;
+}
+
+async function dropTask(
+	taskList: HTMLElement,
+	reorderedTasks: (DatedUntrashedOpenTaskResponse | DatedUntrashedDoneTaskResponse)[],
+	draggedTaskId: number
+): Promise<void> {
+	const event = new CustomEvent<DndEvent<DatedUntrashedOpenTaskResponse | DatedUntrashedDoneTaskResponse>>('finalize', {
+		detail: {
+			items: reorderedTasks,
+			info: { trigger: TRIGGERS.DROPPED_INTO_ZONE, id: String(draggedTaskId), source: SOURCES.POINTER }
+		}
+	});
+	await fireEvent(taskList, event);
+}
+
+function expectTaskOrder(
+	taskList: HTMLElement,
+	tasks: (DatedUntrashedOpenTaskResponse | DatedUntrashedDoneTaskResponse)[]
+): void {
+	const taskListContent = within(taskList);
+	const renderedTasks = taskListContent.getAllByRole('listitem');
+	const renderedTaskTitles = renderedTasks.map((task) => task.getAttribute('aria-label'));
+	const expectedTaskTitles = tasks.map((task) => task.title);
+	expect(renderedTaskTitles).toEqual(expectedTaskTitles);
+}
+
+function expectTaskNotToBePresentInTaskList(taskList: HTMLElement, title: string): void {
+	const task = within(taskList).queryByRole('listitem', { name: title });
+	expect(task).not.toBeInTheDocument();
 }
 
 function addTasksExceedingMaximumBatchSize(): string[] {
