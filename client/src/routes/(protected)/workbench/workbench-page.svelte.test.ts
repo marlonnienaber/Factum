@@ -914,15 +914,131 @@ describe('workbench page tests', () => {
 		});
 
 		describe('progress', () => {
-			it.todo('displays progress information correctly');
+			it('displays progress information correctly', () => {
+				const expectedOpenTaskCount = testData.openPartition.tasks.length;
+				const expectedDoneTaskCount = testData.donePartition.tasks.length;
+				const expectedCompletionPercentage = 50;
 
-			it.todo('reacts correctly to completion by checkbox');
+				const page = render(Page);
 
-			it.todo('reacts correctly to completion by drag and drop');
+				expectProgressInformation(page, expectedOpenTaskCount, expectedDoneTaskCount, expectedCompletionPercentage);
+			});
 
-			it.todo('reacts correctly to opening by checkbox');
+			it('reacts correctly to completion by checkbox', async () => {
+				const task = testData.openPartition.firstTask;
+				const completedTaskRank = generateKeyBetween(undefined, testData.donePartition.firstTask.rank);
+				const response = getResponse({ date: task.date.toString(), rank: completedTaskRank });
+				fetchMock.mockResolvedValue(response);
 
-			it.todo('reacts correctly to opening by drag and drop');
+				const page = render(Page);
+				const completeTaskButton = page.getByRole('checkbox', {
+					name: `Mark "${task.title}" as completed`
+				});
+				await userEvent.click(completeTaskButton);
+
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+				const requestUrl = `/api/tasks/${task.id}/toggle-done`;
+				expectRequestUrl(fetchMock, requestUrl);
+				expectRequestMethod(fetchMock, 'PATCH');
+				expectRequestCredentialsMode(fetchMock, 'same-origin');
+				expectRequestBody(fetchMock, undefined);
+				const expectedOpenTaskCount = testData.openPartition.tasks.length - 1;
+				const expectedDoneTaskCount = testData.donePartition.tasks.length + 1;
+				const expectedCompletionPercentage = 66;
+				await waitFor(() =>
+					expectProgressInformation(page, expectedOpenTaskCount, expectedDoneTaskCount, expectedCompletionPercentage)
+				);
+			});
+
+			it('reacts correctly to completion by drag and drop', async () => {
+				const task = testData.openPartition.thirdTask;
+				const completedTaskRank = generateKeyBetween(testData.donePartition.thirdTask.rank, undefined);
+				const response = getResponse({ rank: completedTaskRank });
+				fetchMock.mockResolvedValue(response);
+
+				const page = render(Page);
+				const doneTaskList = page.getByLabelText('Done tasks');
+				const reorderedTasks = [...testData.donePartition.tasks, task];
+				await dropTask(doneTaskList, reorderedTasks, task.id);
+
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+				const requestBody = JSON.stringify({
+					date: todayDate.toString(),
+					done: true,
+					trashed: false,
+					previousTaskId: testData.donePartition.thirdTask.id
+				});
+				const requestUrl = `/api/tasks/${task.id}/drag-and-drop`;
+				expectRequestUrl(fetchMock, requestUrl);
+				expectRequestMethod(fetchMock, 'PATCH');
+				expectRequestCredentialsMode(fetchMock, 'same-origin');
+				expectRequestBody(fetchMock, requestBody);
+				expectRequestContentType(fetchMock, 'application/json');
+				const expectedOpenTaskCount = testData.openPartition.tasks.length - 1;
+				const expectedDoneTaskCount = testData.donePartition.tasks.length + 1;
+				const expectedCompletionPercentage = 66;
+				await waitFor(() =>
+					expectProgressInformation(page, expectedOpenTaskCount, expectedDoneTaskCount, expectedCompletionPercentage)
+				);
+			});
+
+			it('reacts correctly to opening by checkbox', async () => {
+				const task = testData.donePartition.firstTask;
+				const openedTaskRank = generateKeyBetween(undefined, testData.openPartition.firstTask.rank);
+				const response = getResponse({ date: task.date.toString(), rank: openedTaskRank });
+				fetchMock.mockResolvedValue(response);
+
+				const page = render(Page);
+				const openTaskButton = page.getByRole('checkbox', {
+					name: `Mark "${task.title}" as completed`
+				});
+				await userEvent.click(openTaskButton);
+
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+				const requestUrl = `/api/tasks/${task.id}/toggle-done`;
+				expectRequestUrl(fetchMock, requestUrl);
+				expectRequestMethod(fetchMock, 'PATCH');
+				expectRequestCredentialsMode(fetchMock, 'same-origin');
+				expectRequestBody(fetchMock, undefined);
+				const expectedOpenTaskCount = testData.openPartition.tasks.length + 1;
+				const expectedDoneTaskCount = testData.donePartition.tasks.length - 1;
+				const expectedCompletionPercentage = 33;
+				await waitFor(() =>
+					expectProgressInformation(page, expectedOpenTaskCount, expectedDoneTaskCount, expectedCompletionPercentage)
+				);
+			});
+
+			it('reacts correctly to opening by drag and drop', async () => {
+				const task = testData.donePartition.thirdTask;
+				const openedTaskRank = generateKeyBetween(testData.openPartition.thirdTask.rank, undefined);
+				const response = getResponse({ rank: openedTaskRank });
+				fetchMock.mockResolvedValue(response);
+
+				const page = render(Page);
+				const openTaskList = page.getByLabelText('Open tasks');
+				const reorderedTasks = [...testData.openPartition.tasks, task];
+				await dropTask(openTaskList, reorderedTasks, task.id);
+
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+				const requestBody = JSON.stringify({
+					date: todayDate.toString(),
+					done: false,
+					trashed: false,
+					previousTaskId: testData.openPartition.thirdTask.id
+				});
+				const requestUrl = `/api/tasks/${task.id}/drag-and-drop`;
+				expectRequestUrl(fetchMock, requestUrl);
+				expectRequestMethod(fetchMock, 'PATCH');
+				expectRequestCredentialsMode(fetchMock, 'same-origin');
+				expectRequestBody(fetchMock, requestBody);
+				expectRequestContentType(fetchMock, 'application/json');
+				const expectedOpenTaskCount = testData.openPartition.tasks.length + 1;
+				const expectedDoneTaskCount = testData.donePartition.tasks.length - 1;
+				const expectedCompletionPercentage = 33;
+				await waitFor(() =>
+					expectProgressInformation(page, expectedOpenTaskCount, expectedDoneTaskCount, expectedCompletionPercentage)
+				);
+			});
 		});
 	});
 
@@ -1121,6 +1237,27 @@ function expectTaskOrder(
 function expectTaskNotToBePresentInTaskList(taskList: HTMLElement, title: string): void {
 	const task = within(taskList).queryByRole('listitem', { name: title });
 	expect(task).not.toBeInTheDocument();
+}
+
+function expectProgressInformation(
+	page: RenderResult<typeof Page>,
+	openTaskCount: number,
+	doneTaskCount: number,
+	completionPercentage: number
+): void {
+	const progressSection = getTaskColumn(page, 'Progress');
+	const progressSectionContent = within(progressSection);
+	const openTaskCountContainer = progressSectionContent.getByText('open').parentElement;
+	const doneTaskCountContainer = progressSectionContent.getByText('done').parentElement;
+	const progressBar = progressSectionContent.getByRole('progressbar', { name: "Today's task completion" });
+	const totalTaskCount = openTaskCount + doneTaskCount;
+	const expectedValueText = `${completionPercentage}% (${doneTaskCount} of ${totalTaskCount} tasks done)`;
+
+	expect(openTaskCountContainer).toHaveTextContent(`${openTaskCount} open`);
+	expect(doneTaskCountContainer).toHaveTextContent(`${doneTaskCount} done`);
+	expect(progressBar).toHaveAttribute('aria-valuenow', String(completionPercentage));
+	expect(progressBar).toHaveAttribute('aria-valuetext', expectedValueText);
+	expect(progressSectionContent.getByText(`${completionPercentage}%`)).toBeInTheDocument();
 }
 
 function addTasksExceedingMaximumBatchSize(): string[] {
