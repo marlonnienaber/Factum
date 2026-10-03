@@ -218,7 +218,7 @@
 					Add Task
 					{#snippet trailingIcon()}<Plus size={17} strokeWidth={2.5} />{/snippet}
 				</Button>
-				<Button onclick={() => selectionEnabled = true}>
+				<Button onclick={() => (selectionEnabled = true)}>
 					Select Tasks
 					{#snippet trailingIcon()}<MousePointer2 size={17} aria-hidden="true" />{/snippet}
 				</Button>

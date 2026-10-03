@@ -127,11 +127,7 @@
 						<Button onclick={() => (open = false)}>Cancel</Button>
 						<div class="spacer"></div>
 						<span>* required</span>
-						<Button
-							variant="success"
-							disabled={!inputParseResult.success || saving}
-							onclick={handleSubmit}
-						>
+						<Button variant="success" disabled={!inputParseResult.success || saving} onclick={handleSubmit}>
 							{saving ? (editing ? 'Saving...' : 'Creating...') : editing ? 'Save' : 'Create'}
 						</Button>
 					</div>
