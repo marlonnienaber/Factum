@@ -9,6 +9,7 @@
 	import Textarea from '$lib/components/shared/textarea.svelte';
 	import { taskService } from '$lib/services/task-service.svelte.js';
 	import { taskInputSchema } from '$lib/types/inputs/task-input';
+	import type { CreateTaskRequest } from '$lib/types/requests/create-task-request';
 	import type { DatedUntrashedDoneTaskResponse } from '$lib/types/responses/dated-untrashed-done-task-response';
 	import type { DatedUntrashedOpenTaskResponse } from '$lib/types/responses/dated-untrashed-open-task-response';
 	import type { UndatedTaskResponse } from '$lib/types/responses/undated-task-response';
@@ -17,10 +18,10 @@
 	type Props = {
 		open: boolean;
 		task?: DatedUntrashedDoneTaskResponse | DatedUntrashedOpenTaskResponse | UndatedTaskResponse | TrashedTaskResponse;
-		defaultDate?: CalendarDate;
+		defaults?: Partial<CreateTaskRequest>;
 	};
 
-	let { open = $bindable(), task = $bindable(), defaultDate }: Props = $props();
+	let { open = $bindable(), task = $bindable(), defaults }: Props = $props();
 	let title = $state('');
 	let description = $state('');
 	let date = $state<CalendarDate>();
@@ -61,10 +62,17 @@
 
 	$effect(() => {
 		if (open) {
-			title = task?.title ?? '';
-			description = task?.description ?? '';
-			date = task && 'date' in task ? task.date : defaultDate;
-			categoryId = task?.categoryId;
+			if (task) {
+				title = task.title;
+				description = task.description ?? '';
+				date = 'date' in task ? task.date : undefined;
+				categoryId = task.categoryId;
+			} else {
+				title = defaults?.title ?? '';
+				description = defaults?.description ?? '';
+				date = defaults?.date;
+				categoryId = defaults?.categoryId;
+			}
 			titleTouched = false;
 			descriptionTouched = false;
 			categoryTouched = false;

@@ -166,6 +166,45 @@ describe('archive page tests', () => {
 		});
 
 		describe('task operations', () => {
+			it('clones a done task', async () => {
+				const task = testData.pastCompletedPartition.firstTask;
+				const clonedTaskId = 12;
+				const clonedTaskRank = generateKeyBetween(undefined, undefined);
+				fetchMock.mockResolvedValue(getResponse({ id: clonedTaskId, rank: clonedTaskRank }, 201));
+
+				const page = render(Page);
+				const moreOptionsButton = page.getByRole('button', { name: `More options for "${task.title}"` });
+				await fireEvent.click(moreOptionsButton);
+				const cloneButton = await page.findByRole('button', { name: 'Clone' });
+				await userEvent.click(cloneButton);
+				expect(page.getByRole('dialog', { name: 'Create Task' })).toBeInTheDocument();
+				const createButton = page.getByRole('button', { name: 'Create' });
+				await userEvent.click(createButton);
+
+				await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+				expect(page.queryByRole('dialog', { name: 'Create Task' })).not.toBeInTheDocument();
+				const requestBody = JSON.stringify({
+					title: task.title,
+					description: task.description,
+					categoryId: task.categoryId,
+					date: todayDate.toString()
+				});
+				expectRequestUrl(fetchMock, '/api/tasks');
+				expectRequestMethod(fetchMock, 'POST');
+				expectRequestCredentialsMode(fetchMock, 'same-origin');
+				expectRequestBody(fetchMock, requestBody);
+				expectRequestContentType(fetchMock, 'application/json');
+				expect(datedUntrashedOpenTaskStore.datedUntrashedOpenTodayTasks).toContainEqual({
+					id: clonedTaskId,
+					categoryId: task.categoryId,
+					title: task.title,
+					description: task.description,
+					date: todayDate,
+					rank: clonedTaskRank,
+					done: false
+				});
+			});
+
 			describe('task editing', () => {
 				it('reacts correctly to missing task title', async () => {
 					const task = testData.pastCompletedPartition.firstTask;

@@ -12,11 +12,12 @@
 	import { datedUntrashedDoneTaskStore } from '$lib/stores/dated-untrashed-done-task-store.svelte';
 	import { trashedTaskStore } from '$lib/stores/trashed-task-store.svelte';
 	import { getDateLabel } from '$lib/utils/date';
-	import { parseDate, type DateValue } from '@internationalized/date';
+	import { getLocalTimeZone, parseDate, today, type DateValue } from '@internationalized/date';
+	import type { CreateTaskRequest } from '$lib/types/requests/create-task-request';
 	import type { DatedUntrashedDoneTaskResponse } from '$lib/types/responses/dated-untrashed-done-task-response';
 	import type { TrashedTaskResponse } from '$lib/types/responses/trashed-task-response';
 	import type { TaskDragAndDropRequest } from '$lib/types/requests/task-drag-and-drop-request';
-	import { Ghost, Info, MousePointer2, RotateCcw, SquarePen, Trash2, TrashOff, XCircle } from '@lucide/svelte';
+	import { Dna, Ghost, Info, MousePointer2, PencilSparkles, Square, Trash2, TrashOff, XCircle } from '@lucide/svelte';
 	import { dndzone, SHADOW_ITEM_MARKER_PROPERTY_NAME as isShadowTask, TRIGGERS, type DndEvent } from 'svelte-dnd-action';
 
 	type TaskDragItem = (DatedUntrashedDoneTaskResponse | TrashedTaskResponse) & {
@@ -24,10 +25,12 @@
 	};
 
 	const maximumBatchSize = 50;
+	const todayDate = today(getLocalTimeZone());
 
 	let taskDialogOpen = $state(false);
 	let emptyTrashDialogOpen = $state(false);
 	let taskDialogTask = $state<DatedUntrashedDoneTaskResponse | TrashedTaskResponse>();
+	let taskDialogDefaults = $state<Partial<CreateTaskRequest>>();
 	let dragging = $state(false);
 	let selectionEnabled = $state(false);
 	let selectedTaskIds = $state<number[]>([]);
@@ -143,9 +146,28 @@
 		taskDialogOpen = true;
 	}
 
-	function getTaskActions(task: DatedUntrashedDoneTaskResponse | TrashedTaskResponse, trashed: boolean) {
-		const editAction = { label: 'Edit', icon: SquarePen, onclick: () => openEditTaskDialog(task) };
-		if (trashed) {
+	function openCloneTaskDialog(task: DatedUntrashedDoneTaskResponse): void {
+		taskDialogTask = undefined;
+		taskDialogDefaults = { ...task, date: todayDate };
+		taskDialogOpen = true;
+	}
+
+	function getTaskActions(task: DatedUntrashedDoneTaskResponse | TrashedTaskResponse) {
+		const untrashedDoneTask = datedUntrashedDoneTaskStore.datedUntrashedDoneTasks.find(
+			(untrashedTask) => untrashedTask.id === task.id
+		);
+		const editAction = { label: 'Edit', icon: PencilSparkles, onclick: () => openEditTaskDialog(task) };
+		if (untrashedDoneTask) {
+			return [
+				{ label: 'Clone', icon: Dna, onclick: () => openCloneTaskDialog(untrashedDoneTask) },
+				editAction,
+				{
+					label: 'Trash',
+					icon: Trash2,
+					onclick: () => taskService.trashTask(task.id)
+				}
+			];
+		} else {
 			return [
 				editAction,
 				{
@@ -156,14 +178,6 @@
 				}
 			];
 		}
-		return [
-			editAction,
-			{
-				label: 'Trash',
-				icon: Trash2,
-				onclick: () => taskService.trashTask(task.id)
-			}
-		];
 	}
 
 	function getSelectedCategoryIds(): number[] {
@@ -222,7 +236,7 @@
 				</Button>
 				<Button disabled={selectedTaskIds.length === 0 || selectedTaskIds.length > maximumBatchSize} onclick={openSelectedTasks}>
 					Open
-					{#snippet trailingIcon()}<RotateCcw size={17} aria-hidden="true" />{/snippet}
+					{#snippet trailingIcon()}<Square size={17} aria-hidden="true" />{/snippet}
 				</Button>
 				<Button disabled={selectedTaskIds.length === 0 || selectedTaskIds.length > maximumBatchSize} onclick={trashSelectedTasks}>
 					Trash
@@ -290,7 +304,7 @@
 							{#each taskDragItems as taskDragItem (getTaskDragItemKey(taskDragItem))}
 								<Task
 									task={taskDragItem}
-									actions={getTaskActions(taskDragItem, false)}
+									actions={getTaskActions(taskDragItem)}
 									isShadowItem={Boolean(taskDragItem[isShadowTask])}
 									{selectionEnabled}
 									selected={selectedTaskIds.includes(taskDragItem.id)}
@@ -326,7 +340,7 @@
 				{#each trashedTaskDragItems as taskDragItem (getTaskDragItemKey(taskDragItem))}
 					<Task
 						task={taskDragItem}
-						actions={getTaskActions(taskDragItem, true)}
+						actions={getTaskActions(taskDragItem)}
 						isShadowItem={Boolean(taskDragItem[isShadowTask])}
 						selectionEnabled={false}
 						selected={false}
@@ -339,7 +353,7 @@
 	</section>
 </div>
 
-<TaskDialog bind:open={taskDialogOpen} bind:task={taskDialogTask} />
+<TaskDialog bind:open={taskDialogOpen} bind:task={taskDialogTask} defaults={taskDialogDefaults} />
 <EmptyTrashDialog bind:open={emptyTrashDialogOpen} />
 
 <style lang="scss">

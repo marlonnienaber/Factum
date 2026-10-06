@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { CheckCheck, MousePointer2, Plus, SquarePen, Trash2, XCircle } from '@lucide/svelte';
+	import { MousePointer2, PencilSparkles, Plus, SquareX, Trash2, XCircle } from '@lucide/svelte';
 	import Button from '$lib/components/shared/button.svelte';
 	import InfiniteScrollContainer from '$lib/components/shared/infinite-scroll-container.svelte';
 	import TaskDialog from '$lib/components/taskCreation/task-dialog.svelte';
@@ -102,7 +102,7 @@
 
 	function getTaskActions(task: DatedUntrashedOpenTaskResponse | UndatedTaskResponse) {
 		return [
-			{ label: 'Edit', icon: SquarePen, onclick: () => openTaskDialog(task) },
+			{ label: 'Edit', icon: PencilSparkles, onclick: () => openTaskDialog(task) },
 			{
 				label: 'Trash',
 				icon: Trash2,
@@ -173,7 +173,7 @@
 					onclick={completeSelectedTasks}
 				>
 					Complete
-					{#snippet trailingIcon()}<CheckCheck size={17} aria-hidden="true" />{/snippet}
+					{#snippet trailingIcon()}<SquareX size={17} aria-hidden="true" />{/snippet}
 				</Button>
 				<Button disabled={selectedTaskIds.length === 0 || selectedTaskIds.length > maximumBatchSize} onclick={trashSelectedTasks}>
 					Trash

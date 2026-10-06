@@ -12,9 +12,21 @@
 	import { todayProgressStore } from '$lib/stores/today-progress-store.svelte';
 	import type { DatedUntrashedDoneTaskResponse } from '$lib/types/responses/dated-untrashed-done-task-response';
 	import type { DatedUntrashedOpenTaskResponse } from '$lib/types/responses/dated-untrashed-open-task-response';
+	import type { CreateTaskRequest } from '$lib/types/requests/create-task-request';
 	import type { TaskDragAndDropRequest } from '$lib/types/requests/task-drag-and-drop-request';
 	import { getLocalTimeZone, today } from '@internationalized/date';
-	import { CheckCheck, Ghost, MousePointer2, Plus, RotateCcw, SquarePen, Trash2, XCircle } from '@lucide/svelte';
+	import {
+		CalendarChevronsRight,
+		Dna,
+		Ghost,
+		MousePointer2,
+		PencilSparkles,
+		Plus,
+		Square,
+		SquareX,
+		Trash2,
+		XCircle
+	} from '@lucide/svelte';
 	import { dndzone, SHADOW_ITEM_MARKER_PROPERTY_NAME as isShadowTask, TRIGGERS, type DndEvent } from 'svelte-dnd-action';
 
 	type TaskDragItem = (DatedUntrashedOpenTaskResponse | DatedUntrashedDoneTaskResponse) & {
@@ -23,9 +35,11 @@
 
 	const maximumBatchSize = 50;
 	const todayDate = today(getLocalTimeZone());
+	const tomorrowDate = todayDate.add({ days: 1 });
 
 	let taskDialogOpen = $state(false);
 	let taskDialogTask = $state<DatedUntrashedOpenTaskResponse | DatedUntrashedDoneTaskResponse>();
+	let taskDialogDefaults = $state<Partial<CreateTaskRequest>>();
 	let dragging = $state(false);
 	let selectionEnabled = $state(false);
 	let selectedTaskIds = $state<number[]>([]);
@@ -91,6 +105,13 @@
 
 	function openCreateTaskDialog(): void {
 		taskDialogTask = undefined;
+		taskDialogDefaults = { date: todayDate };
+		taskDialogOpen = true;
+	}
+
+	function openCloneTaskDialog(task: DatedUntrashedDoneTaskResponse): void {
+		taskDialogTask = undefined;
+		taskDialogDefaults = { ...task, date: tomorrowDate };
 		taskDialogOpen = true;
 	}
 
@@ -99,11 +120,28 @@
 		taskDialogOpen = true;
 	}
 
+	async function moveTaskToTomorrow(task: DatedUntrashedOpenTaskResponse): Promise<void> {
+		const request: TaskDragAndDropRequest = {
+			date: tomorrowDate,
+			done: false,
+			trashed: false
+		};
+		await taskService.dragAndDropTask(task.id, request);
+	}
+
 	function getTaskActions(task: DatedUntrashedOpenTaskResponse | DatedUntrashedDoneTaskResponse) {
-		return [
-			{ label: 'Edit', icon: SquarePen, onclick: () => openEditTaskDialog(task) },
+		const actions = [
+			{ label: 'Edit', icon: PencilSparkles, onclick: () => openEditTaskDialog(task) },
 			{ label: 'Trash', icon: Trash2, onclick: () => taskService.trashTask(task.id) }
 		];
+		if (task.done) {
+			const cloneAction = { label: 'Clone', icon: Dna, onclick: () => openCloneTaskDialog(task) };
+			actions.unshift(cloneAction);
+		} else {
+			const tomorrowAction = { label: 'Tomorrow', icon: CalendarChevronsRight, onclick: () => moveTaskToTomorrow(task) };
+			actions.unshift(tomorrowAction);
+		}
+		return actions;
 	}
 
 	function cancelTaskSelection(): void {
@@ -200,11 +238,11 @@
 				</Button>
 				<Button disabled={!allSelectedTasksOpen || batchSizeExceeded} onclick={completeSelectedTasks}>
 					Complete
-					{#snippet trailingIcon()}<CheckCheck size={17} aria-hidden="true" />{/snippet}
+					{#snippet trailingIcon()}<SquareX size={17} aria-hidden="true" />{/snippet}
 				</Button>
 				<Button disabled={!allSelectedTasksDone || batchSizeExceeded} onclick={openSelectedTasks}>
 					Open
-					{#snippet trailingIcon()}<RotateCcw size={17} aria-hidden="true" />{/snippet}
+					{#snippet trailingIcon()}<Square size={17} aria-hidden="true" />{/snippet}
 				</Button>
 				<Button disabled={selectedTaskIds.length === 0 || batchSizeExceeded} onclick={trashSelectedTasks}>
 					Trash
@@ -321,7 +359,7 @@
 	</section>
 </div>
 
-<TaskDialog bind:open={taskDialogOpen} bind:task={taskDialogTask} defaultDate={todayDate} />
+<TaskDialog bind:open={taskDialogOpen} bind:task={taskDialogTask} defaults={taskDialogDefaults} />
 
 <style lang="scss">
 	.frame {
