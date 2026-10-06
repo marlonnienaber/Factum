@@ -223,6 +223,37 @@
 			</InfiniteScrollContainer>
 		</div>
 	</div>
+	<div class="today-section">
+		<h1>Today</h1>
+		<InfiniteScrollContainer
+			hasMore={datedUntrashedOpenTaskStore.todayTasksHasMore}
+			disabled={dragging}
+			loadMore={loadMoreDatedUntrashedOpenTodayTasks}
+		>
+			<div
+				class="task-item-drop-zone"
+				aria-label="Tasks dated Today"
+				use:dndzone={{
+					items: todayTaskDragItems,
+					dragDisabled: selectionEnabled,
+					dropTargetStyle: { outline: 'none' }
+				}}
+				onconsider={(event) => handleConsider(event, todayDateKey)}
+				onfinalize={(event) => handleFinalize(event, todayDateKey)}
+			>
+				{#each todayTaskDragItems as taskDragItem (getTaskDragItemKey(taskDragItem))}
+					<Task
+						task={taskDragItem}
+						actions={getTaskActions(taskDragItem)}
+						isShadowItem={Boolean(taskDragItem[isShadowTask])}
+						{selectionEnabled}
+						selected={selectedTaskIds.includes(taskDragItem.id)}
+						onSelectedChange={updateTaskSelection}
+					/>
+				{/each}
+			</div>
+		</InfiniteScrollContainer>
+	</div>
 	<div class="date-section">
 		<h1>Date Assigned</h1>
 		<InfiniteScrollContainer
@@ -258,37 +289,6 @@
 							{/each}
 						</div>
 					</div>
-				{/each}
-			</div>
-		</InfiniteScrollContainer>
-	</div>
-	<div class="today-section">
-		<h1>Today</h1>
-		<InfiniteScrollContainer
-			hasMore={datedUntrashedOpenTaskStore.todayTasksHasMore}
-			disabled={dragging}
-			loadMore={loadMoreDatedUntrashedOpenTodayTasks}
-		>
-			<div
-				class="task-item-drop-zone"
-				aria-label="Tasks dated Today"
-				use:dndzone={{
-					items: todayTaskDragItems,
-					dragDisabled: selectionEnabled,
-					dropTargetStyle: { outline: 'none' }
-				}}
-				onconsider={(event) => handleConsider(event, todayDateKey)}
-				onfinalize={(event) => handleFinalize(event, todayDateKey)}
-			>
-				{#each todayTaskDragItems as taskDragItem (getTaskDragItemKey(taskDragItem))}
-					<Task
-						task={taskDragItem}
-						actions={getTaskActions(taskDragItem)}
-						isShadowItem={Boolean(taskDragItem[isShadowTask])}
-						{selectionEnabled}
-						selected={selectedTaskIds.includes(taskDragItem.id)}
-						onSelectedChange={updateTaskSelection}
-					/>
 				{/each}
 			</div>
 		</InfiniteScrollContainer>
