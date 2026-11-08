@@ -1,12 +1,15 @@
 package configuration
 
 import (
+	"fmt"
 	"os"
 	"strings"
 )
 
 type Configuration struct {
-	Port                 string
+	ServerPort           string
+	ClientPort           string
+	AppUrl               string
 	DatabaseUrl          string
 	SignUpEmailWhitelist []string
 	SessionCookieSecure  bool
@@ -14,14 +17,18 @@ type Configuration struct {
 }
 
 func LoadConfiguration() Configuration {
-	port := getStringEnvironmentVariable("SERVER_PORT", "3001")
+	serverPort := getStringEnvironmentVariable("SERVER_PORT", "3001")
+	clientPort := getStringEnvironmentVariable("CLIENT_PORT", "5173")
+	appUrl := getStringEnvironmentVariable("APP_URL", fmt.Sprintf("http://localhost:%s", clientPort))
 	databaseUrl := getStringEnvironmentVariable("DATABASE_URL", "postgres://username:password@localhost:5435/factum_database?sslmode=disable")
 	signUpEmailWhitelist := parseSignUpEmailWhitelist(getStringEnvironmentVariable("SIGN_UP_EMAIL_WHITELIST", ""))
 	sessionCookieSecure := getBooleanEnvironmentVariable("SESSION_COOKIE_SECURE", false)
 	sessionSecretKey := getStringEnvironmentVariable("SESSION_SECRET_KEY", "dev-session-secret-key")
 
 	return Configuration{
-		Port:                 port,
+		ServerPort:           serverPort,
+		ClientPort:           clientPort,
+		AppUrl:               appUrl,
 		DatabaseUrl:          databaseUrl,
 		SignUpEmailWhitelist: signUpEmailWhitelist,
 		SessionCookieSecure:  sessionCookieSecure,

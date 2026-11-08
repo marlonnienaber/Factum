@@ -4,10 +4,14 @@ CREATE TABLE email_verification_token_records (
     token_hash BYTEA NOT NULL,
     expires_at TIMESTAMPTZ NOT NULL,
     last_sent_at TIMESTAMPTZ NOT NULL,
-    rotations INTEGER NOT NULL DEFAULT 0,
+    hourly_send_count INTEGER NOT NULL,
+    hourly_window_started_at TIMESTAMPTZ NOT NULL,
+    daily_send_count INTEGER NOT NULL,
+    daily_window_started_at TIMESTAMPTZ NOT NULL,
 
     CONSTRAINT email_verification_token_records_email_unique UNIQUE (email),
     CONSTRAINT email_verification_token_records_token_hash_unique UNIQUE (token_hash),
     CONSTRAINT email_verification_token_records_token_hash_length_check CHECK (octet_length(token_hash) = 32),
-    CONSTRAINT email_verification_token_records_rotations_check CHECK (rotations >= 0)
+    CONSTRAINT email_verification_token_records_hourly_send_count_check CHECK (hourly_send_count >= 1),
+    CONSTRAINT email_verification_token_records_daily_send_count_check CHECK (daily_send_count >= 1)
 );

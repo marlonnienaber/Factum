@@ -23,7 +23,15 @@ func NewApplication(cfg configuration.Configuration, db *sqlx.DB) *gin.Engine {
 	validation.RegisterRankValidation()
 
 	userStore := stores.NewUserStore(db)
-	authenticationService := authServices.NewAuthenticationService(userStore, cfg)
+	emailVerificationTokenRecordStore := stores.NewEmailVerificationTokenRecordStore(db)
+	emailService := authServices.NewDevelopmentEmailService()
+	authenticationService := authServices.NewAuthenticationService(
+		db,
+		userStore,
+		emailVerificationTokenRecordStore,
+		emailService,
+		cfg,
+	)
 	categoryStore := categoriesStores.NewCategoryStore(db)
 	categoryService := categoriesServices.NewCategoryService(db, categoryStore)
 	taskStore := tasksStores.NewTaskStore(db)
@@ -33,6 +41,10 @@ func NewApplication(cfg configuration.Configuration, db *sqlx.DB) *gin.Engine {
 	app.Use(shared.NewSessionConfigurationMiddleware(cfg, db))
 	api := app.Group("/api")
 
+	api.POST(
+		"/verify-email",
+		authHandlers.NewVerifyEmailHandler(authenticationService),
+	)
 	api.POST(
 		"/sign-up",
 		authHandlers.NewSignUpHandler(authenticationService),

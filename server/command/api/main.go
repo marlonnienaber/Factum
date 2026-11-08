@@ -23,7 +23,7 @@ func main() {
 
 	defer db.Close()
 
-	if err := app.Run(":" + cfg.Port); err != nil {
+	if err := app.Run(":" + cfg.ServerPort); err != nil {
 		slog.Error("Failed to run server.", "error", err)
 		os.Exit(1)
 	}

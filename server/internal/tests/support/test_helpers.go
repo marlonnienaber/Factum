@@ -32,7 +32,9 @@ const (
 var TestTaskDate = shared.NewDate(time.Date(2026, time.March, 25, 0, 0, 0, 0, time.UTC))
 
 var defaultTestConfiguration = configuration.Configuration{
-	Port:                ":3001",
+	ServerPort:          "3001",
+	ClientPort:          "5173",
+	AppUrl:              "http://localhost:5173",
 	SessionCookieSecure: false,
 	SessionSecretKey:    "test-session-secret-key",
 }

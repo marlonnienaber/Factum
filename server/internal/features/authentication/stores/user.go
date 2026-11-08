@@ -74,3 +74,15 @@ func (store *UserStore) DoesUserExistForId(userId int64) (bool, error) {
 
 	return exists, nil
 }
+
+func (store *UserStore) DoesUserExistForEmail(transaction *sqlx.Tx, email string) (bool, error) {
+	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("checking user existence by email failed")
+
+	var exists bool
+	err := transaction.Get(&exists, "SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)", email)
+	if err != nil {
+		return false, wrapUnexpectedError(err)
+	}
+
+	return exists, nil
+}
