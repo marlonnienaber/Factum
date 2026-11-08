@@ -1,6 +1,7 @@
 package validation
 
 import (
+	"encoding/base64"
 	"reflect"
 	"strings"
 
@@ -36,9 +37,30 @@ func RegisterRankValidation() {
 	}
 }
 
+func RegisterEmailVerificationTokenValidation() {
+	if validatorEngine, ok := binding.Validator.Engine().(*validator.Validate); ok {
+		if err := validatorEngine.RegisterValidation("emailVerificationToken", isValidEmailVerificationToken); err != nil {
+			panic("registering email verification token validation failed: " + err.Error())
+		}
+	}
+}
+
 func isValidRank(fieldLevel validator.FieldLevel) bool {
 	_, err := fracdex.Float64Approx(fieldLevel.Field().String())
 	return err == nil
+}
+
+func isValidEmailVerificationToken(fieldLevel validator.FieldLevel) bool {
+	const emailVerificationTokenEncodedLength = 43
+	const emailVerificationTokenDecodedLength = 32
+
+	token := fieldLevel.Field().String()
+	if len(token) != emailVerificationTokenEncodedLength {
+		return false
+	}
+
+	decodedToken, err := base64.RawURLEncoding.Strict().DecodeString(token)
+	return err == nil && len(decodedToken) == emailVerificationTokenDecodedLength
 }
 
 func NewValidationErrorResponse(validationErrors validator.ValidationErrors) shared.DetailedErrorResponse[ValidationErrorDetails] {
@@ -88,6 +110,8 @@ func validationErrorMessage(fieldError validator.FieldError) string {
 		return field + " must be greater than " + fieldError.Param() + "."
 	case "rank":
 		return field + " must be a valid fractional rank."
+	case "emailVerificationToken":
+		return field + " must be a valid email verification token."
 	default:
 		return field + " is invalid."
 	}

@@ -9,7 +9,10 @@ import (
 	"github.com/marlonnienaber/Factum/server/internal/shared"
 )
 
-var ErrNoEmailVerificationTokenRecordForEmail = errors.New("no email verification token record exists for the given email")
+var (
+	ErrNoRecordForEmailVerificationToken = errors.New("no matching record for the given email verification token exists")
+	ErrNoRecordForEmail                  = errors.New("no email verification token record for the given email exists")
+)
 
 type EmailVerificationTokenRecordStore struct {
 	db *sqlx.DB
@@ -21,7 +24,7 @@ func NewEmailVerificationTokenRecordStore(db *sqlx.DB) *EmailVerificationTokenRe
 	}
 }
 
-func (store *EmailVerificationTokenRecordStore) GetEmailVerificationTokenRecordForEmail(
+func (store *EmailVerificationTokenRecordStore) GetRecordForEmail(
 	transaction *sqlx.Tx,
 	email string,
 ) (*domain.EmailVerificationTokenRecord, error) {
@@ -43,7 +46,7 @@ func (store *EmailVerificationTokenRecordStore) GetEmailVerificationTokenRecordF
 	`, email)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrNoEmailVerificationTokenRecordForEmail
+			return nil, ErrNoRecordForEmail
 		}
 		return nil, wrapUnexpectedError(err)
 	}
@@ -51,7 +54,37 @@ func (store *EmailVerificationTokenRecordStore) GetEmailVerificationTokenRecordF
 	return &record, nil
 }
 
-func (store *EmailVerificationTokenRecordStore) UpsertEmailVerificationTokenRecord(
+func (store *EmailVerificationTokenRecordStore) GetRecordForTokenHash(
+	transaction *sqlx.Tx,
+	tokenHash []byte,
+) (*domain.EmailVerificationTokenRecord, error) {
+	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("retrieving email verification token record by token hash failed")
+
+	var record domain.EmailVerificationTokenRecord
+	err := transaction.Get(&record, `
+		SELECT id,
+		       email,
+		       token_hash,
+		       expires_at,
+		       last_sent_at,
+		       hourly_send_count,
+		       hourly_window_started_at,
+		       daily_send_count,
+		       daily_window_started_at
+		FROM email_verification_token_records
+		WHERE token_hash = $1
+	`, tokenHash)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNoRecordForEmailVerificationToken
+		}
+		return nil, wrapUnexpectedError(err)
+	}
+
+	return &record, nil
+}
+
+func (store *EmailVerificationTokenRecordStore) UpsertRecord(
 	transaction *sqlx.Tx,
 	record *domain.EmailVerificationTokenRecord,
 ) error {
@@ -90,6 +123,28 @@ func (store *EmailVerificationTokenRecordStore) UpsertEmailVerificationTokenReco
 	)
 	if err != nil {
 		return wrapUnexpectedError(err)
+	}
+
+	return nil
+}
+
+func (store *EmailVerificationTokenRecordStore) DeleteRecord(
+	transaction *sqlx.Tx,
+	recordId int64,
+) error {
+	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("deleting email verification token record failed")
+
+	result, err := transaction.Exec("DELETE FROM email_verification_token_records WHERE id = $1", recordId)
+	if err != nil {
+		return wrapUnexpectedError(err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return wrapUnexpectedError(err)
+	}
+	if rowsAffected == 0 {
+		return ErrNoRecordForEmailVerificationToken
 	}
 
 	return nil

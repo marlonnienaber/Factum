@@ -18,7 +18,7 @@ func NewSignInHandler(authenticationService *services.AuthenticationService) gin
 	return func(c *gin.Context) {
 		unexpectedErrorLogMessage := "handling sign-in failed"
 
-		var request transport.AuthenticationRequest
+		var request transport.SignInRequest
 		if err := c.ShouldBindJSON(&request); err != nil {
 			var validationErrors validator.ValidationErrors
 			if errors.As(err, &validationErrors) {

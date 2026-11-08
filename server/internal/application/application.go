@@ -21,6 +21,7 @@ func NewApplication(cfg configuration.Configuration, db *sqlx.DB) *gin.Engine {
 	gin.EnableJsonDecoderDisallowUnknownFields()
 	validation.RegisterJsonPropertyNames()
 	validation.RegisterRankValidation()
+	validation.RegisterEmailVerificationTokenValidation()
 
 	userStore := stores.NewUserStore(db)
 	emailVerificationTokenRecordStore := stores.NewEmailVerificationTokenRecordStore(db)

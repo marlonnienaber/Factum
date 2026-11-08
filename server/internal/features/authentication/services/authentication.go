@@ -20,7 +20,7 @@ import (
 )
 
 var (
-	ErrEmailNotAllowed    = errors.New("the provided email is not whitelisted.")
+	ErrSignUpNotAvailable = errors.New("sign-up is not available")
 	ErrInvalidCredentials = errors.New("username or password invalid")
 )
 
@@ -77,11 +77,11 @@ func (service *AuthenticationService) VerifyEmail(
 			return "", nil
 		}
 
-		record, err := service.emailVerificationTokenRecordStore.GetEmailVerificationTokenRecordForEmail(
+		record, err := service.emailVerificationTokenRecordStore.GetRecordForEmail(
 			transaction,
 			email,
 		)
-		if err != nil && !errors.Is(err, stores.ErrNoEmailVerificationTokenRecordForEmail) {
+		if err != nil && !errors.Is(err, stores.ErrNoRecordForEmail) {
 			return "", err
 		}
 
@@ -97,7 +97,7 @@ func (service *AuthenticationService) VerifyEmail(
 		tokenHash := sha256.Sum256([]byte(plaintextToken))
 
 		record = prepareEmailVerificationTokenRecord(record, email, tokenHash[:], now)
-		err = service.emailVerificationTokenRecordStore.UpsertEmailVerificationTokenRecord(transaction, record)
+		err = service.emailVerificationTokenRecordStore.UpsertRecord(transaction, record)
 		if err != nil {
 			return "", err
 		}
@@ -119,32 +119,60 @@ func (service *AuthenticationService) VerifyEmail(
 	return nil
 }
 
-func (service *AuthenticationService) SignUp(request transport.AuthenticationRequest, session sessions.Session) (*transport.AuthenticationResponse, error) {
+func (service *AuthenticationService) SignUp(request transport.SignUpRequest) error {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("sign up failed")
-	email := normalizeEmail(request.Email)
+	tokenHash := sha256.Sum256([]byte(request.Token))
 
-	if service.isEmailNotWhitelisted(email) {
-		return nil, ErrEmailNotAllowed
-	}
-
-	user, err := service.createUser(email, request.Password)
-	if err != nil {
-		if errors.Is(err, stores.ErrEmailAlreadyInUse) {
-			return nil, err
+	err := shared.ExecuteAsSerializableTransactionWithoutResult(service.db, func(transaction *sqlx.Tx) error {
+		record, err := service.emailVerificationTokenRecordStore.GetRecordForTokenHash(transaction, tokenHash[:])
+		if err != nil {
+			if errors.Is(err, stores.ErrNoRecordForEmailVerificationToken) {
+				return ErrSignUpNotAvailable
+			}
+			return err
 		}
-		return nil, wrapUnexpectedError(err)
-	}
+		if !record.ExpiresAt.After(time.Now().UTC()) {
+			return ErrSignUpNotAvailable
+		}
 
-	err = service.createSession(user.Id, session)
+		if service.isEmailNotWhitelisted(record.Email) {
+			return ErrSignUpNotAvailable
+		}
+
+		passwordHash, err := argon2id.CreateHash(request.Password, argon2id.DefaultParams)
+		if err != nil {
+			return err
+		}
+
+		err = service.emailVerificationTokenRecordStore.DeleteRecord(transaction, record.Id)
+		if err != nil {
+			return err
+		}
+
+		user := domain.User{
+			Email:        record.Email,
+			PasswordHash: passwordHash,
+		}
+		if err := service.userStore.InsertUser(transaction, &user); err != nil {
+			if errors.Is(err, stores.ErrEmailAlreadyInUse) {
+				return ErrSignUpNotAvailable
+			}
+			return err
+		}
+
+		return nil
+	})
 	if err != nil {
-		return nil, wrapUnexpectedError(err)
+		if errors.Is(err, ErrSignUpNotAvailable) {
+			return err
+		}
+		return wrapUnexpectedError(err)
 	}
 
-	authenticationResponse := user.ToAuthenticationResponse()
-	return &authenticationResponse, nil
+	return nil
 }
 
-func (service *AuthenticationService) SignIn(request transport.AuthenticationRequest, session sessions.Session) (*transport.AuthenticationResponse, error) {
+func (service *AuthenticationService) SignIn(request transport.SignInRequest, session sessions.Session) (*transport.AuthenticationResponse, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("sign in failed")
 	email := normalizeEmail(request.Email)
 
@@ -212,29 +240,6 @@ func (service *AuthenticationService) isEmailNotWhitelisted(email string) bool {
 		}
 	}
 	return true
-}
-
-func (service *AuthenticationService) createUser(email string, password string) (*domain.User, error) {
-	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("user creation failed")
-
-	passwordHash, err := argon2id.CreateHash(password, argon2id.DefaultParams)
-	if err != nil {
-		return nil, wrapUnexpectedError(err)
-	}
-
-	user := domain.User{
-		Email:        email,
-		PasswordHash: passwordHash,
-	}
-	err = service.userStore.InsertUser(&user)
-	if err != nil {
-		if errors.Is(err, stores.ErrEmailAlreadyInUse) {
-			return nil, err
-		}
-		return nil, wrapUnexpectedError(err)
-	}
-
-	return &user, nil
 }
 
 func normalizeEmail(email string) string {
