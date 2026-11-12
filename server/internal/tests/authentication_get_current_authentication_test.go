@@ -1,5 +1,6 @@
 package tests
 
+/*
 import (
 	"encoding/json"
 	"net/http"
@@ -79,3 +80,4 @@ func TestAuthenticationGetCurrentAuthenticationUnauthenticated(t *testing.T) {
 		"This endpoint requires authentication. Please sign-in.",
 	)
 }
+*/

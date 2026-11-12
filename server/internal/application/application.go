@@ -17,20 +17,28 @@ import (
 	"github.com/marlonnienaber/Factum/server/internal/validation"
 )
 
-func NewApplication(cfg configuration.Configuration, db *sqlx.DB) *gin.Engine {
+func NewApplication(cfg configuration.Configuration, db *sqlx.DB, injectionOptions ...InjectionOption) *gin.Engine {
 	gin.EnableJsonDecoderDisallowUnknownFields()
 	validation.RegisterJsonPropertyNames()
 	validation.RegisterRankValidation()
 	validation.RegisterEmailVerificationTokenValidation()
 
+	injectableComponents := injectableAppComponents{
+		emailService: authServices.NewDevelopmentEmailService(),
+		clock:        shared.NewDefaultClock(),
+	}
+	for _, option := range injectionOptions {
+		option.inject(&injectableComponents)
+	}
+
 	userStore := stores.NewUserStore(db)
 	emailVerificationTokenRecordStore := stores.NewEmailVerificationTokenRecordStore(db)
-	emailService := authServices.NewDevelopmentEmailService()
 	authenticationService := authServices.NewAuthenticationService(
 		db,
 		userStore,
 		emailVerificationTokenRecordStore,
-		emailService,
+		injectableComponents.emailService,
+		injectableComponents.clock,
 		cfg,
 	)
 	categoryStore := categoriesStores.NewCategoryStore(db)

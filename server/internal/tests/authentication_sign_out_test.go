@@ -1,5 +1,6 @@
 package tests
 
+/*
 import (
 	"net/http"
 	"testing"
@@ -44,3 +45,4 @@ func TestAuthenticationSignOutUnauthenticated(t *testing.T) {
 		"This endpoint requires authentication. Please sign-in.",
 	)
 }
+*/

@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"testing"
 
-	authenticationTransport "github.com/marlonnienaber/Factum/server/internal/features/authentication/types/transport"
 	categoriesTransport "github.com/marlonnienaber/Factum/server/internal/features/categories/types/transport"
 	"github.com/marlonnienaber/Factum/server/internal/tests/support"
 	"github.com/stretchr/testify/assert"
@@ -14,7 +13,8 @@ import (
 )
 
 func TestCategoriesDeleteCategoryUnauthenticated(t *testing.T) {
-	app := support.PrepareTestEnvironment(t)
+	sut := support.PrepareTestEnvironment(t)
+	app := sut.App
 
 	resp := support.MakeJsonRequest(t, app, http.MethodDelete, "/api/categories/1", nil)
 
@@ -28,12 +28,9 @@ func TestCategoriesDeleteCategoryUnauthenticated(t *testing.T) {
 }
 
 func TestCategoriesDeleteCategoryInvalidId(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
+	signUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 
 	resp := support.MakeJsonRequest(
 		t,
@@ -54,12 +51,9 @@ func TestCategoriesDeleteCategoryInvalidId(t *testing.T) {
 }
 
 func TestCategoriesDeleteCategoryNotFound(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
+	signUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 
 	resp := support.MakeJsonRequest(
 		t,
@@ -80,12 +74,9 @@ func TestCategoriesDeleteCategoryNotFound(t *testing.T) {
 }
 
 func TestCategoriesDeleteCategoryStillReferenced(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
+	signUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 
 	createCategoryResp := support.MakeCreateCategoryRequest(
 		t,
@@ -133,21 +124,14 @@ func TestCategoriesDeleteCategoryStillReferenced(t *testing.T) {
 }
 
 func TestCategoriesDeleteCategoryOwnedByDifferentUser(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(
+	sut := support.PrepareTestEnvironment(
 		t,
 		support.TestUser1Email,
 		support.TestUser2Email,
 	)
-	ownerSignUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, ownerSignUpResp.Code)
-	otherSignUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser2Email,
-		Password: support.TestUser2Password,
-	})
-	require.Equal(t, http.StatusCreated, otherSignUpResp.Code)
+	app := sut.App
+	ownerSignUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
+	otherSignUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser2Email, support.TestUser2Password)
 
 	createResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", ownerSignUpResp.Result().Cookies()...)
 	require.Equal(t, http.StatusCreated, createResp.Code)
@@ -173,12 +157,9 @@ func TestCategoriesDeleteCategoryOwnedByDifferentUser(t *testing.T) {
 }
 
 func TestCategoriesDeleteCategory(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
+	signUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 
 	createCategoryResp := support.MakeCreateCategoryRequest(
 		t,

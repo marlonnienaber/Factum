@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	authenticationTransport "github.com/marlonnienaber/Factum/server/internal/features/authentication/types/transport"
 	categoriesTransport "github.com/marlonnienaber/Factum/server/internal/features/categories/types/transport"
 	tasksTransport "github.com/marlonnienaber/Factum/server/internal/features/tasks/types/transport"
 	"github.com/marlonnienaber/Factum/server/internal/shared"
@@ -19,7 +18,8 @@ import (
 )
 
 func TestTasksGetDatedUntrashedOpenTodayTasksUnauthenticated(t *testing.T) {
-	app := support.PrepareTestEnvironment(t)
+	sut := support.PrepareTestEnvironment(t)
+	app := sut.App
 
 	resp := support.MakeJsonRequest(t, app, http.MethodGet, "/api/tasks/dated-untrashed-open-today", nil)
 
@@ -33,12 +33,9 @@ func TestTasksGetDatedUntrashedOpenTodayTasksUnauthenticated(t *testing.T) {
 }
 
 func TestTasksGetDatedUntrashedOpenTodayTasksInvalidRankProvided(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
+	signUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 	cookies := signUpResp.Result().Cookies()
 
 	resp := support.MakeJsonRequest(
@@ -60,12 +57,9 @@ func TestTasksGetDatedUntrashedOpenTodayTasksInvalidRankProvided(t *testing.T) {
 }
 
 func TestTasksGetDatedUntrashedOpenTodayTasksInvalidCategoryIdProvided(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
+	signUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 	cookies := signUpResp.Result().Cookies()
 
 	resp := support.MakeJsonRequest(
@@ -87,12 +81,9 @@ func TestTasksGetDatedUntrashedOpenTodayTasksInvalidCategoryIdProvided(t *testin
 }
 
 func TestTasksGetDatedUntrashedOpenTodayTasksTooManyCategoryIdsProvided(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
+	signUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 	cookies := signUpResp.Result().Cookies()
 
 	categoryIds := make([]string, 31)
@@ -118,12 +109,9 @@ func TestTasksGetDatedUntrashedOpenTodayTasksTooManyCategoryIdsProvided(t *testi
 }
 
 func TestTasksGetDatedUntrashedOpenTodayTasksWithoutCursor(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
+	signUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 	cookies := signUpResp.Result().Cookies()
 
 	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
@@ -149,12 +137,9 @@ func TestTasksGetDatedUntrashedOpenTodayTasksWithoutCursor(t *testing.T) {
 }
 
 func TestTasksGetDatedUntrashedOpenTodayTasksWithCursor(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
+	signUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 	cookies := signUpResp.Result().Cookies()
 
 	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
@@ -182,12 +167,9 @@ func TestTasksGetDatedUntrashedOpenTodayTasksWithCursor(t *testing.T) {
 }
 
 func TestTasksGetDatedUntrashedOpenTodayTasksFiltersByCategoryIds(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
+	signUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 	cookies := signUpResp.Result().Cookies()
 
 	firstCategoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
@@ -233,12 +215,9 @@ func TestTasksGetDatedUntrashedOpenTodayTasksFiltersByCategoryIds(t *testing.T) 
 }
 
 func TestTasksGetDatedUntrashedOpenTodayTasksHasMore(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
+	signUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 	cookies := signUpResp.Result().Cookies()
 
 	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)

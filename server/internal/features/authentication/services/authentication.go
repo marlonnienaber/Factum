@@ -39,6 +39,7 @@ type AuthenticationService struct {
 	userStore                         *stores.UserStore
 	emailVerificationTokenRecordStore *stores.EmailVerificationTokenRecordStore
 	emailService                      EmailService
+	clock                             shared.Clock
 	cfg                               configuration.Configuration
 }
 
@@ -47,6 +48,7 @@ func NewAuthenticationService(
 	userStore *stores.UserStore,
 	emailVerificationTokenRecordStore *stores.EmailVerificationTokenRecordStore,
 	emailService EmailService,
+	clock shared.Clock,
 	config configuration.Configuration,
 ) *AuthenticationService {
 	return &AuthenticationService{
@@ -54,6 +56,7 @@ func NewAuthenticationService(
 		userStore:                         userStore,
 		emailVerificationTokenRecordStore: emailVerificationTokenRecordStore,
 		emailService:                      emailService,
+		clock:                             clock,
 		cfg:                               config,
 	}
 }
@@ -77,15 +80,12 @@ func (service *AuthenticationService) VerifyEmail(
 			return "", nil
 		}
 
-		record, err := service.emailVerificationTokenRecordStore.GetRecordForEmail(
-			transaction,
-			email,
-		)
+		record, err := service.emailVerificationTokenRecordStore.GetRecordForEmail(transaction, email)
 		if err != nil && !errors.Is(err, stores.ErrNoRecordForEmail) {
 			return "", err
 		}
 
-		now := time.Now().UTC()
+		now := service.clock.Now()
 		if record != nil && !isEmailVerificationSendAllowed(record, now) {
 			return "", nil
 		}
@@ -131,7 +131,7 @@ func (service *AuthenticationService) SignUp(request transport.SignUpRequest) er
 			}
 			return err
 		}
-		if !record.ExpiresAt.After(time.Now().UTC()) {
+		if !record.ExpiresAt.After(service.clock.Now()) {
 			return ErrSignUpNotAvailable
 		}
 

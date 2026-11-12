@@ -39,31 +39,51 @@ var defaultTestConfiguration = configuration.Configuration{
 	SessionSecretKey:    "test-session-secret-key",
 }
 
-func PrepareTestEnvironment(t *testing.T) *gin.Engine {
-	t.Helper()
-	return prepareTestEnvironmentWithConfig(t, defaultTestConfiguration)
-}
-
-func PrepareTestEnvironmentWithSignUpEmailWhitelist(t *testing.T, emails ...string) *gin.Engine {
+func PrepareTestEnvironment(t *testing.T, signUpEmailWhitelist ...string) SystemUnderTest {
 	t.Helper()
 	cfg := defaultTestConfiguration
-	cfg.SignUpEmailWhitelist = emails
-	return prepareTestEnvironmentWithConfig(t, cfg)
-}
-
-func prepareTestEnvironmentWithConfig(t *testing.T, cfg configuration.Configuration) *gin.Engine {
-	t.Helper()
+	cfg.SignUpEmailWhitelist = signUpEmailWhitelist
 	databaseReset(t)
-	return TestApp(cfg)
+	return NewSystemUnderTest(cfg)
 }
 
-func MakeSignUpRequest(t *testing.T, app *gin.Engine, body authenticationTransport.AuthenticationRequest) *httptest.ResponseRecorder {
+func MakeVerifyEmailSignUpAndSignInRequests(
+	t *testing.T,
+	sut SystemUnderTest,
+	email string,
+	password string,
+) *httptest.ResponseRecorder {
 	t.Helper()
 
-	payload, err := json.Marshal(body)
-	require.NoError(t, err, "serializing request failed")
+	verifyEmailPayload, err := json.Marshal(authenticationTransport.VerifyEmailRequest{Email: email})
+	require.NoError(t, err, "serializing verify-email request failed")
+	verifyEmailResponse := MakeJsonRequest(t, sut.App, http.MethodPost, "/api/verify-email", verifyEmailPayload)
+	require.Equal(t, http.StatusNoContent, verifyEmailResponse.Code)
+	require.NotEmpty(t, sut.EmailService.SentEmails, "expected an email verification link to be sent")
 
-	return MakeJsonRequest(t, app, http.MethodPost, "/api/sign-up", payload)
+	sentEmail := sut.EmailService.SentEmails[len(sut.EmailService.SentEmails)-1]
+	verificationLink, err := url.Parse(sentEmail.VerificationLink)
+	require.NoError(t, err, "parsing email verification link failed")
+	verificationToken := verificationLink.Query().Get("token")
+	require.NotEmpty(t, verificationToken, "email verification link did not contain a token")
+
+	signUpPayload, err := json.Marshal(authenticationTransport.SignUpRequest{
+		Token:    verificationToken,
+		Password: password,
+	})
+	require.NoError(t, err, "serializing sign-up request failed")
+	signUpResponse := MakeJsonRequest(t, sut.App, http.MethodPost, "/api/sign-up", signUpPayload)
+	require.Equal(t, http.StatusCreated, signUpResponse.Code)
+
+	signInPayload, err := json.Marshal(authenticationTransport.SignInRequest{
+		Email:    email,
+		Password: password,
+	})
+	require.NoError(t, err, "serializing sign-in request failed")
+	signInResponse := MakeJsonRequest(t, sut.App, http.MethodPost, "/api/sign-in", signInPayload)
+	require.Equal(t, http.StatusOK, signInResponse.Code)
+
+	return signInResponse
 }
 
 func MakeCreateCategoryRequest(

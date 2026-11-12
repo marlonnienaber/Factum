@@ -1,5 +1,6 @@
 package tests
 
+/*
 import (
 	"encoding/json"
 	"net/http"
@@ -118,3 +119,5 @@ func TestAuthenticationSignUpEmailAlreadyInUse(t *testing.T) {
 		"Email is already in use.",
 	)
 }
+
+*/

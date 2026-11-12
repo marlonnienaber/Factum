@@ -6,7 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	authenticationTransport "github.com/marlonnienaber/Factum/server/internal/features/authentication/types/transport"
 	categoriesTransport "github.com/marlonnienaber/Factum/server/internal/features/categories/types/transport"
 	tasksTransport "github.com/marlonnienaber/Factum/server/internal/features/tasks/types/transport"
 	"github.com/marlonnienaber/Factum/server/internal/shared"
@@ -17,7 +16,8 @@ import (
 )
 
 func TestTasksCreateTaskUnauthenticated(t *testing.T) {
-	app := support.PrepareTestEnvironment(t)
+	sut := support.PrepareTestEnvironment(t)
+	app := sut.App
 
 	payload, err := json.Marshal(tasksTransport.CreateTaskRequest{
 		Title:      "Task",
@@ -37,12 +37,9 @@ func TestTasksCreateTaskUnauthenticated(t *testing.T) {
 }
 
 func TestTasksCreateTaskNoTitleProvided(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
+	signUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 
 	payload, err := json.Marshal(map[string]any{
 		"categoryId": 1,
@@ -66,12 +63,9 @@ func TestTasksCreateTaskNoTitleProvided(t *testing.T) {
 }
 
 func TestTasksCreateTaskTitleTooShort(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
+	signUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 
 	payload, err := json.Marshal(tasksTransport.CreateTaskRequest{
 		Title:      "",
@@ -96,12 +90,9 @@ func TestTasksCreateTaskTitleTooShort(t *testing.T) {
 }
 
 func TestTasksCreateTaskTitleTooLong(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
+	signUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 
 	payload, err := json.Marshal(tasksTransport.CreateTaskRequest{
 		Title:      strings.Repeat("a", maximumTaskTitleLength+1),
@@ -126,12 +117,9 @@ func TestTasksCreateTaskTitleTooLong(t *testing.T) {
 }
 
 func TestTasksCreateTaskDescriptionTooShort(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
+	signUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 
 	description := ""
 	payload, err := json.Marshal(tasksTransport.CreateTaskRequest{
@@ -158,12 +146,9 @@ func TestTasksCreateTaskDescriptionTooShort(t *testing.T) {
 }
 
 func TestTasksCreateTaskDescriptionTooLong(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
+	signUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 
 	description := strings.Repeat("a", maximumTaskDescriptionLength+1)
 	payload, err := json.Marshal(tasksTransport.CreateTaskRequest{
@@ -190,12 +175,9 @@ func TestTasksCreateTaskDescriptionTooLong(t *testing.T) {
 }
 
 func TestTasksCreateTaskInvalidDate(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
+	signUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 
 	payload, err := json.Marshal(map[string]any{
 		"title":      "Task",
@@ -222,12 +204,9 @@ func TestTasksCreateTaskInvalidDate(t *testing.T) {
 }
 
 func TestTasksCreateTaskNoCategoryId(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
+	signUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 
 	payload, err := json.Marshal(map[string]any{
 		"title": "Task",
@@ -251,12 +230,9 @@ func TestTasksCreateTaskNoCategoryId(t *testing.T) {
 }
 
 func TestTasksCreateTaskInvalidCategoryId(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
+	signUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 
 	payload, err := json.Marshal(tasksTransport.CreateTaskRequest{
 		Title:      "Task",
@@ -281,12 +257,9 @@ func TestTasksCreateTaskInvalidCategoryId(t *testing.T) {
 }
 
 func TestTasksCreateTaskInvalidJson(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
+	signUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 
 	resp := support.MakeJsonRequest(
 		t,
@@ -307,12 +280,9 @@ func TestTasksCreateTaskInvalidJson(t *testing.T) {
 }
 
 func TestTasksCreateTaskNonExistingCategoryId(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
+	signUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 
 	payload, err := json.Marshal(tasksTransport.CreateTaskRequest{
 		Title:      "Task",
@@ -338,21 +308,14 @@ func TestTasksCreateTaskNonExistingCategoryId(t *testing.T) {
 }
 
 func TestTasksCreateTaskWithCategoryOwnedByDifferentUser(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(
+	sut := support.PrepareTestEnvironment(
 		t,
 		support.TestUser1Email,
 		support.TestUser2Email,
 	)
-	ownerSignUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, ownerSignUpResp.Code)
-	otherSignUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser2Email,
-		Password: support.TestUser2Password,
-	})
-	require.Equal(t, http.StatusCreated, otherSignUpResp.Code)
+	app := sut.App
+	ownerSignUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
+	otherSignUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser2Email, support.TestUser2Password)
 
 	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", ownerSignUpResp.Result().Cookies()...)
 	require.Equal(t, http.StatusCreated, categoryResp.Code)
@@ -379,12 +342,9 @@ func TestTasksCreateTaskWithCategoryOwnedByDifferentUser(t *testing.T) {
 }
 
 func TestTasksCreateTaskWithDescriptionWithDate(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
+	signUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 
 	createCategoryResp := support.MakeCreateCategoryRequest(
 		t,
@@ -430,12 +390,9 @@ func TestTasksCreateTaskWithDescriptionWithDate(t *testing.T) {
 }
 
 func TestTasksCreateTaskWithoutDescriptionWithoutDate(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
+	signUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 
 	createCategoryResp := support.MakeCreateCategoryRequest(
 		t,
@@ -476,12 +433,9 @@ func TestTasksCreateTaskWithoutDescriptionWithoutDate(t *testing.T) {
 }
 
 func TestTasksCreateTaskMaximumTaskCountReached(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
+	signUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 	cookies := signUpResp.Result().Cookies()
 
 	createCategoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)

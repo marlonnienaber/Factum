@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	authenticationTransport "github.com/marlonnienaber/Factum/server/internal/features/authentication/types/transport"
 	categoriesTransport "github.com/marlonnienaber/Factum/server/internal/features/categories/types/transport"
 	tasksTransport "github.com/marlonnienaber/Factum/server/internal/features/tasks/types/transport"
 	"github.com/marlonnienaber/Factum/server/internal/shared"
@@ -17,7 +16,8 @@ import (
 )
 
 func TestTasksToggleDoneUnauthenticated(t *testing.T) {
-	app := support.PrepareTestEnvironment(t)
+	sut := support.PrepareTestEnvironment(t)
+	app := sut.App
 
 	resp := support.MakeJsonRequest(t, app, http.MethodPatch, "/api/tasks/1/toggle-done", nil)
 
@@ -31,11 +31,9 @@ func TestTasksToggleDoneUnauthenticated(t *testing.T) {
 }
 
 func TestTasksToggleDoneInvalidId(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email: support.TestUser1Email, Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
+	signUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 
 	resp := support.MakeJsonRequest(t, app, http.MethodPatch, "/api/tasks/invalid/toggle-done", nil, signUpResp.Result().Cookies()...)
 
@@ -43,11 +41,9 @@ func TestTasksToggleDoneInvalidId(t *testing.T) {
 }
 
 func TestTasksToggleDoneTaskNotFound(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email: support.TestUser1Email, Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
+	signUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 
 	resp := support.MakeJsonRequest(t, app, http.MethodPatch, "/api/tasks/1/toggle-done", nil, signUpResp.Result().Cookies()...)
 
@@ -55,11 +51,9 @@ func TestTasksToggleDoneTaskNotFound(t *testing.T) {
 }
 
 func TestTasksToggleDoneForDatedOpenUntrashedTask(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email: support.TestUser1Email, Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
+	signUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 	cookies := signUpResp.Result().Cookies()
 
 	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
@@ -84,11 +78,9 @@ func TestTasksToggleDoneForDatedOpenUntrashedTask(t *testing.T) {
 }
 
 func TestTasksToggleDoneForDatedDoneUntrashedTask(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email: support.TestUser1Email, Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
+	signUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 	cookies := signUpResp.Result().Cookies()
 
 	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
@@ -113,11 +105,9 @@ func TestTasksToggleDoneForDatedDoneUntrashedTask(t *testing.T) {
 }
 
 func TestTasksToggleDoneForUndatedOpenUntrashedTask(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email: support.TestUser1Email, Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
+	signUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 	cookies := signUpResp.Result().Cookies()
 
 	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
@@ -143,11 +133,9 @@ func TestTasksToggleDoneForUndatedOpenUntrashedTask(t *testing.T) {
 }
 
 func TestTasksToggleDoneForUndatedOpenTrashedTask(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email: support.TestUser1Email, Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
+	signUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 	cookies := signUpResp.Result().Cookies()
 
 	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
@@ -174,11 +162,9 @@ func TestTasksToggleDoneForUndatedOpenTrashedTask(t *testing.T) {
 }
 
 func TestTasksToggleDoneForDatedDoneTrashedTask(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email: support.TestUser1Email, Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
+	signUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 	cookies := signUpResp.Result().Cookies()
 
 	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
@@ -205,11 +191,9 @@ func TestTasksToggleDoneForDatedDoneTrashedTask(t *testing.T) {
 }
 
 func TestTasksToggleDoneForDatedOpenTrashedTask(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email: support.TestUser1Email, Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
+	signUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 	cookies := signUpResp.Result().Cookies()
 
 	categoryResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
