@@ -9,10 +9,7 @@ import (
 	"github.com/marlonnienaber/Factum/server/internal/shared"
 )
 
-var (
-	ErrNoRecordForEmailVerificationToken = errors.New("no matching record for the given email verification token exists")
-	ErrNoRecordForEmail                  = errors.New("no email verification token record for the given email exists")
-)
+var ErrNoRecordForEmailVerificationToken = errors.New("no matching record for the given email verification token exists")
 
 type EmailVerificationTokenRecordStore struct {
 	db *sqlx.DB
@@ -36,7 +33,7 @@ func (store *EmailVerificationTokenRecordStore) GetRecordForEmail(
 		       email,
 		       token_hash,
 		       expires_at,
-		       last_sent_at,
+		       minutely_window_started_at,
 		       hourly_send_count,
 		       hourly_window_started_at,
 		       daily_send_count,
@@ -46,7 +43,7 @@ func (store *EmailVerificationTokenRecordStore) GetRecordForEmail(
 	`, email)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrNoRecordForEmail
+			return nil, nil
 		}
 		return nil, wrapUnexpectedError(err)
 	}
@@ -66,7 +63,7 @@ func (store *EmailVerificationTokenRecordStore) GetRecordForTokenHash(
 		       email,
 		       token_hash,
 		       expires_at,
-		       last_sent_at,
+		       minutely_window_started_at,
 		       hourly_send_count,
 		       hourly_window_started_at,
 		       daily_send_count,
@@ -95,7 +92,7 @@ func (store *EmailVerificationTokenRecordStore) UpsertRecord(
 			email,
 			token_hash,
 			expires_at,
-			last_sent_at,
+			minutely_window_started_at,
 			hourly_send_count,
 			hourly_window_started_at,
 			daily_send_count,
@@ -105,7 +102,7 @@ func (store *EmailVerificationTokenRecordStore) UpsertRecord(
 		ON CONFLICT (email) DO UPDATE
 		SET token_hash = EXCLUDED.token_hash,
 		    expires_at = EXCLUDED.expires_at,
-		    last_sent_at = EXCLUDED.last_sent_at,
+		    minutely_window_started_at = EXCLUDED.minutely_window_started_at,
 		    hourly_send_count = EXCLUDED.hourly_send_count,
 		    hourly_window_started_at = EXCLUDED.hourly_window_started_at,
 		    daily_send_count = EXCLUDED.daily_send_count,
@@ -115,7 +112,7 @@ func (store *EmailVerificationTokenRecordStore) UpsertRecord(
 		record.Email,
 		record.TokenHash,
 		record.ExpiresAt,
-		record.LastSentAt,
+		record.MinutelyWindowStartedAt,
 		record.HourlySendCount,
 		record.HourlyWindowStartedAt,
 		record.DailySendCount,

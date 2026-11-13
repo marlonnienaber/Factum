@@ -25,13 +25,13 @@ var (
 )
 
 const (
-	emailVerificationTokenByteCount       = 32
-	emailVerificationTokenLifetime        = 15 * time.Minute
-	minimumEmailVerificationSendInterval  = time.Minute
-	emailVerificationHourlyWindowDuration = time.Hour
-	emailVerificationDailyWindowDuration  = 24 * time.Hour
-	maximumEmailVerificationHourlySends   = 5
-	maximumEmailVerificationDailySends    = 10
+	emailVerificationTokenByteCount         = 32
+	emailVerificationTokenLifetime          = 15 * time.Minute
+	emailVerificationMinutelyWindowDuration = time.Minute
+	emailVerificationHourlyWindowDuration   = time.Hour
+	emailVerificationDailyWindowDuration    = 24 * time.Hour
+	maximumEmailVerificationHourlySends     = 5
+	maximumEmailVerificationDailySends      = 10
 )
 
 type AuthenticationService struct {
@@ -81,7 +81,7 @@ func (service *AuthenticationService) VerifyEmail(
 		}
 
 		record, err := service.emailVerificationTokenRecordStore.GetRecordForEmail(transaction, email)
-		if err != nil && !errors.Is(err, stores.ErrNoRecordForEmail) {
+		if err != nil {
 			return "", err
 		}
 
@@ -247,16 +247,19 @@ func normalizeEmail(email string) string {
 }
 
 func generateEmailVerificationToken() (string, error) {
+	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("generating email verification token failed")
+
 	plaintextTokenBytes := make([]byte, emailVerificationTokenByteCount)
 	if _, err := rand.Read(plaintextTokenBytes); err != nil {
-		return "", err
+		return "", wrapUnexpectedError(err)
 	}
 
 	return base64.RawURLEncoding.EncodeToString(plaintextTokenBytes), nil
 }
 
 func isEmailVerificationSendAllowed(record *domain.EmailVerificationTokenRecord, now time.Time) bool {
-	if now.Before(record.LastSentAt.Add(minimumEmailVerificationSendInterval)) {
+	minutelyWindowActive := now.Before(record.MinutelyWindowStartedAt.Add(emailVerificationMinutelyWindowDuration))
+	if minutelyWindowActive {
 		return false
 	}
 
@@ -281,20 +284,20 @@ func prepareEmailVerificationTokenRecord(
 ) *domain.EmailVerificationTokenRecord {
 	if record == nil {
 		return &domain.EmailVerificationTokenRecord{
-			Email:                 email,
-			TokenHash:             tokenHash,
-			ExpiresAt:             now.Add(emailVerificationTokenLifetime),
-			LastSentAt:            now,
-			HourlySendCount:       1,
-			HourlyWindowStartedAt: now,
-			DailySendCount:        1,
-			DailyWindowStartedAt:  now,
+			Email:                   email,
+			TokenHash:               tokenHash,
+			ExpiresAt:               now.Add(emailVerificationTokenLifetime),
+			MinutelyWindowStartedAt: now,
+			HourlySendCount:         1,
+			HourlyWindowStartedAt:   now,
+			DailySendCount:          1,
+			DailyWindowStartedAt:    now,
 		}
 	}
 
 	record.TokenHash = tokenHash
 	record.ExpiresAt = now.Add(emailVerificationTokenLifetime)
-	record.LastSentAt = now
+	record.MinutelyWindowStartedAt = now
 
 	if now.Before(record.HourlyWindowStartedAt.Add(emailVerificationHourlyWindowDuration)) {
 		record.HourlySendCount++

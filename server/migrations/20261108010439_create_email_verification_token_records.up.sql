@@ -3,7 +3,7 @@ CREATE TABLE email_verification_token_records (
     email VARCHAR(255) NOT NULL,
     token_hash BYTEA NOT NULL,
     expires_at TIMESTAMPTZ NOT NULL,
-    last_sent_at TIMESTAMPTZ NOT NULL,
+    minutely_window_started_at TIMESTAMPTZ NOT NULL,
     hourly_send_count INTEGER NOT NULL,
     hourly_window_started_at TIMESTAMPTZ NOT NULL,
     daily_send_count INTEGER NOT NULL,
