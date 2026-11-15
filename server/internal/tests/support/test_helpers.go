@@ -47,7 +47,7 @@ func PrepareTestEnvironment(t *testing.T, signUpEmailWhitelist ...string) System
 	return NewSystemUnderTest(cfg)
 }
 
-func MakeVerifyEmailSignUpAndSignInRequests(
+func MakeVerifyEmailAndSignUpRequests(
 	t *testing.T,
 	sut SystemUnderTest,
 	email string,
@@ -74,6 +74,19 @@ func MakeVerifyEmailSignUpAndSignInRequests(
 	require.NoError(t, err, "serializing sign-up request failed")
 	signUpResponse := MakeJsonRequest(t, sut.App, http.MethodPost, "/api/sign-up", signUpPayload)
 	require.Equal(t, http.StatusCreated, signUpResponse.Code)
+
+	return signUpResponse
+}
+
+func MakeVerifyEmailSignUpAndSignInRequests(
+	t *testing.T,
+	sut SystemUnderTest,
+	email string,
+	password string,
+) *httptest.ResponseRecorder {
+	t.Helper()
+
+	MakeVerifyEmailAndSignUpRequests(t, sut, email, password)
 
 	signInPayload, err := json.Marshal(authenticationTransport.SignInRequest{
 		Email:    email,
