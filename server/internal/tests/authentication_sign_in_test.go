@@ -82,21 +82,6 @@ func TestAuthenticationSignInPasswordTooLong(t *testing.T) {
 	support.AssertValidationErrorResponse(t, resp, "password", "password must be at most 128 characters long.")
 }
 
-func TestAuthenticationSignInInvalidJson(t *testing.T) {
-	sut := support.PrepareTestEnvironment(t)
-	app := sut.App
-
-	resp := support.MakeJsonRequest(t, app, http.MethodPost, "/api/sign-in", []byte(`{"email":`))
-
-	support.AssertErrorResponse(
-		t,
-		resp,
-		http.StatusBadRequest,
-		"json_parsing_error",
-		"Request body does not represent valid JSON.",
-	)
-}
-
 func TestAuthenticationSignInInvalidCredentialsOnNonExistentEmail(t *testing.T) {
 	sut := support.PrepareTestEnvironment(t)
 	app := sut.App

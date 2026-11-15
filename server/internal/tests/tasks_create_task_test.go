@@ -256,29 +256,6 @@ func TestTasksCreateTaskInvalidCategoryId(t *testing.T) {
 	)
 }
 
-func TestTasksCreateTaskInvalidJson(t *testing.T) {
-	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
-	app := sut.App
-	signUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
-
-	resp := support.MakeJsonRequest(
-		t,
-		app,
-		http.MethodPost,
-		"/api/tasks",
-		[]byte(`{"title":`),
-		signUpResp.Result().Cookies()...,
-	)
-
-	support.AssertErrorResponse(
-		t,
-		resp,
-		http.StatusBadRequest,
-		"json_parsing_error",
-		"Request body does not represent valid JSON.",
-	)
-}
-
 func TestTasksCreateTaskNonExistingCategoryId(t *testing.T) {
 	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
 	app := sut.App

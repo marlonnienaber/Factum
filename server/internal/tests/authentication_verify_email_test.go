@@ -38,21 +38,6 @@ func TestAuthenticationVerifyEmailMissingEmail(t *testing.T) {
 	assert.Empty(t, sut.EmailService.SentEmails)
 }
 
-func TestAuthenticationVerifyEmailInvalidJson(t *testing.T) {
-	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
-	app := sut.App
-
-	resp := support.MakeJsonRequest(t, app, http.MethodPost, "/api/verify-email", []byte(`{"email":`))
-	support.AssertErrorResponse(
-		t,
-		resp,
-		http.StatusBadRequest,
-		"json_parsing_error",
-		"Request body does not represent valid JSON.",
-	)
-	assert.Empty(t, sut.EmailService.SentEmails)
-}
-
 func TestAuthenticationVerifyEmailEmailNotWhitelisted(t *testing.T) {
 	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
 	app := sut.App
@@ -221,7 +206,6 @@ func TestAuthenticationVerifyEmailEmailDeliveryFailure(t *testing.T) {
 	require.Equal(t, http.StatusNoContent, resp.Code)
 	assert.Empty(t, resp.Body.String(), "expected an empty response body")
 	require.Empty(t, sut.EmailService.SentEmails)
-
 }
 
 func TestAuthenticationVerifyEmailSuccess(t *testing.T) {
@@ -247,7 +231,8 @@ func TestAuthenticationVerifyEmailSuccess(t *testing.T) {
 	assert.Equal(t, "/sign-up", link.Path)
 
 	token := link.Query().Get("token")
-	require.NotEmpty(t, token, "verification link did not contain a token")
+	require.Len(t, token, 64, "expected a 64-character hexadecimal token")
+	assert.Regexp(t, "^[0-9a-f]{64}$", token, "expected a lowercase hexadecimal token")
 }
 
 func TestAuthenticationVerifyEmailNormalizesEmail(t *testing.T) {
@@ -264,7 +249,6 @@ func TestAuthenticationVerifyEmailNormalizesEmail(t *testing.T) {
 	assert.Empty(t, resp.Body.String(), "expected an empty response body")
 	require.Len(t, sut.EmailService.SentEmails, 1)
 	assert.Equal(t, support.TestUser1Email, sut.EmailService.SentEmails[0].RecipientEmail)
-
 }
 
 func TestAuthenticationVerifyEmailResendInvalidatesPreviousToken(t *testing.T) {

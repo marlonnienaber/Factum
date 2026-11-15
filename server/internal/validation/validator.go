@@ -1,7 +1,7 @@
 package validation
 
 import (
-	"encoding/base64"
+	"encoding/hex"
 	"reflect"
 	"strings"
 
@@ -51,7 +51,7 @@ func isValidRank(fieldLevel validator.FieldLevel) bool {
 }
 
 func isValidEmailVerificationToken(fieldLevel validator.FieldLevel) bool {
-	const emailVerificationTokenEncodedLength = 43
+	const emailVerificationTokenEncodedLength = 64
 	const emailVerificationTokenDecodedLength = 32
 
 	token := fieldLevel.Field().String()
@@ -59,7 +59,7 @@ func isValidEmailVerificationToken(fieldLevel validator.FieldLevel) bool {
 		return false
 	}
 
-	decodedToken, err := base64.RawURLEncoding.Strict().DecodeString(token)
+	decodedToken, err := hex.DecodeString(token)
 	return err == nil && len(decodedToken) == emailVerificationTokenDecodedLength
 }
 

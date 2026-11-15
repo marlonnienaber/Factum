@@ -3,7 +3,7 @@ package services
 import (
 	"crypto/rand"
 	"crypto/sha256"
-	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"log/slog"
 	"strings"
@@ -254,7 +254,7 @@ func generateEmailVerificationToken() (string, error) {
 		return "", wrapUnexpectedError(err)
 	}
 
-	return base64.RawURLEncoding.EncodeToString(plaintextTokenBytes), nil
+	return hex.EncodeToString(plaintextTokenBytes), nil
 }
 
 func isEmailVerificationSendAllowed(record *domain.EmailVerificationTokenRecord, now time.Time) bool {

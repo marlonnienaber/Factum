@@ -47,6 +47,20 @@ func PrepareTestEnvironment(t *testing.T, signUpEmailWhitelist ...string) System
 	return NewSystemUnderTest(cfg)
 }
 
+func MakeVerifyEmailRequest(
+	t *testing.T,
+	sut SystemUnderTest,
+	email string,
+) *httptest.ResponseRecorder {
+	t.Helper()
+
+	payload, err := json.Marshal(authenticationTransport.VerifyEmailRequest{
+		Email: email,
+	})
+	require.NoError(t, err, "serializing verify-email request failed")
+	return MakeJsonRequest(t, sut.App, http.MethodPost, "/api/verify-email", payload)
+}
+
 func MakeVerifyEmailAndSignUpRequests(
 	t *testing.T,
 	sut SystemUnderTest,
@@ -55,11 +69,10 @@ func MakeVerifyEmailAndSignUpRequests(
 ) *httptest.ResponseRecorder {
 	t.Helper()
 
-	verifyEmailPayload, err := json.Marshal(authenticationTransport.VerifyEmailRequest{Email: email})
-	require.NoError(t, err, "serializing verify-email request failed")
-	verifyEmailResponse := MakeJsonRequest(t, sut.App, http.MethodPost, "/api/verify-email", verifyEmailPayload)
+	sentEmailCount := len(sut.EmailService.SentEmails)
+	verifyEmailResponse := MakeVerifyEmailRequest(t, sut, email)
 	require.Equal(t, http.StatusNoContent, verifyEmailResponse.Code)
-	require.NotEmpty(t, sut.EmailService.SentEmails, "expected an email verification link to be sent")
+	require.Len(t, sut.EmailService.SentEmails, sentEmailCount+1, "expected an email verification link to be sent")
 
 	sentEmail := sut.EmailService.SentEmails[len(sut.EmailService.SentEmails)-1]
 	verificationLink, err := url.Parse(sentEmail.VerificationLink)
