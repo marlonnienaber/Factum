@@ -2,16 +2,19 @@ import {
 	type NetworkCall,
 	jsonGetWithoutBodyWithResponse,
 	jsonPostWithoutBodyWithoutResponse,
+	jsonPostWithBodyWithoutResponse,
 	jsonPostWithBodyWithResponse
 } from '$lib/utils/networking';
 import { authenticationStore } from '$lib/stores/authentication-store.svelte';
-import type { AuthenticationRequest } from '$lib/types/requests/authentication-request';
+import type { SignInRequest } from '$lib/types/requests/sign-in-request';
+import type { SignUpRequest } from '$lib/types/requests/sign-up-request';
+import type { VerifyEmailRequest } from '$lib/types/requests/verify-email-request';
 import { AuthenticationResponseSchema, type AuthenticationResponse } from '$lib/types/responses/authentication-response';
 
 let loading = $state(false);
 let fetchAttempted = $state(false);
 
-async function signIn(request: AuthenticationRequest): Promise<void> {
+async function signIn(request: SignInRequest): Promise<void> {
 	if (loading) return;
 	loading = true;
 	try {
@@ -27,17 +30,23 @@ async function signIn(request: AuthenticationRequest): Promise<void> {
 	}
 }
 
-async function signUp(request: AuthenticationRequest): Promise<void> {
-	if (loading) return;
+async function verifyEmail(request: VerifyEmailRequest): Promise<boolean> {
+	if (loading) return false;
 	loading = true;
 	try {
-		const networkCall: NetworkCall<AuthenticationResponse> = await jsonPostWithBodyWithResponse(
-			'/api/sign-up',
-			request,
-			AuthenticationResponseSchema
-		);
-		if (networkCall.status === 'success') authenticationStore.setAuthentication(networkCall.result);
-		fetchAttempted = true;
+		const networkCall: NetworkCall<void> = await jsonPostWithBodyWithoutResponse('/api/verify-email', request);
+		return networkCall.status === 'success';
+	} finally {
+		loading = false;
+	}
+}
+
+async function signUp(request: SignUpRequest): Promise<boolean> {
+	if (loading) return false;
+	loading = true;
+	try {
+		const networkCall: NetworkCall<void> = await jsonPostWithBodyWithoutResponse('/api/sign-up', request);
+		return networkCall.status === 'success';
 	} finally {
 		loading = false;
 	}
@@ -78,6 +87,7 @@ export const authenticationService = {
 	},
 	signIn,
 	signUp,
+	verifyEmail,
 	signOut,
 	fetchCurrentAuthenticationIfNecessary
 };

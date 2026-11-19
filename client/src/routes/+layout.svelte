@@ -20,7 +20,11 @@
 {@render children()}
 
 <style lang="scss">
-	:global([data-sonner-toast][data-type='error']) {
-		border-color: var(--danger) !important;
+	:global([data-sonner-toaster] [data-sonner-toast][data-type='error']) {
+		border-color: var(--danger);
+	}
+
+	:global([data-sonner-toaster] [data-sonner-toast][data-type='success']) {
+		border-color: var(--success);
 	}
 </style>
