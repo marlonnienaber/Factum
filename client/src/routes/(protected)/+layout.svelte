@@ -11,7 +11,7 @@
 	import { themeStore } from '$lib/stores/theme-store.svelte';
 	import { todayProgressStore } from '$lib/stores/today-progress-store.svelte';
 	import { undatedTaskStore } from '$lib/stores/undated-task-store.svelte';
-	import { Moon, Sun } from '@lucide/svelte';
+	import { LogOut, Moon, Sun } from '@lucide/svelte';
 	import logoBlack from '$lib/assets/logo-black.svg';
 	import logoWhite from '$lib/assets/logo-white.svg';
 
@@ -51,15 +51,22 @@
 				<a href={resolve('/workbench')}>Workbench</a>
 				<a href={resolve('/backlog')}>Backlog</a>
 				<a href={resolve('/archive')}>Archive</a>
-				<button class="theme-toggle-button" type="button" onclick={() => themeService.toggleTheme()}>
+				<button class="navbar-button" type="button" onclick={() => themeService.toggleTheme()}>
 					{#if isDarkTheme}
 						<Sun size={18} aria-hidden={true} />
 					{:else}
 						<Moon size={18} aria-hidden={true} />
 					{/if}
 				</button>
-				<button class="sign-out-button" type="button" disabled={loading} onclick={() => void authenticationService.signOut()}>
-					{loading ? 'Signing out...' : 'Sign out'}
+				<button
+					class="navbar-button"
+					type="button"
+					aria-label="Sign out"
+					title="Sign out"
+					disabled={loading}
+					onclick={() => void authenticationService.signOut()}
+				>
+					<LogOut size={18} aria-hidden={true} />
 				</button>
 			</div>
 		</nav>
@@ -108,19 +115,26 @@
 				align-items: center;
 				justify-content: flex-end;
 				justify-self: end;
-				gap: 0.75rem;
+				gap: 0.25rem;
 
 				a {
-					color: var(--text);
+					display: flex;
+					justify-content: center;
+					align-items: center;
+					height: 1.75rem;
+					padding: 0 0.5rem;
+					border-radius: 0.5rem;
+					color: var(--button);
 					font-size: 0.865rem;
 					text-decoration: none;
 
 					&:hover {
-						text-decoration: underline;
+						background-color: var(--button-ghost);
+						cursor: pointer;
 					}
 				}
 
-				.theme-toggle-button {
+				.navbar-button {
 					display: flex;
 					justify-content: center;
 					align-items: center;
@@ -129,26 +143,15 @@
 					border: none;
 					background: none;
 					color: var(--button);
-					cursor: pointer;
 					border-radius: 0.5rem;
 
-					&:hover {
+					&:hover:not(:disabled) {
 						background-color: var(--button-ghost);
+						cursor: pointer;
 					}
-				}
 
-				.sign-out-button {
-					padding: 0.375rem 0.5rem;
-					border: none;
-					border-radius: 0.5rem;
-					font-size: 0.865rem;
-					background: var(--button);
-					background-color: var(--button);
-					cursor: pointer;
-					color: var(--text-inverse);
-
-					&:hover {
-						background: var(--button-hover);
+					&:disabled {
+						opacity: 0.65;
 					}
 				}
 			}
