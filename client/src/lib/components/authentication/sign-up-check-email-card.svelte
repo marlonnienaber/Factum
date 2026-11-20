@@ -83,12 +83,13 @@
 
 	async function handleResend(): Promise<void> {
 		if (loading) return;
-
 		const triggeredAt = getCurrentTime('UTC');
 		now = triggeredAt;
 		if (triggeredAt.compare(getNextRequestPossibleDate()) < 0) return;
-		recordEmailRequest(triggeredAt);
 		await authenticationService.verifyEmail({ email });
+		const completedAt = getCurrentTime('UTC');
+		now = completedAt;
+		recordEmailRequest(completedAt);
 	}
 
 	function getButtonText(): string {
