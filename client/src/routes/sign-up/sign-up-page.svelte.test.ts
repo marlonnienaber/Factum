@@ -1,6 +1,7 @@
 import { render, waitFor, type RenderResult } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import { goto } from '$app/navigation';
+import { page as routePage } from '$app/state';
 import { authenticationStore } from '$lib/stores/authentication-store.svelte';
 import {
 	expectInputToBeInvalid,
@@ -498,31 +499,262 @@ describe('sign-up page tests', () => {
 	});
 
 	describe('password step', () => {
-		it.todo('exposes sign-in navigation');
+		beforeEach(() => {
+			routePage.url.searchParams.set('token', validToken);
+		});
 
-		it.todo('reacts correctly to too short password');
-		it.todo('reacts correctly to too long password');
-		it.todo('stops displaying password validation errors on editing');
-		it.todo('reacts correctly to too short repeated password');
-		it.todo('reacts correctly to too long repeated password');
-		it.todo('stops displaying repeated password validation errors on editing');
-		it.todo('reacts correctly to password mismatch');
+		afterEach(() => {
+			routePage.url.searchParams.delete('token');
+		});
 
-		it.todo('reacts correctly to too short token');
-		it.todo('reacts correctly to long short token');
-		it.todo('reacts correctly to invalid characters in token');
+		it('exposes sign-in navigation', () => {
+			const page = render(Page);
 
-		it.todo('reacts correctly to backend error response');
-		it.todo('reacts correctly to request failure before receiving a response');
-		it.todo('reacts correctly while sign-up request is loading');
+			expect(page.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/sign-in');
+		});
 
-		it.todo('successfully signs up');
+		it('reacts correctly to too short password', async () => {
+			const user = userEvent.setup();
+			const page = render(Page);
+
+			await user.type(getInputById(page, 'password-input'), 'a'.repeat(9));
+			await user.type(getInputById(page, 'repeated-password-input'), 'a'.repeat(9));
+			const signUpButton = page.getByRole('button', { name: 'Sign up' });
+			await user.click(signUpButton);
+
+			expect(fetchMock).not.toHaveBeenCalled();
+			expect(gotoMock).not.toHaveBeenCalled();
+			await expectInputToBeInvalid(page, 'password-input', 'Password must have at least 10 characters');
+		});
+
+		it('reacts correctly to too long password', async () => {
+			const user = userEvent.setup();
+			const page = render(Page);
+
+			await user.type(getInputById(page, 'password-input'), 'a'.repeat(129));
+			await user.type(getInputById(page, 'repeated-password-input'), 'a'.repeat(129));
+			const signUpButton = page.getByRole('button', { name: 'Sign up' });
+			await user.click(signUpButton);
+
+			expect(fetchMock).not.toHaveBeenCalled();
+			expect(gotoMock).not.toHaveBeenCalled();
+			await expectInputToBeInvalid(page, 'password-input', 'Password must have at most 128 characters');
+		});
+
+		it('stops displaying password validation errors on editing', async () => {
+			const user = userEvent.setup();
+			const page = render(Page);
+			const input = getInputById(page, 'password-input');
+			await user.type(input, 'short');
+			const signUpButton = page.getByRole('button', { name: 'Sign up' });
+			await user.click(signUpButton);
+			await expectInputToBeInvalid(page, 'password-input', 'Password must have at least 10 characters');
+
+			await user.type(input, 'x');
+
+			expectInputToBeValid(page, 'password-input');
+		});
+
+		it('reacts correctly to too short repeated password', async () => {
+			const user = userEvent.setup();
+			const page = render(Page);
+
+			await user.type(getInputById(page, 'password-input'), validPassword);
+			await user.type(getInputById(page, 'repeated-password-input'), 'a'.repeat(9));
+			const signUpButton = page.getByRole('button', { name: 'Sign up' });
+			await user.click(signUpButton);
+
+			expect(fetchMock).not.toHaveBeenCalled();
+			expect(gotoMock).not.toHaveBeenCalled();
+			await expectInputToBeInvalid(page, 'repeated-password-input', 'Password must have at least 10 characters');
+		});
+
+		it('reacts correctly to too long repeated password', async () => {
+			const user = userEvent.setup();
+			const page = render(Page);
+
+			await user.type(getInputById(page, 'password-input'), validPassword);
+			await user.type(getInputById(page, 'repeated-password-input'), 'a'.repeat(129));
+			const signUpButton = page.getByRole('button', { name: 'Sign up' });
+			await user.click(signUpButton);
+
+			expect(fetchMock).not.toHaveBeenCalled();
+			expect(gotoMock).not.toHaveBeenCalled();
+			await expectInputToBeInvalid(page, 'repeated-password-input', 'Password must have at most 128 characters');
+		});
+
+		it('stops displaying repeated password validation errors on editing', async () => {
+			const user = userEvent.setup();
+			const page = render(Page);
+			const input = getInputById(page, 'repeated-password-input');
+			await user.type(input, 'short');
+			const signUpButton = page.getByRole('button', { name: 'Sign up' });
+			await user.click(signUpButton);
+			await expectInputToBeInvalid(page, 'repeated-password-input', 'Password must have at least 10 characters');
+
+			await user.type(input, 'x');
+
+			expectInputToBeValid(page, 'repeated-password-input');
+		});
+
+		it('reacts correctly to password mismatch', async () => {
+			const user = userEvent.setup();
+			const page = render(Page);
+
+			await user.type(getInputById(page, 'password-input'), validPassword);
+			await user.type(getInputById(page, 'repeated-password-input'), 'another-valid-password');
+			const signUpButton = page.getByRole('button', { name: 'Sign up' });
+			await user.click(signUpButton);
+
+			expect(fetchMock).not.toHaveBeenCalled();
+			expect(gotoMock).not.toHaveBeenCalled();
+			await expectInputToBeInvalid(page, 'repeated-password-input', 'Passwords do not match.');
+		});
+
+		it('reacts correctly to too short token', async () => {
+			const user = userEvent.setup();
+			routePage.url.searchParams.set('token', 'a'.repeat(63));
+			const page = render(Page);
+
+			await user.type(getInputById(page, 'password-input'), validPassword);
+			await user.type(getInputById(page, 'repeated-password-input'), validPassword);
+			const signUpButton = page.getByRole('button', { name: 'Sign up' });
+			await user.click(signUpButton);
+
+			expect(fetchMock).not.toHaveBeenCalled();
+			expect(gotoMock).not.toHaveBeenCalled();
+			expect(toastErrorMock).toHaveBeenCalledWith(invalidTokenMessage);
+		});
+
+		it('reacts correctly to too long token', async () => {
+			const user = userEvent.setup();
+			routePage.url.searchParams.set('token', 'a'.repeat(65));
+			const page = render(Page);
+
+			await user.type(getInputById(page, 'password-input'), validPassword);
+			await user.type(getInputById(page, 'repeated-password-input'), validPassword);
+			const signUpButton = page.getByRole('button', { name: 'Sign up' });
+			await user.click(signUpButton);
+
+			expect(fetchMock).not.toHaveBeenCalled();
+			expect(gotoMock).not.toHaveBeenCalled();
+			expect(toastErrorMock).toHaveBeenCalledWith(invalidTokenMessage);
+		});
+
+		it('reacts correctly to invalid characters in token', async () => {
+			const user = userEvent.setup();
+			routePage.url.searchParams.set('token', 'g' + 'a'.repeat(63));
+			const page = render(Page);
+
+			await user.type(getInputById(page, 'password-input'), validPassword);
+			await user.type(getInputById(page, 'repeated-password-input'), validPassword);
+			const signUpButton = page.getByRole('button', { name: 'Sign up' });
+			await user.click(signUpButton);
+
+			expect(fetchMock).not.toHaveBeenCalled();
+			expect(gotoMock).not.toHaveBeenCalled();
+			expect(toastErrorMock).toHaveBeenCalledWith(invalidTokenMessage);
+		});
+
+		it('reacts correctly to backend error response', async () => {
+			const user = userEvent.setup();
+			const message = 'Sign-up is not available. Please restart the sign-up process.';
+			fetchMock.mockResolvedValue(getResponse({ errorCode: 'sign_up_not_available', message }, 400));
+			const page = render(Page);
+
+			await user.type(getInputById(page, 'password-input'), validPassword);
+			await user.type(getInputById(page, 'repeated-password-input'), validPassword);
+			const signUpButton = page.getByRole('button', { name: 'Sign up' });
+			await user.click(signUpButton);
+
+			await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith(message));
+			expect(fetchMock).toHaveBeenCalledTimes(1);
+			expect(gotoMock).not.toHaveBeenCalled();
+			expect(getInputById(page, 'password-input')).toHaveValue(validPassword);
+			expect(getInputById(page, 'repeated-password-input')).toHaveValue(validPassword);
+			expect(signUpButton).toBeEnabled();
+		});
+
+		it('reacts correctly to request failure before receiving a response', async () => {
+			const user = userEvent.setup();
+			fetchMock.mockRejectedValue(new Error('Network failure'));
+			const page = render(Page);
+
+			await user.type(getInputById(page, 'password-input'), validPassword);
+			await user.type(getInputById(page, 'repeated-password-input'), validPassword);
+			const signUpButton = page.getByRole('button', { name: 'Sign up' });
+			await user.click(signUpButton);
+
+			expect(toastErrorMock).toHaveBeenCalledWith('Request failed before receiving a response.');
+			expect(fetchMock).toHaveBeenCalledTimes(1);
+			expect(gotoMock).not.toHaveBeenCalled();
+			expect(getInputById(page, 'password-input')).toHaveValue(validPassword);
+			expect(getInputById(page, 'repeated-password-input')).toHaveValue(validPassword);
+			expect(signUpButton).toBeEnabled();
+		});
+
+		it('reacts correctly while sign-up request is loading', async () => {
+			const user = userEvent.setup();
+			const resolveFetch = mockPendingFetch(fetchMock);
+			const page = render(Page);
+			const passwordInput = getInputById(page, 'password-input');
+			const repeatedPasswordInput = getInputById(page, 'repeated-password-input');
+
+			await user.type(passwordInput, validPassword);
+			await user.type(repeatedPasswordInput, validPassword);
+			const signUpButton = page.getByRole('button', { name: 'Sign up' });
+			await user.click(signUpButton);
+			const loadingButton = page.getByRole('button', { name: 'Signing up...' });
+			await user.click(loadingButton);
+
+			expect(fetchMock).toHaveBeenCalledTimes(1);
+			expect(passwordInput).toBeDisabled();
+			expect(repeatedPasswordInput).toBeDisabled();
+			expect(loadingButton).toBeDisabled();
+
+			resolveFetch(new Response(undefined, { status: 201 }));
+			await page.findByRole('button', { name: 'Sign up' });
+		});
+
+		it('successfully signs up', async () => {
+			const user = userEvent.setup();
+			fetchMock.mockResolvedValue(new Response(undefined, { status: 201 }));
+			const page = render(Page);
+
+			await user.type(getInputById(page, 'password-input'), validPassword);
+			await user.type(getInputById(page, 'repeated-password-input'), validPassword);
+			const signUpButton = page.getByRole('button', { name: 'Sign up' });
+			await user.click(signUpButton);
+
+			expect(fetchMock).toHaveBeenCalledTimes(1);
+			expect(fetchMock).toHaveBeenCalledWith('/api/sign-up', {
+				method: 'POST',
+				credentials: 'same-origin',
+				headers: expect.any(Headers),
+				body: JSON.stringify({
+					token: validToken,
+					password: validPassword
+				})
+			});
+			expectRequestContentType(fetchMock, 'application/json');
+			expect(toast.success).toHaveBeenCalledWith('Sign-up complete. Sign in to continue.');
+			expect(gotoMock).toHaveBeenCalledTimes(1);
+			expect(gotoMock).toHaveBeenCalledWith('/sign-in');
+			expect(authenticationStore.authentication).toBeUndefined();
+		});
 	});
 });
 
 const fetchMock = vi.fn();
 const gotoMock = vi.mocked(goto);
 const toastErrorMock = vi.mocked(toast.error);
+const validToken = 'a'.repeat(64);
+const validPassword = 'long-enough-password';
+const invalidTokenMessage = 'This sign-up link is invalid. Please use the exact link from our latest email without changing it.';
+const second = 1000;
+const minute = 60 * second;
+const hour = 60 * minute;
+const day = 24 * hour;
 
 async function clickNext(page: RenderResult<typeof Page>, user: ReturnType<typeof userEvent.setup>): Promise<void> {
 	const nextButton = page.getByRole('button', { name: 'Next' });
@@ -533,11 +765,6 @@ async function clickNext(page: RenderResult<typeof Page>, user: ReturnType<typeo
 async function expectInCheckEmailStep(page: RenderResult<typeof Page>): Promise<void> {
 	expect(await page.findByRole('button', { name: 'Back to email entry' })).toBeInTheDocument();
 }
-
-const second = 1000;
-const minute = 60 * second;
-const hour = 60 * minute;
-const day = 24 * hour;
 
 async function openCheckEmailStep(): Promise<{ page: RenderResult<typeof Page>; user: ReturnType<typeof userEvent.setup> }> {
 	const user = userEvent.setup();
