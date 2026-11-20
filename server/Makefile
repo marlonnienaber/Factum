@@ -29,6 +29,8 @@ create-migration:
 migrate-up:
 	@if [ -z "$(n)" ]; then \
 		migrate -path $(MIGRATIONS_FOLDER_PATH) -database "$(DATABASE_URL)" up 1; \
+	elif [ "$(n)" = "all" ]; then \
+		migrate -path $(MIGRATIONS_FOLDER_PATH) -database "$(DATABASE_URL)" up; \
 	else \
 		migrate -path $(MIGRATIONS_FOLDER_PATH) -database "$(DATABASE_URL)" up $(n); \
 	fi
