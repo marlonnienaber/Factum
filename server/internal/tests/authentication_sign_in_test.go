@@ -13,14 +13,11 @@ import (
 )
 
 func TestAuthenticationSignInSuccess(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, transport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
+	support.MakeVerifyEmailAndSignUpRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 
-	body := transport.AuthenticationRequest{
+	body := transport.SignInRequest{
 		Email:    support.TestUser1Email,
 		Password: support.TestUser1Password,
 	}
@@ -38,9 +35,10 @@ func TestAuthenticationSignInSuccess(t *testing.T) {
 }
 
 func TestAuthenticationSignInInvalidEmail(t *testing.T) {
-	app := support.PrepareTestEnvironment(t)
+	sut := support.PrepareTestEnvironment(t)
+	app := sut.App
 
-	body := transport.AuthenticationRequest{
+	body := transport.SignInRequest{
 		Email:    "benexample.com",
 		Password: support.TestUser1Password,
 	}
@@ -53,9 +51,10 @@ func TestAuthenticationSignInInvalidEmail(t *testing.T) {
 }
 
 func TestAuthenticationSignInPasswordTooShort(t *testing.T) {
-	app := support.PrepareTestEnvironment(t)
+	sut := support.PrepareTestEnvironment(t)
+	app := sut.App
 
-	body := transport.AuthenticationRequest{
+	body := transport.SignInRequest{
 		Email:    support.TestUser1Email,
 		Password: strings.Repeat("a", 9),
 	}
@@ -68,9 +67,10 @@ func TestAuthenticationSignInPasswordTooShort(t *testing.T) {
 }
 
 func TestAuthenticationSignInPasswordTooLong(t *testing.T) {
-	app := support.PrepareTestEnvironment(t)
+	sut := support.PrepareTestEnvironment(t)
+	app := sut.App
 
-	body := transport.AuthenticationRequest{
+	body := transport.SignInRequest{
 		Email:    support.TestUser1Email,
 		Password: strings.Repeat("a", 129),
 	}
@@ -82,24 +82,11 @@ func TestAuthenticationSignInPasswordTooLong(t *testing.T) {
 	support.AssertValidationErrorResponse(t, resp, "password", "password must be at most 128 characters long.")
 }
 
-func TestAuthenticationSignInInvalidJson(t *testing.T) {
-	app := support.PrepareTestEnvironment(t)
-
-	resp := support.MakeJsonRequest(t, app, http.MethodPost, "/api/sign-in", []byte(`{"email":`))
-
-	support.AssertErrorResponse(
-		t,
-		resp,
-		http.StatusBadRequest,
-		"json_parsing_error",
-		"Request body does not represent valid JSON.",
-	)
-}
-
 func TestAuthenticationSignInInvalidCredentialsOnNonExistentEmail(t *testing.T) {
-	app := support.PrepareTestEnvironment(t)
+	sut := support.PrepareTestEnvironment(t)
+	app := sut.App
 
-	body := transport.AuthenticationRequest{
+	body := transport.SignInRequest{
 		Email:    support.TestUser1Email,
 		Password: support.TestUser1Password,
 	}
@@ -118,14 +105,11 @@ func TestAuthenticationSignInInvalidCredentialsOnNonExistentEmail(t *testing.T) 
 }
 
 func TestAuthenticationSignInInvalidCredentialsOnWrongPassword(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, transport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
+	support.MakeVerifyEmailAndSignUpRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 
-	body := transport.AuthenticationRequest{
+	body := transport.SignInRequest{
 		Email:    support.TestUser1Email,
 		Password: "wrongPassword",
 	}

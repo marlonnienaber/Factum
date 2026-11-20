@@ -11,12 +11,11 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/marlonnienaber/Factum/server/internal/configuration"
 	authenticationTransport "github.com/marlonnienaber/Factum/server/internal/features/authentication/types/transport"
 	categoriesTransport "github.com/marlonnienaber/Factum/server/internal/features/categories/types/transport"
 	tasksTransport "github.com/marlonnienaber/Factum/server/internal/features/tasks/types/transport"
+	"github.com/marlonnienaber/Factum/server/internal/injections"
 	"github.com/marlonnienaber/Factum/server/internal/shared"
-	"github.com/marlonnienaber/Factum/server/internal/validation"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -31,37 +30,85 @@ const (
 
 var TestTaskDate = shared.NewDate(time.Date(2026, time.March, 25, 0, 0, 0, 0, time.UTC))
 
-var defaultTestConfiguration = configuration.Configuration{
-	Port:                ":3001",
+var defaultTestEnvironment = injections.Environment{
+	ServerPort:          "3001",
+	ClientPort:          "5173",
+	AppUrl:              "http://localhost:5173",
 	SessionCookieSecure: false,
 	SessionSecretKey:    "test-session-secret-key",
 }
 
-func PrepareTestEnvironment(t *testing.T) *gin.Engine {
+func PrepareTestEnvironment(t *testing.T, signUpEmailWhitelist ...string) SystemUnderTest {
 	t.Helper()
-	return prepareTestEnvironmentWithConfig(t, defaultTestConfiguration)
-}
-
-func PrepareTestEnvironmentWithSignUpEmailWhitelist(t *testing.T, emails ...string) *gin.Engine {
-	t.Helper()
-	cfg := defaultTestConfiguration
-	cfg.SignUpEmailWhitelist = emails
-	return prepareTestEnvironmentWithConfig(t, cfg)
-}
-
-func prepareTestEnvironmentWithConfig(t *testing.T, cfg configuration.Configuration) *gin.Engine {
-	t.Helper()
+	env := defaultTestEnvironment
+	env.SignUpEmailWhitelist = signUpEmailWhitelist
 	databaseReset(t)
-	return TestApp(cfg)
+	return NewSystemUnderTest(env)
 }
 
-func MakeSignUpRequest(t *testing.T, app *gin.Engine, body authenticationTransport.AuthenticationRequest) *httptest.ResponseRecorder {
+func MakeVerifyEmailRequest(
+	t *testing.T,
+	sut SystemUnderTest,
+	email string,
+) *httptest.ResponseRecorder {
 	t.Helper()
 
-	payload, err := json.Marshal(body)
-	require.NoError(t, err, "serializing request failed")
+	payload, err := json.Marshal(authenticationTransport.VerifyEmailRequest{
+		Email: email,
+	})
+	require.NoError(t, err, "serializing verify-email request failed")
+	return MakeJsonRequest(t, sut.App, http.MethodPost, "/api/verify-email", payload)
+}
 
-	return MakeJsonRequest(t, app, http.MethodPost, "/api/sign-up", payload)
+func MakeVerifyEmailAndSignUpRequests(
+	t *testing.T,
+	sut SystemUnderTest,
+	email string,
+	password string,
+) *httptest.ResponseRecorder {
+	t.Helper()
+
+	jobCount := len(sut.EmailService.CreatedJobs)
+	verifyEmailResponse := MakeVerifyEmailRequest(t, sut, email)
+	require.Equal(t, http.StatusNoContent, verifyEmailResponse.Code)
+	require.Len(t, sut.EmailService.CreatedJobs, jobCount+1, "expected an email verification link job to be created")
+
+	job := sut.EmailService.CreatedJobs[len(sut.EmailService.CreatedJobs)-1]
+	verificationLink, err := url.Parse(job.VerificationLink)
+	require.NoError(t, err, "parsing email verification link failed")
+	verificationToken := verificationLink.Query().Get("token")
+	require.NotEmpty(t, verificationToken, "email verification link did not contain a token")
+
+	signUpPayload, err := json.Marshal(authenticationTransport.SignUpRequest{
+		Token:    verificationToken,
+		Password: password,
+	})
+	require.NoError(t, err, "serializing sign-up request failed")
+	signUpResponse := MakeJsonRequest(t, sut.App, http.MethodPost, "/api/sign-up", signUpPayload)
+	require.Equal(t, http.StatusCreated, signUpResponse.Code)
+
+	return signUpResponse
+}
+
+func MakeVerifyEmailSignUpAndSignInRequests(
+	t *testing.T,
+	sut SystemUnderTest,
+	email string,
+	password string,
+) *httptest.ResponseRecorder {
+	t.Helper()
+
+	MakeVerifyEmailAndSignUpRequests(t, sut, email, password)
+
+	signInPayload, err := json.Marshal(authenticationTransport.SignInRequest{
+		Email:    email,
+		Password: password,
+	})
+	require.NoError(t, err, "serializing sign-in request failed")
+	signInResponse := MakeJsonRequest(t, sut.App, http.MethodPost, "/api/sign-in", signInPayload)
+	require.Equal(t, http.StatusOK, signInResponse.Code)
+
+	return signInResponse
 }
 
 func MakeCreateCategoryRequest(
@@ -316,7 +363,7 @@ func AssertValidationErrorResponse(
 
 	require.Equal(t, http.StatusBadRequest, resp.Code)
 
-	var respBody shared.DetailedErrorResponse[validation.ValidationErrorDetails]
+	var respBody shared.DetailedErrorResponse[shared.ValidationErrorDetails]
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode response")
 
 	require.Equal(t, "validation_error", respBody.ErrorCode, "unexpected errorCode")

@@ -6,8 +6,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/marlonnienaber/Factum/server/internal/application"
-	"github.com/marlonnienaber/Factum/server/internal/configuration"
-	"github.com/marlonnienaber/Factum/server/internal/persistence"
+	"github.com/marlonnienaber/Factum/server/internal/injections"
 )
 
 func main() {
@@ -15,15 +14,15 @@ func main() {
 		slog.Info("No .env file found, falling back to development environment.")
 	}
 
-	cfg := configuration.LoadConfiguration()
+	env := injections.LoadEnvironment()
 
-	db := persistence.NewDatabase(cfg.DatabaseUrl)
+	db := injections.NewDatabase(env.DatabaseUrl)
 
-	app := application.NewApplication(cfg, db)
+	app := application.NewApplication(env, db)
 
 	defer db.Close()
 
-	if err := app.Run(":" + cfg.Port); err != nil {
+	if err := app.Run(":" + env.ServerPort); err != nil {
 		slog.Error("Failed to run server.", "error", err)
 		os.Exit(1)
 	}

@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"testing"
 
-	authenticationTransport "github.com/marlonnienaber/Factum/server/internal/features/authentication/types/transport"
 	categoriesTransport "github.com/marlonnienaber/Factum/server/internal/features/categories/types/transport"
 	"github.com/marlonnienaber/Factum/server/internal/tests/support"
 	"github.com/stretchr/testify/assert"
@@ -13,7 +12,8 @@ import (
 )
 
 func TestCategoriesGetCategoriesUnauthenticated(t *testing.T) {
-	app := support.PrepareTestEnvironment(t)
+	sut := support.PrepareTestEnvironment(t)
+	app := sut.App
 
 	resp := support.MakeJsonRequest(t, app, http.MethodGet, "/api/categories", nil)
 
@@ -27,12 +27,9 @@ func TestCategoriesGetCategoriesUnauthenticated(t *testing.T) {
 }
 
 func TestCategoriesGetCategoriesEmpty(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
+	signUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 
 	resp := support.MakeJsonRequest(
 		t,
@@ -48,16 +45,13 @@ func TestCategoriesGetCategoriesEmpty(t *testing.T) {
 }
 
 func TestCategoriesGetCategories(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(
+	sut := support.PrepareTestEnvironment(
 		t,
 		support.TestUser1Email,
 		support.TestUser2Email,
 	)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	app := sut.App
+	signUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 	cookies := signUpResp.Result().Cookies()
 
 	expectedCategories := make([]categoriesTransport.CategoryResponse, 0, 3)
@@ -81,11 +75,7 @@ func TestCategoriesGetCategories(t *testing.T) {
 		})
 	}
 
-	otherSignUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser2Email,
-		Password: support.TestUser2Password,
-	})
-	require.Equal(t, http.StatusCreated, otherSignUpResp.Code)
+	otherSignUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser2Email, support.TestUser2Password)
 	otherCreateResp := support.MakeCreateCategoryRequest(
 		t,
 		app,

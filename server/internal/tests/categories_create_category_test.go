@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	authenticationTransport "github.com/marlonnienaber/Factum/server/internal/features/authentication/types/transport"
 	categoriesTransport "github.com/marlonnienaber/Factum/server/internal/features/categories/types/transport"
 	"github.com/marlonnienaber/Factum/server/internal/tests/support"
 	"github.com/stretchr/testify/assert"
@@ -15,7 +14,8 @@ import (
 )
 
 func TestCategoriesCreateCategoryUnauthenticated(t *testing.T) {
-	app := support.PrepareTestEnvironment(t)
+	sut := support.PrepareTestEnvironment(t)
+	app := sut.App
 
 	payload, err := json.Marshal(categoriesTransport.CreateCategoryRequest{
 		Title: "Work",
@@ -34,12 +34,9 @@ func TestCategoriesCreateCategoryUnauthenticated(t *testing.T) {
 }
 
 func TestCategoriesCreateCategoryInvalidColor(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
+	signUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 
 	payload, err := json.Marshal(categoriesTransport.CreateCategoryRequest{
 		Title: "Work",
@@ -59,12 +56,9 @@ func TestCategoriesCreateCategoryInvalidColor(t *testing.T) {
 }
 
 func TestCategoriesCreateCategoryNoTitle(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
+	signUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 
 	payload, err := json.Marshal(map[string]string{"color": "#3b82f6"})
 	require.NoError(t, err, "serializing request failed")
@@ -86,12 +80,9 @@ func TestCategoriesCreateCategoryNoTitle(t *testing.T) {
 }
 
 func TestCategoriesCreateCategoryTitleTooSmall(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
+	signUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 
 	payload, err := json.Marshal(categoriesTransport.CreateCategoryRequest{
 		Title: "",
@@ -116,12 +107,9 @@ func TestCategoriesCreateCategoryTitleTooSmall(t *testing.T) {
 }
 
 func TestCategoriesCreateCategoryTitleTooLong(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
+	signUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 
 	payload, err := json.Marshal(categoriesTransport.CreateCategoryRequest{
 		Title: strings.Repeat("a", maximumCategoryTitleLength+1),
@@ -146,12 +134,9 @@ func TestCategoriesCreateCategoryTitleTooLong(t *testing.T) {
 }
 
 func TestCategoriesCreateCategoryTitleAlreadyInUse(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
+	signUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 	cookies := signUpResp.Result().Cookies()
 
 	firstResp := support.MakeCreateCategoryRequest(t, app, "Work", "#111111", cookies...)
@@ -169,12 +154,9 @@ func TestCategoriesCreateCategoryTitleAlreadyInUse(t *testing.T) {
 }
 
 func TestCategoriesCreateCategoryColorAlreadyInUse(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
+	signUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 	cookies := signUpResp.Result().Cookies()
 
 	firstResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", cookies...)
@@ -192,12 +174,9 @@ func TestCategoriesCreateCategoryColorAlreadyInUse(t *testing.T) {
 }
 
 func TestCategoriesCreateCategoryMaximumCategoryCountReached(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
+	signUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 	cookies := signUpResp.Result().Cookies()
 
 	for index := range maximumCategoryCountPerUser {
@@ -223,21 +202,14 @@ func TestCategoriesCreateCategoryMaximumCategoryCountReached(t *testing.T) {
 }
 
 func TestCategoriesCreateCategoryTitleCanBeReusedByDifferentUser(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(
+	sut := support.PrepareTestEnvironment(
 		t,
 		support.TestUser1Email,
 		support.TestUser2Email,
 	)
-	firstSignUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, firstSignUpResp.Code)
-	secondSignUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser2Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, secondSignUpResp.Code)
+	app := sut.App
+	firstSignUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
+	secondSignUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser2Email, support.TestUser1Password)
 
 	firstResp := support.MakeCreateCategoryRequest(t, app, "Work", "#3b82f6", firstSignUpResp.Result().Cookies()...)
 	require.Equal(t, http.StatusCreated, firstResp.Code)
@@ -253,12 +225,9 @@ func TestCategoriesCreateCategoryTitleCanBeReusedByDifferentUser(t *testing.T) {
 }
 
 func TestCategoriesCreateCategory(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
-	signUpResp := support.MakeSignUpRequest(t, app, authenticationTransport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
+	signUpResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 
 	title := "Work & personal"
 	color := "#12abef"

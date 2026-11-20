@@ -4,19 +4,15 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/marlonnienaber/Factum/server/internal/features/authentication/types/transport"
 	"github.com/marlonnienaber/Factum/server/internal/tests/support"
 	"github.com/stretchr/testify/require"
 )
 
 func TestAuthenticationSignOutSuccess(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
 
-	signUpResp := support.MakeSignUpRequest(t, app, transport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	signInResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 
 	signOutResp := support.MakeJsonRequest(
 		t,
@@ -24,7 +20,7 @@ func TestAuthenticationSignOutSuccess(t *testing.T) {
 		http.MethodPost,
 		"/api/sign-out",
 		nil,
-		signUpResp.Result().Cookies()...,
+		signInResp.Result().Cookies()...,
 	)
 
 	require.Equal(t, http.StatusNoContent, signOutResp.Code)
@@ -32,7 +28,8 @@ func TestAuthenticationSignOutSuccess(t *testing.T) {
 }
 
 func TestAuthenticationSignOutUnauthenticated(t *testing.T) {
-	app := support.PrepareTestEnvironment(t)
+	sut := support.PrepareTestEnvironment(t)
+	app := sut.App
 
 	resp := support.MakeJsonRequest(t, app, http.MethodPost, "/api/sign-out", nil)
 

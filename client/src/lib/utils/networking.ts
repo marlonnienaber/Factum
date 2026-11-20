@@ -42,6 +42,10 @@ export async function jsonPatchWithBodyWithoutResponse<B>(url: string, requestBo
 	return await jsonFetchWithBodyWithoutResponse('PATCH', url, requestBody);
 }
 
+export async function jsonPostWithBodyWithoutResponse<B>(url: string, requestBody: B): Promise<NetworkCall<void>> {
+	return await jsonFetchWithBodyWithoutResponse('POST', url, requestBody);
+}
+
 export async function jsonPostWithoutBodyWithoutResponse(url: string): Promise<NetworkCall<void>> {
 	return await jsonFetchWithoutBodyWithoutResponse('POST', url);
 }
@@ -162,7 +166,11 @@ async function jsonFetchWithoutBodyWithoutResponse(
 	return { status: 'success', result: undefined };
 }
 
-async function jsonFetchWithBodyWithoutResponse<B>(httpMethod: 'PATCH', url: string, requestBody: B): Promise<NetworkCall<void>> {
+async function jsonFetchWithBodyWithoutResponse<B>(
+	httpMethod: 'POST' | 'PATCH',
+	url: string,
+	requestBody: B
+): Promise<NetworkCall<void>> {
 	let requestOptions: RequestInit;
 	try {
 		requestOptions = configureRequestOptions(httpMethod, requestBody);

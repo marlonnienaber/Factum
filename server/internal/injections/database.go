@@ -1,4 +1,4 @@
-package persistence
+package injections
 
 import (
 	"log/slog"

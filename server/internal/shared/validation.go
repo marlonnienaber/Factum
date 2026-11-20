@@ -1,12 +1,12 @@
-package validation
+package shared
 
 import (
+	"encoding/hex"
 	"reflect"
 	"strings"
 
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
-	"github.com/marlonnienaber/Factum/server/internal/shared"
 	"roci.dev/fracdex"
 )
 
@@ -36,12 +36,33 @@ func RegisterRankValidation() {
 	}
 }
 
+func RegisterEmailVerificationTokenValidation() {
+	if validatorEngine, ok := binding.Validator.Engine().(*validator.Validate); ok {
+		if err := validatorEngine.RegisterValidation("emailVerificationToken", isValidEmailVerificationToken); err != nil {
+			panic("registering email verification token validation failed: " + err.Error())
+		}
+	}
+}
+
 func isValidRank(fieldLevel validator.FieldLevel) bool {
 	_, err := fracdex.Float64Approx(fieldLevel.Field().String())
 	return err == nil
 }
 
-func NewValidationErrorResponse(validationErrors validator.ValidationErrors) shared.DetailedErrorResponse[ValidationErrorDetails] {
+func isValidEmailVerificationToken(fieldLevel validator.FieldLevel) bool {
+	const emailVerificationTokenEncodedLength = 64
+	const emailVerificationTokenDecodedLength = 32
+
+	token := fieldLevel.Field().String()
+	if len(token) != emailVerificationTokenEncodedLength {
+		return false
+	}
+
+	decodedToken, err := hex.DecodeString(token)
+	return err == nil && len(decodedToken) == emailVerificationTokenDecodedLength
+}
+
+func NewValidationErrorResponse(validationErrors validator.ValidationErrors) DetailedErrorResponse[ValidationErrorDetails] {
 	violations := make([]ValidationViolation, 0, len(validationErrors))
 
 	for _, fieldError := range validationErrors {
@@ -51,7 +72,7 @@ func NewValidationErrorResponse(validationErrors validator.ValidationErrors) sha
 		})
 	}
 
-	return shared.DetailedErrorResponse[ValidationErrorDetails]{
+	return DetailedErrorResponse[ValidationErrorDetails]{
 		ErrorCode: "validation_error",
 		Message:   "Request body did not match the expected form.",
 		Details: ValidationErrorDetails{
@@ -88,6 +109,8 @@ func validationErrorMessage(fieldError validator.FieldError) string {
 		return field + " must be greater than " + fieldError.Param() + "."
 	case "rank":
 		return field + " must be a valid fractional rank."
+	case "emailVerificationToken":
+		return field + " must be a valid email verification token."
 	default:
 		return field + " is invalid."
 	}

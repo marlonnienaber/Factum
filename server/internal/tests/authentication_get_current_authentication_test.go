@@ -12,13 +12,10 @@ import (
 )
 
 func TestAuthenticationGetCurrentAuthenticationSuccess(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
 
-	signUpResp := support.MakeSignUpRequest(t, app, transport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	signInResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 
 	resp := support.MakeJsonRequest(
 		t,
@@ -26,7 +23,7 @@ func TestAuthenticationGetCurrentAuthenticationSuccess(t *testing.T) {
 		http.MethodGet,
 		"/api/current-authentication",
 		nil,
-		signUpResp.Result().Cookies()...,
+		signInResp.Result().Cookies()...,
 	)
 
 	require.Equal(t, http.StatusOK, resp.Code)
@@ -37,13 +34,10 @@ func TestAuthenticationGetCurrentAuthenticationSuccess(t *testing.T) {
 }
 
 func TestAuthenticationGetCurrentAuthenticationNoUserForSession(t *testing.T) {
-	app := support.PrepareTestEnvironmentWithSignUpEmailWhitelist(t, support.TestUser1Email)
+	sut := support.PrepareTestEnvironment(t, support.TestUser1Email)
+	app := sut.App
 
-	signUpResp := support.MakeSignUpRequest(t, app, transport.AuthenticationRequest{
-		Email:    support.TestUser1Email,
-		Password: support.TestUser1Password,
-	})
-	require.Equal(t, http.StatusCreated, signUpResp.Code)
+	signInResp := support.MakeVerifyEmailSignUpAndSignInRequests(t, sut, support.TestUser1Email, support.TestUser1Password)
 
 	_, err := support.DB.Exec("DELETE FROM users WHERE id = $1", int64(1))
 	require.NoError(t, err, "failed to delete user while preparing database state")
@@ -54,7 +48,7 @@ func TestAuthenticationGetCurrentAuthenticationNoUserForSession(t *testing.T) {
 		http.MethodGet,
 		"/api/current-authentication",
 		nil,
-		signUpResp.Result().Cookies()...,
+		signInResp.Result().Cookies()...,
 	)
 
 	support.AssertErrorResponse(
@@ -67,7 +61,8 @@ func TestAuthenticationGetCurrentAuthenticationNoUserForSession(t *testing.T) {
 }
 
 func TestAuthenticationGetCurrentAuthenticationUnauthenticated(t *testing.T) {
-	app := support.PrepareTestEnvironment(t)
+	sut := support.PrepareTestEnvironment(t)
+	app := sut.App
 
 	resp := support.MakeJsonRequest(t, app, http.MethodGet, "/api/current-authentication", nil)
 

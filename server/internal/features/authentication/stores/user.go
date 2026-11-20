@@ -25,10 +25,10 @@ func NewUserStore(db *sqlx.DB) *UserStore {
 	}
 }
 
-func (store *UserStore) InsertUser(user *domain.User) error {
+func (store *UserStore) InsertUser(transaction *sqlx.Tx, user *domain.User) error {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("inserting user failed")
 
-	err := store.db.Get(user, `
+	err := transaction.Get(user, `
 		INSERT INTO users (email, password_hash)
 		VALUES ($1, $2)
 		RETURNING id
@@ -68,6 +68,18 @@ func (store *UserStore) DoesUserExistForId(userId int64) (bool, error) {
 	var exists bool
 
 	err := store.db.Get(&exists, "SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)", userId)
+	if err != nil {
+		return false, wrapUnexpectedError(err)
+	}
+
+	return exists, nil
+}
+
+func (store *UserStore) DoesUserExistForEmail(transaction *sqlx.Tx, email string) (bool, error) {
+	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("checking user existence by email failed")
+
+	var exists bool
+	err := transaction.Get(&exists, "SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)", email)
 	if err != nil {
 		return false, wrapUnexpectedError(err)
 	}

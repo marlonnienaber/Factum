@@ -162,7 +162,7 @@
 					font-size: 1rem;
 					border: none;
 
-					&:hover {
+					&:hover:not(:disabled) {
 						background-color: var(--button-hover);
 						cursor: pointer;
 					}
