@@ -3,7 +3,7 @@
 ## Categories and tasks migration
 
 This section documents the design decisions represented by
-[`20260807212723_create_categories_and_tasks.up.sql`](server/migrations/20260807212723_create_categories_and_tasks.up.sql).
+[`20260807212723_create_categories_and_tasks.up.sql`](../server/migrations/20260807212723_create_categories_and_tasks.up.sql).
 
 ### Task partitions
 

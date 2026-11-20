@@ -30,18 +30,22 @@ The design assumes that the intended user controls the mailbox and does not disc
 | Step | User experience | System behavior |
 | --- | --- | --- |
 | 1 | The user enters an email on the public sign-up page. | The client calls `POST /api/verify-email`. |
-| 2 | The user always reaches the same “check your email” page. | The server canonicalizes the email. If it is allowlisted, has no user, and is eligible for issuance, the server creates a random token, stores its hash and 15-minute expiry, and sends the link. Every syntactically valid request receives the same response. |
+| 2 | After a successful verification request, the user reaches the same “check your email” view. Request failures show an error toast and leave email entry available. | The server canonicalizes the email. If it is allowlisted, has no user, and is eligible for issuance, the server creates a random token, stores its hash and 15-minute expiry, and sends the link. Every syntactically valid request receives the same response. |
 | 3 | After the local 60-second countdown, the user selects resend and sees the same neutral confirmation. | If another send is allowed, the server replaces the token hash, resets the 15-minute expiry, updates the send limits, and sends a new link. The previous link becomes invalid. |
-| 4 | The user opens the newest email link and sees the choose-password page. | `GET` verifies that the token is current and unexpired, then renders a public page. It does not consume the token, create a user, or create a session. |
-| 5 | The user chooses and confirms a password. | The client sends the token and password to `sign-up`. The server rechecks the allowlist and user existence. In one transaction, it consumes the matching unexpired token record and inserts a verified user with an Argon2id password hash. The endpoint returns `201 Created` without a response body or session. |
-| 6 | The user is redirected to sign-in. | Sign-up has not created or changed a session. |
+| 4 | The user opens the newest email link and sees the choose-password page. | The presence of a token query parameter selects the password step. Opening the link does not validate or consume the token, create a user, or create a session. |
+| 5 | The user chooses and confirms a password. | The client validates the token’s 64-character hexadecimal format, password length, and password confirmation before sending the token and password to `POST /api/sign-up`. Invalid token format shows an error toast; password errors appear on the relevant inputs. The server checks token existence, expiry, and the current allowlist; the unique email constraint prevents duplicate accounts. In one transaction, it consumes the matching unexpired token record and inserts a verified user with an Argon2id password hash. The endpoint returns `201 Created` without a response body or session. |
+| 6 | The user sees “Sign-up complete. Sign in to continue.” and is redirected to sign-in. | Sign-up has not created or changed a session. |
 | 7 | The user enters the new credentials and enters the application. | `sign-in` verifies the password and creates the session. |
 
-The password page uses `Referrer-Policy: no-referrer`, loads no third-party resources, does not persist the token in client storage, and prevents the token or full URL from entering application or proxy logs.
+The sign-up route sets `<meta name="referrer" content="no-referrer" />` and does not persist the token in client storage. The shared layout still loads external fonts. The development email service logs verification links instead of sending email. Production token-log redaction and email delivery are deployment requirements, not guarantees of the current implementation.
 
-The “check your email” page always displays the same conditional message:
+The check-email view displays the entered email without client-side normalization:
 
-> If no user exists for this email and it can be used to sign up, we have sent a confirmation link.
+> Check the inbox of {email}. Open the link in the latest mail to complete the sign up. Check spam too.
+
+A successful resend request shows “Request received. Check your inbox for the latest link.” Neither the view nor the response confirms actual delivery. A back arrow returns to a fresh email-entry step.
+
+The client uses one `/sign-up` route with separate email-entry, check-email, and password components. The parent selects them through a writable derived `SignUpStep` union. Each component owns its inputs, validation, or resend state; markup and styles are defined explicitly in each component. All three cards display “Sign up” as their heading.
 
 ### Scenario B: incomplete sign-up and restart
 
@@ -57,9 +61,9 @@ For each email, the server permits at most one email per one-minute window, five
 
 An expired record is retained while any minutely, hourly, or daily send-limit state is still needed. After all three windows expire, it may be deleted. Retaining the record prevents token expiry from resetting the limits.
 
-The server never returns whether an email was sent or when another send becomes available. The client tracks only requests made in its current local flow, including the initial request. It starts a 60-second countdown after every request. It permits at most five local requests in one hour and ten in 24 hours. When a local limit is reached, it prevents another request until that local window expires and explains the public policy without claiming that an email was sent.
+The server never returns whether an email was sent or when another send becomes available. The check-email component initializes its local windows when it mounts after the initial verification request succeeds, counting that request as one. Its first 60-second countdown therefore starts after the response arrives. Subsequent resend attempts update the minute start and hourly and daily counts when triggered, even if the request fails. It permits at most five local requests in one hour and ten in 24 hours. The email-entry component does not track local windows for failed initial requests. When a local limit is reached, it prevents another request until that local window expires and explains the public policy without claiming that an email was sent.
 
-Refreshing the page or using another browser can clear the client state. This does not bypass security because the server independently enforces the per-email limits. The client behavior is advisory and does not reflect allowlist membership, user existence, token-record existence, actual sends, or server throttling state.
+Going back unmounts check-email and clears its local windows; submitting an email again starts fresh, even for the same address. Refreshing the page, leaving the route, or using another browser also clears this state. This does not bypass security because the server independently enforces the per-email limits. The client behavior is advisory and does not reflect allowlist membership, user existence, token-record existence, actual sends, or server throttling state.
 
 Because tokens expire after 15 minutes, a user who reaches a server limit may need to wait for a new send window after the current token expires.
 
@@ -68,7 +72,7 @@ Because tokens expire after 15 minutes, a user who reaches a server limit may ne
 | Step | User experience | System behavior |
 | --- | --- | --- |
 | 1 | A user with an incomplete sign-up attempts to sign in. | `sign-in` checks only `users`. A token record is not an account and contains no password, so sign-in fails like any nonexistent-user attempt. |
-| 2 | The user sees: “Sign-in was not successful. Make sure you are using the correct credentials for an account whose sign-up was completed. An incomplete sign-up can be restarted from the sign-up page.” | The endpoint returns `invalid_credentials` without revealing whether a user or token record exists. |
+| 2 | The user sees an error toast: “Email or password incorrect.” | The endpoint returns `invalid_credentials` without revealing whether a user or token record exists. |
 | 3 | The user returns to sign-up and submits the email again. | `POST /api/verify-email` rotates the existing token if another send is allowed; otherwise it returns the same neutral response without changing state. |
 | 4 | The user follows a valid link, chooses a password, and then signs in. | Sign-up and sign-in proceed as in Scenario A. |
 
@@ -77,18 +81,18 @@ Because tokens expire after 15 minutes, a user who reaches a server limit may ne
 | Step | User experience | System behavior |
 | --- | --- | --- |
 | 1 | The user requests a resend and later opens an older email. | An accepted resend has replaced the stored token hash, so the older token no longer matches the record. |
-| 2 | The user sees that the link is invalid or expired and is directed to sign-up to request another link. | `GET` performs a read-only token check and returns the same page for an unknown, rotated, expired, or consumed token. It does not consume a record or disclose why the token is unusable. |
-| 3 | The user requests another link from sign-up. | The normal per-email send limits apply. The response remains neutral whether a new token is sent or not. |
+| 2 | The user submits the password and sees an error toast; the password view and entered values remain available. | Token format is validated locally on submission. A well-formed unknown, rotated, expired, or consumed token is rejected by sign-up with the same generic response. The client does not redirect or present a special restart view. |
+| 3 | The user can return to `/sign-up` without a token to request another link. | The normal per-email send limits apply. The response remains neutral whether a new token is sent or not. |
 
 ### Scenario E: repeated resend requests from the client
 
 | Step | User experience | System behavior |
 | --- | --- | --- |
-| 1 | After requesting an email, the user sees a 60-second countdown before resend is available. | The countdown is based only on local state. The server independently enforces its own one-minute window with a maximum of one accepted send. |
+| 1 | After requesting an email, the user sees a 60-second countdown before resend is available. | The first countdown starts when check-email mounts; subsequent countdowns start when resend is triggered. Dates and duration arithmetic use `@internationalized/date` in UTC, with a daily duration of exactly 24 hours. The countdown is based only on local state. The server independently enforces its own one-minute window with a maximum of one accepted send. |
 | 2 | The user makes five requests within the local one-hour window. | The client prevents more requests until that local window expires. It derives this behavior only from its local timestamps and receives no server state. |
 | 3 | The user reaches ten requests within the local 24-hour window. | The client prevents more requests until that local window expires. The server independently permits at most ten accepted sends in its own 24-hour window. |
 | 4 | The result looks the same whether a user already exists for the email or no user exists. | For an existing user, the server sends nothing. For an eligible email without a user, the server rotates and sends only if its independent limits allow it. Neither outcome is disclosed. |
-| 5 | Refreshing the page or using another browser may remove the client-side restriction. | This does not bypass security. The server still enforces the per-email limits and returns the same neutral response. |
+| 5 | Going back, leaving or refreshing the page, or using another browser removes the client-side restriction. | This does not bypass security. The server still enforces the per-email limits and returns the same neutral response. |
 
 ### Endpoint outcomes
 
