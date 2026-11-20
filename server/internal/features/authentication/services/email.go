@@ -1,9 +1,13 @@
 package services
 
-import "log/slog"
+import (
+	"log/slog"
+
+	"github.com/jmoiron/sqlx"
+)
 
 type EmailService interface {
-	SendEmailVerificationLink(recipientEmail string, emailVerificationLink string) error
+	CreateSendEmailVerificationLinkJob(transaction *sqlx.Tx, recipientEmail string, emailVerificationLink string) error
 }
 
 type DevelopmentEmailService struct{}
@@ -12,12 +16,13 @@ func NewDevelopmentEmailService() *DevelopmentEmailService {
 	return &DevelopmentEmailService{}
 }
 
-func (service *DevelopmentEmailService) SendEmailVerificationLink(
+func (service *DevelopmentEmailService) CreateSendEmailVerificationLinkJob(
+	_ *sqlx.Tx,
 	recipientEmail string,
 	emailVerificationLink string,
 ) error {
 	slog.Info(
-		"Sending email verification link with development email service.",
+		"Creating email verification link job with development email service.",
 		"recipientEmail", recipientEmail,
 		"emailVerificationLink", emailVerificationLink,
 	)

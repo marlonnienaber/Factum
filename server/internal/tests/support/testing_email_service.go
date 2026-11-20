@@ -1,28 +1,26 @@
 package support
 
-type SentEmailInfo struct {
+import "github.com/jmoiron/sqlx"
+
+type CreatedSendEmailVerificationLinkJob struct {
 	RecipientEmail   string
 	VerificationLink string
 }
 
 type TestingEmailService struct {
-	SentEmails []SentEmailInfo
-	SendError  error
+	CreatedJobs []CreatedSendEmailVerificationLinkJob
 }
 
 func NewTestingEmailService() *TestingEmailService {
 	return &TestingEmailService{}
 }
 
-func (service *TestingEmailService) SendEmailVerificationLink(
+func (service *TestingEmailService) CreateSendEmailVerificationLinkJob(
+	_ *sqlx.Tx,
 	recipientEmail string,
 	emailVerificationLink string,
 ) error {
-	if service.SendError != nil {
-		return service.SendError
-	}
-
-	service.SentEmails = append(service.SentEmails, SentEmailInfo{
+	service.CreatedJobs = append(service.CreatedJobs, CreatedSendEmailVerificationLinkJob{
 		RecipientEmail:   recipientEmail,
 		VerificationLink: emailVerificationLink,
 	})

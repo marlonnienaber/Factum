@@ -68,13 +68,13 @@ func MakeVerifyEmailAndSignUpRequests(
 ) *httptest.ResponseRecorder {
 	t.Helper()
 
-	sentEmailCount := len(sut.EmailService.SentEmails)
+	jobCount := len(sut.EmailService.CreatedJobs)
 	verifyEmailResponse := MakeVerifyEmailRequest(t, sut, email)
 	require.Equal(t, http.StatusNoContent, verifyEmailResponse.Code)
-	require.Len(t, sut.EmailService.SentEmails, sentEmailCount+1, "expected an email verification link to be sent")
+	require.Len(t, sut.EmailService.CreatedJobs, jobCount+1, "expected an email verification link job to be created")
 
-	sentEmail := sut.EmailService.SentEmails[len(sut.EmailService.SentEmails)-1]
-	verificationLink, err := url.Parse(sentEmail.VerificationLink)
+	job := sut.EmailService.CreatedJobs[len(sut.EmailService.CreatedJobs)-1]
+	verificationLink, err := url.Parse(job.VerificationLink)
 	require.NoError(t, err, "parsing email verification link failed")
 	verificationToken := verificationLink.Query().Get("token")
 	require.NotEmpty(t, verificationToken, "email verification link did not contain a token")

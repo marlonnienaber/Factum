@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
-	"log/slog"
 	"strings"
 	"time"
 
@@ -71,49 +70,42 @@ func (service *AuthenticationService) VerifyEmail(
 		return nil
 	}
 
-	plaintextToken, err := shared.ExecuteAsSerializableTransaction(service.db, func(transaction *sqlx.Tx) (string, error) {
+	err := shared.ExecuteAsSerializableTransactionWithoutResult(service.db, func(transaction *sqlx.Tx) error {
 		userExists, err := service.userStore.DoesUserExistForEmail(transaction, email)
 		if err != nil {
-			return "", err
+			return err
 		}
 		if userExists {
-			return "", nil
+			return nil
 		}
 
 		record, err := service.emailVerificationTokenRecordStore.GetRecordForEmail(transaction, email)
 		if err != nil {
-			return "", err
+			return err
 		}
 
 		now := service.clock.Now()
 		if record != nil && !isEmailVerificationSendAllowed(record, now) {
-			return "", nil
+			return nil
 		}
 
 		plaintextToken, err := generateEmailVerificationToken()
 		if err != nil {
-			return "", err
+			return err
 		}
 		tokenHash := sha256.Sum256([]byte(plaintextToken))
 
 		record = prepareEmailVerificationTokenRecord(record, email, tokenHash[:], now)
 		err = service.emailVerificationTokenRecordStore.UpsertRecord(transaction, record)
 		if err != nil {
-			return "", err
+			return err
 		}
 
-		return plaintextToken, nil
+		emailVerificationLink := service.env.AppUrl + "/sign-up?token=" + plaintextToken
+		return service.emailService.CreateSendEmailVerificationLinkJob(transaction, email, emailVerificationLink)
 	})
 	if err != nil {
 		return wrapUnexpectedError(err)
-	}
-	if plaintextToken == "" {
-		return nil
-	}
-
-	emailVerificationLink := service.env.AppUrl + "/sign-up?token=" + plaintextToken
-	if err := service.emailService.SendEmailVerificationLink(email, emailVerificationLink); err != nil {
-		slog.Error("sending email verification link failed.", "error", err)
 	}
 
 	return nil
