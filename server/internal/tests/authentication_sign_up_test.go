@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/marlonnienaber/Factum/server/internal/application"
-	"github.com/marlonnienaber/Factum/server/internal/configuration"
 	"github.com/marlonnienaber/Factum/server/internal/features/authentication/types/transport"
+	"github.com/marlonnienaber/Factum/server/internal/injections"
 	"github.com/marlonnienaber/Factum/server/internal/tests/support"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -328,7 +328,7 @@ func TestAuthenticationSignUpEmailNoLongerWhitelisted(t *testing.T) {
 	require.NotEmpty(t, token, "verification link did not contain a token")
 
 	app := application.NewApplication(
-		configuration.Configuration{
+		injections.Environment{
 			SignUpEmailWhitelist: []string{support.TestUser2Email},
 			SessionSecretKey:     "test-session-secret-key",
 		},

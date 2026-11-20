@@ -9,11 +9,11 @@ import (
 	"github.com/gin-contrib/sessions/postgres"
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
-	"github.com/marlonnienaber/Factum/server/internal/configuration"
+	"github.com/marlonnienaber/Factum/server/internal/injections"
 )
 
-func NewSessionConfigurationMiddleware(cfg configuration.Configuration, db *sqlx.DB) gin.HandlerFunc {
-	store, err := postgres.NewStore(db.DB, []byte(cfg.SessionSecretKey))
+func NewSessionConfigurationMiddleware(env injections.Environment, db *sqlx.DB) gin.HandlerFunc {
+	store, err := postgres.NewStore(db.DB, []byte(env.SessionSecretKey))
 	if err != nil {
 		slog.Error("Failed to initialize session middleware.", "error", err)
 		os.Exit(1)
@@ -21,7 +21,7 @@ func NewSessionConfigurationMiddleware(cfg configuration.Configuration, db *sqlx
 
 	store.Options(sessions.Options{
 		Path:     "/",
-		Secure:   cfg.SessionCookieSecure,
+		Secure:   env.SessionCookieSecure,
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
 	})

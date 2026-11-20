@@ -3,7 +3,6 @@ package application
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
-	"github.com/marlonnienaber/Factum/server/internal/configuration"
 	authHandlers "github.com/marlonnienaber/Factum/server/internal/features/authentication/handlers"
 	authServices "github.com/marlonnienaber/Factum/server/internal/features/authentication/services"
 	"github.com/marlonnienaber/Factum/server/internal/features/authentication/stores"
@@ -13,10 +12,11 @@ import (
 	tasksHandlers "github.com/marlonnienaber/Factum/server/internal/features/tasks/handlers"
 	tasksServices "github.com/marlonnienaber/Factum/server/internal/features/tasks/services"
 	tasksStores "github.com/marlonnienaber/Factum/server/internal/features/tasks/stores"
+	"github.com/marlonnienaber/Factum/server/internal/injections"
 	"github.com/marlonnienaber/Factum/server/internal/shared"
 )
 
-func NewApplication(cfg configuration.Configuration, db *sqlx.DB, injectionOptions ...InjectionOption) *gin.Engine {
+func NewApplication(env injections.Environment, db *sqlx.DB, injectionOptions ...InjectionOption) *gin.Engine {
 	gin.EnableJsonDecoderDisallowUnknownFields()
 	shared.RegisterJsonPropertyNames()
 	shared.RegisterRankValidation()
@@ -38,7 +38,7 @@ func NewApplication(cfg configuration.Configuration, db *sqlx.DB, injectionOptio
 		emailVerificationTokenRecordStore,
 		injectableComponents.emailService,
 		injectableComponents.clock,
-		cfg,
+		env,
 	)
 	categoryStore := categoriesStores.NewCategoryStore(db)
 	categoryService := categoriesServices.NewCategoryService(db, categoryStore)
@@ -46,7 +46,7 @@ func NewApplication(cfg configuration.Configuration, db *sqlx.DB, injectionOptio
 	taskService := tasksServices.NewTaskService(db, taskStore, categoryStore)
 
 	app := gin.Default()
-	app.Use(shared.NewSessionConfigurationMiddleware(cfg, db))
+	app.Use(shared.NewSessionConfigurationMiddleware(env, db))
 	api := app.Group("/api")
 
 	api.POST(

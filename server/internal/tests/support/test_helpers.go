@@ -11,10 +11,10 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/marlonnienaber/Factum/server/internal/configuration"
 	authenticationTransport "github.com/marlonnienaber/Factum/server/internal/features/authentication/types/transport"
 	categoriesTransport "github.com/marlonnienaber/Factum/server/internal/features/categories/types/transport"
 	tasksTransport "github.com/marlonnienaber/Factum/server/internal/features/tasks/types/transport"
+	"github.com/marlonnienaber/Factum/server/internal/injections"
 	"github.com/marlonnienaber/Factum/server/internal/shared"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -30,7 +30,7 @@ const (
 
 var TestTaskDate = shared.NewDate(time.Date(2026, time.March, 25, 0, 0, 0, 0, time.UTC))
 
-var defaultTestConfiguration = configuration.Configuration{
+var defaultTestEnvironment = injections.Environment{
 	ServerPort:          "3001",
 	ClientPort:          "5173",
 	AppUrl:              "http://localhost:5173",
@@ -40,10 +40,10 @@ var defaultTestConfiguration = configuration.Configuration{
 
 func PrepareTestEnvironment(t *testing.T, signUpEmailWhitelist ...string) SystemUnderTest {
 	t.Helper()
-	cfg := defaultTestConfiguration
-	cfg.SignUpEmailWhitelist = signUpEmailWhitelist
+	env := defaultTestEnvironment
+	env.SignUpEmailWhitelist = signUpEmailWhitelist
 	databaseReset(t)
-	return NewSystemUnderTest(cfg)
+	return NewSystemUnderTest(env)
 }
 
 func MakeVerifyEmailRequest(

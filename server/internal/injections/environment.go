@@ -1,4 +1,4 @@
-package configuration
+package injections
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-type Configuration struct {
+type Environment struct {
 	ServerPort           string
 	ClientPort           string
 	AppUrl               string
@@ -16,7 +16,7 @@ type Configuration struct {
 	SessionSecretKey     string
 }
 
-func LoadConfiguration() Configuration {
+func LoadEnvironment() Environment {
 	serverPort := getStringEnvironmentVariable("SERVER_PORT", "3001")
 	clientPort := getStringEnvironmentVariable("CLIENT_PORT", "5173")
 	appUrl := getStringEnvironmentVariable("APP_URL", fmt.Sprintf("http://localhost:%s", clientPort))
@@ -25,7 +25,7 @@ func LoadConfiguration() Configuration {
 	sessionCookieSecure := getBooleanEnvironmentVariable("SESSION_COOKIE_SECURE", false)
 	sessionSecretKey := getStringEnvironmentVariable("SESSION_SECRET_KEY", "dev-session-secret-key")
 
-	return Configuration{
+	return Environment{
 		ServerPort:           serverPort,
 		ClientPort:           clientPort,
 		AppUrl:               appUrl,

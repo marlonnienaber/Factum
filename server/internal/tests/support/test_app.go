@@ -5,7 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/marlonnienaber/Factum/server/internal/application"
-	"github.com/marlonnienaber/Factum/server/internal/configuration"
+	"github.com/marlonnienaber/Factum/server/internal/injections"
 )
 
 type SystemUnderTest struct {
@@ -14,11 +14,11 @@ type SystemUnderTest struct {
 	Clock        *TestingClock
 }
 
-func NewSystemUnderTest(cfg configuration.Configuration) SystemUnderTest {
+func NewSystemUnderTest(env injections.Environment) SystemUnderTest {
 	emailService := NewTestingEmailService()
 	clock := NewTestingClock(time.Now())
 	app := application.NewApplication(
-		cfg,
+		env,
 		DB,
 		application.WithEmailService(emailService),
 		application.WithClock(clock),

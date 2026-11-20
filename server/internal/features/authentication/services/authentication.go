@@ -12,10 +12,10 @@ import (
 	"github.com/alexedwards/argon2id"
 	"github.com/gin-contrib/sessions"
 	"github.com/jmoiron/sqlx"
-	"github.com/marlonnienaber/Factum/server/internal/configuration"
 	"github.com/marlonnienaber/Factum/server/internal/features/authentication/stores"
 	"github.com/marlonnienaber/Factum/server/internal/features/authentication/types/domain"
 	"github.com/marlonnienaber/Factum/server/internal/features/authentication/types/transport"
+	"github.com/marlonnienaber/Factum/server/internal/injections"
 	"github.com/marlonnienaber/Factum/server/internal/shared"
 )
 
@@ -40,7 +40,7 @@ type AuthenticationService struct {
 	emailVerificationTokenRecordStore *stores.EmailVerificationTokenRecordStore
 	emailService                      EmailService
 	clock                             shared.Clock
-	cfg                               configuration.Configuration
+	env                               injections.Environment
 }
 
 func NewAuthenticationService(
@@ -49,7 +49,7 @@ func NewAuthenticationService(
 	emailVerificationTokenRecordStore *stores.EmailVerificationTokenRecordStore,
 	emailService EmailService,
 	clock shared.Clock,
-	config configuration.Configuration,
+	env injections.Environment,
 ) *AuthenticationService {
 	return &AuthenticationService{
 		db:                                db,
@@ -57,7 +57,7 @@ func NewAuthenticationService(
 		emailVerificationTokenRecordStore: emailVerificationTokenRecordStore,
 		emailService:                      emailService,
 		clock:                             clock,
-		cfg:                               config,
+		env:                               env,
 	}
 }
 
@@ -111,7 +111,7 @@ func (service *AuthenticationService) VerifyEmail(
 		return nil
 	}
 
-	emailVerificationLink := service.cfg.AppUrl + "/sign-up?token=" + plaintextToken
+	emailVerificationLink := service.env.AppUrl + "/sign-up?token=" + plaintextToken
 	if err := service.emailService.SendEmailVerificationLink(email, emailVerificationLink); err != nil {
 		slog.Error("sending email verification link failed.", "error", err)
 	}
@@ -234,7 +234,7 @@ func (service *AuthenticationService) createSession(userId int64, session sessio
 }
 
 func (service *AuthenticationService) isEmailNotWhitelisted(email string) bool {
-	for _, allowedEmail := range service.cfg.SignUpEmailWhitelist {
+	for _, allowedEmail := range service.env.SignUpEmailWhitelist {
 		if allowedEmail == email {
 			return false
 		}
