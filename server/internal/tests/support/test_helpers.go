@@ -16,7 +16,6 @@ import (
 	categoriesTransport "github.com/marlonnienaber/Factum/server/internal/features/categories/types/transport"
 	tasksTransport "github.com/marlonnienaber/Factum/server/internal/features/tasks/types/transport"
 	"github.com/marlonnienaber/Factum/server/internal/shared"
-	"github.com/marlonnienaber/Factum/server/internal/validation"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -364,7 +363,7 @@ func AssertValidationErrorResponse(
 
 	require.Equal(t, http.StatusBadRequest, resp.Code)
 
-	var respBody shared.DetailedErrorResponse[validation.ValidationErrorDetails]
+	var respBody shared.DetailedErrorResponse[shared.ValidationErrorDetails]
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respBody), "failed to decode response")
 
 	require.Equal(t, "validation_error", respBody.ErrorCode, "unexpected errorCode")

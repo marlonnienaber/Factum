@@ -1,4 +1,4 @@
-package validation
+package shared
 
 import (
 	"encoding/hex"
@@ -7,7 +7,6 @@ import (
 
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
-	"github.com/marlonnienaber/Factum/server/internal/shared"
 	"roci.dev/fracdex"
 )
 
@@ -63,7 +62,7 @@ func isValidEmailVerificationToken(fieldLevel validator.FieldLevel) bool {
 	return err == nil && len(decodedToken) == emailVerificationTokenDecodedLength
 }
 
-func NewValidationErrorResponse(validationErrors validator.ValidationErrors) shared.DetailedErrorResponse[ValidationErrorDetails] {
+func NewValidationErrorResponse(validationErrors validator.ValidationErrors) DetailedErrorResponse[ValidationErrorDetails] {
 	violations := make([]ValidationViolation, 0, len(validationErrors))
 
 	for _, fieldError := range validationErrors {
@@ -73,7 +72,7 @@ func NewValidationErrorResponse(validationErrors validator.ValidationErrors) sha
 		})
 	}
 
-	return shared.DetailedErrorResponse[ValidationErrorDetails]{
+	return DetailedErrorResponse[ValidationErrorDetails]{
 		ErrorCode: "validation_error",
 		Message:   "Request body did not match the expected form.",
 		Details: ValidationErrorDetails{

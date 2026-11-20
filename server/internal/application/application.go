@@ -14,14 +14,13 @@ import (
 	tasksServices "github.com/marlonnienaber/Factum/server/internal/features/tasks/services"
 	tasksStores "github.com/marlonnienaber/Factum/server/internal/features/tasks/stores"
 	"github.com/marlonnienaber/Factum/server/internal/shared"
-	"github.com/marlonnienaber/Factum/server/internal/validation"
 )
 
 func NewApplication(cfg configuration.Configuration, db *sqlx.DB, injectionOptions ...InjectionOption) *gin.Engine {
 	gin.EnableJsonDecoderDisallowUnknownFields()
-	validation.RegisterJsonPropertyNames()
-	validation.RegisterRankValidation()
-	validation.RegisterEmailVerificationTokenValidation()
+	shared.RegisterJsonPropertyNames()
+	shared.RegisterRankValidation()
+	shared.RegisterEmailVerificationTokenValidation()
 
 	injectableComponents := injectableAppComponents{
 		emailService: authServices.NewDevelopmentEmailService(),

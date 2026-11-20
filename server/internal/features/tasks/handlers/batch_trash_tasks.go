@@ -10,7 +10,6 @@ import (
 	"github.com/marlonnienaber/Factum/server/internal/features/tasks/stores"
 	"github.com/marlonnienaber/Factum/server/internal/features/tasks/types/transport"
 	"github.com/marlonnienaber/Factum/server/internal/shared"
-	"github.com/marlonnienaber/Factum/server/internal/validation"
 )
 
 func NewBatchTrashTasksHandler(taskService *services.TaskService) shared.AuthenticatedHandlerFunc {
@@ -21,7 +20,7 @@ func NewBatchTrashTasksHandler(taskService *services.TaskService) shared.Authent
 		if err := c.ShouldBindJSON(&request); err != nil {
 			var validationErrors validator.ValidationErrors
 			if errors.As(err, &validationErrors) {
-				c.JSON(http.StatusBadRequest, validation.NewValidationErrorResponse(validationErrors))
+				c.JSON(http.StatusBadRequest, shared.NewValidationErrorResponse(validationErrors))
 				return
 			}
 			c.JSON(http.StatusBadRequest, shared.JsonParsingErrorResponse)

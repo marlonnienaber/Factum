@@ -5,7 +5,7 @@ DATABASE_URL?=postgres://username:password@localhost:5435/factum_database?sslmod
 MIGRATIONS_FOLDER_PATH=./migrations
 
 run:
-	@go build -o .server-binary ./command/api
+	@go build -o .server-binary .
 	@exec ./.server-binary
 
 containers-up:

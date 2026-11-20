@@ -10,7 +10,6 @@ import (
 	"github.com/marlonnienaber/Factum/server/internal/features/categories/stores"
 	"github.com/marlonnienaber/Factum/server/internal/features/categories/types/transport"
 	"github.com/marlonnienaber/Factum/server/internal/shared"
-	"github.com/marlonnienaber/Factum/server/internal/validation"
 )
 
 func NewCreateCategoryHandler(categoryService *services.CategoryService) shared.AuthenticatedHandlerFunc {
@@ -21,7 +20,7 @@ func NewCreateCategoryHandler(categoryService *services.CategoryService) shared.
 		if err := c.ShouldBindJSON(&request); err != nil {
 			var validationErrors validator.ValidationErrors
 			if errors.As(err, &validationErrors) {
-				c.JSON(http.StatusBadRequest, validation.NewValidationErrorResponse(validationErrors))
+				c.JSON(http.StatusBadRequest, shared.NewValidationErrorResponse(validationErrors))
 				return
 			}
 			c.JSON(http.StatusBadRequest, shared.JsonParsingErrorResponse)

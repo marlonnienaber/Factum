@@ -10,7 +10,6 @@ import (
 	"github.com/marlonnienaber/Factum/server/internal/features/authentication/services"
 	"github.com/marlonnienaber/Factum/server/internal/features/authentication/types/transport"
 	"github.com/marlonnienaber/Factum/server/internal/shared"
-	"github.com/marlonnienaber/Factum/server/internal/validation"
 )
 
 func NewSignUpHandler(authenticationService *services.AuthenticationService) gin.HandlerFunc {
@@ -21,7 +20,7 @@ func NewSignUpHandler(authenticationService *services.AuthenticationService) gin
 		if err := c.ShouldBindJSON(&request); err != nil {
 			var validationErrors validator.ValidationErrors
 			if errors.As(err, &validationErrors) {
-				c.JSON(http.StatusBadRequest, validation.NewValidationErrorResponse(validationErrors))
+				c.JSON(http.StatusBadRequest, shared.NewValidationErrorResponse(validationErrors))
 				return
 			}
 			c.JSON(http.StatusBadRequest, shared.JsonParsingErrorResponse)
