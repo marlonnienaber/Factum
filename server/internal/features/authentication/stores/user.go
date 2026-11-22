@@ -1,6 +1,7 @@
 package stores
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 
@@ -25,10 +26,10 @@ func NewUserStore(db *sqlx.DB) *UserStore {
 	}
 }
 
-func (store *UserStore) InsertUser(transaction *sqlx.Tx, user *domain.User) error {
+func (store *UserStore) InsertUser(ctx context.Context, transaction *sqlx.Tx, user *domain.User) error {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("inserting user failed")
 
-	err := transaction.Get(user, `
+	err := transaction.GetContext(ctx, user, `
 		INSERT INTO users (email, password_hash)
 		VALUES ($1, $2)
 		RETURNING id
@@ -46,12 +47,12 @@ func (store *UserStore) InsertUser(transaction *sqlx.Tx, user *domain.User) erro
 	return nil
 }
 
-func (store *UserStore) GetUserByEmail(email string) (*domain.User, error) {
+func (store *UserStore) GetUserByEmail(ctx context.Context, email string) (*domain.User, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("retrieving user by email failed")
 
 	var user domain.User
 
-	err := store.db.Get(&user, "SELECT * FROM users WHERE email = $1", email)
+	err := store.db.GetContext(ctx, &user, "SELECT * FROM users WHERE email = $1", email)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNoUserForGivenEmail
@@ -62,12 +63,12 @@ func (store *UserStore) GetUserByEmail(email string) (*domain.User, error) {
 	return &user, nil
 }
 
-func (store *UserStore) DoesUserExistForId(userId int64) (bool, error) {
+func (store *UserStore) DoesUserExistForId(ctx context.Context, userId int64) (bool, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("checking user existence by id failed")
 
 	var exists bool
 
-	err := store.db.Get(&exists, "SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)", userId)
+	err := store.db.GetContext(ctx, &exists, "SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)", userId)
 	if err != nil {
 		return false, wrapUnexpectedError(err)
 	}
@@ -75,11 +76,11 @@ func (store *UserStore) DoesUserExistForId(userId int64) (bool, error) {
 	return exists, nil
 }
 
-func (store *UserStore) DoesUserExistForEmail(transaction *sqlx.Tx, email string) (bool, error) {
+func (store *UserStore) DoesUserExistForEmail(ctx context.Context, transaction *sqlx.Tx, email string) (bool, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("checking user existence by email failed")
 
 	var exists bool
-	err := transaction.Get(&exists, "SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)", email)
+	err := transaction.GetContext(ctx, &exists, "SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)", email)
 	if err != nil {
 		return false, wrapUnexpectedError(err)
 	}

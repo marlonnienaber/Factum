@@ -1,6 +1,7 @@
 package stores
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"time"
@@ -36,11 +37,11 @@ func NewTaskStore(db *sqlx.DB) *TaskStore {
 	}
 }
 
-func (store *TaskStore) DoTrashedTasksExist(userId int64) (bool, error) {
+func (store *TaskStore) DoTrashedTasksExist(ctx context.Context, userId int64) (bool, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("checking whether trashed tasks exist failed")
 
 	var trashedTasksExist bool
-	err := store.db.Get(&trashedTasksExist, `
+	err := store.db.GetContext(ctx, &trashedTasksExist, `
 		SELECT EXISTS (
 			SELECT 1
 			FROM tasks
@@ -55,11 +56,11 @@ func (store *TaskStore) DoTrashedTasksExist(userId int64) (bool, error) {
 	return trashedTasksExist, nil
 }
 
-func (store *TaskStore) GetTodayProgress(userId int64, today shared.Date) (*transport.GetTodayProgressResponse, error) {
+func (store *TaskStore) GetTodayProgress(ctx context.Context, userId int64, today shared.Date) (*transport.GetTodayProgressResponse, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("retrieving today's task progress failed")
 
 	var response transport.GetTodayProgressResponse
-	err := store.db.Get(&response, `
+	err := store.db.GetContext(ctx, &response, `
 		SELECT COUNT(*) FILTER (WHERE done = FALSE) AS open_task_count,
 		       COUNT(*) FILTER (WHERE done = TRUE) AS done_task_count
 		FROM tasks
@@ -74,10 +75,10 @@ func (store *TaskStore) GetTodayProgress(userId int64, today shared.Date) (*tran
 	return &response, nil
 }
 
-func (store *TaskStore) DeleteTrashedTasks(userId int64) error {
+func (store *TaskStore) DeleteTrashedTasks(ctx context.Context, userId int64) error {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("deleting trashed tasks failed")
 
-	result, err := store.db.Exec(`
+	result, err := store.db.ExecContext(ctx, `
 		DELETE FROM tasks
 		WHERE user_id = $1
 		  AND trashed = TRUE
@@ -96,11 +97,11 @@ func (store *TaskStore) DeleteTrashedTasks(userId int64) error {
 	return nil
 }
 
-func (store *TaskStore) GetTaskByIdForUser(transaction *sqlx.Tx, id int64, userId int64) (*domain.Task, error) {
+func (store *TaskStore) GetTaskByIdForUser(ctx context.Context, transaction *sqlx.Tx, id int64, userId int64) (*domain.Task, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("retrieving task by id and user id failed")
 
 	var task domain.Task
-	err := transaction.Get(&task, `
+	err := transaction.GetContext(ctx, &task, `
 		SELECT id,
 		       user_id,
 		       category_id,
@@ -124,11 +125,11 @@ func (store *TaskStore) GetTaskByIdForUser(transaction *sqlx.Tx, id int64, userI
 	return &task, nil
 }
 
-func (store *TaskStore) GetTasksByIdsForUser(transaction *sqlx.Tx, ids []int64, userId int64) ([]*domain.Task, error) {
+func (store *TaskStore) GetTasksByIdsForUser(ctx context.Context, transaction *sqlx.Tx, ids []int64, userId int64) ([]*domain.Task, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("retrieving tasks by ids and user id failed")
 
 	tasks := make([]*domain.Task, 0, len(ids))
-	err := transaction.Select(&tasks, `
+	err := transaction.SelectContext(ctx, &tasks, `
 		SELECT id,
 		       user_id,
 		       category_id,
@@ -153,6 +154,7 @@ func (store *TaskStore) GetTasksByIdsForUser(transaction *sqlx.Tx, ids []int64, 
 }
 
 func (store *TaskStore) GetHighestUntrashedTaskRanksByDate(
+	ctx context.Context,
 	transaction *sqlx.Tx,
 	userId int64,
 	dates []shared.Date,
@@ -165,7 +167,7 @@ func (store *TaskStore) GetHighestUntrashedTaskRanksByDate(
 	}
 
 	var dateAndRankPairs []dateAndRankPair
-	err := transaction.Select(&dateAndRankPairs, `
+	err := transaction.SelectContext(ctx, &dateAndRankPairs, `
 		SELECT date,
 		       MAX(rank) AS rank
 		FROM tasks
@@ -187,6 +189,7 @@ func (store *TaskStore) GetHighestUntrashedTaskRanksByDate(
 }
 
 func (store *TaskStore) BatchUpdateDoneForUntrashedTasks(
+	ctx context.Context,
 	transaction *sqlx.Tx,
 	userId int64,
 	tasks []*domain.Task,
@@ -207,7 +210,7 @@ func (store *TaskStore) BatchUpdateDoneForUntrashedTasks(
 		ranks = append(ranks, task.Rank)
 	}
 
-	result, err := transaction.Exec(`
+	result, err := transaction.ExecContext(ctx, `
 		UPDATE tasks
 		SET date = updates.date,
 		    rank = updates.rank,
@@ -239,10 +242,10 @@ func (store *TaskStore) BatchUpdateDoneForUntrashedTasks(
 	return nil
 }
 
-func (store *TaskStore) UpdateTaskForDragAndDrop(transaction *sqlx.Tx, task *domain.Task) error {
+func (store *TaskStore) UpdateTaskForDragAndDrop(ctx context.Context, transaction *sqlx.Tx, task *domain.Task) error {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("updating task for drag and drop failed")
 
-	result, err := transaction.Exec(`
+	result, err := transaction.ExecContext(ctx, `
 		UPDATE tasks
 		SET date = $1,
 		    done = $2,
@@ -273,6 +276,7 @@ func (store *TaskStore) UpdateTaskForDragAndDrop(transaction *sqlx.Tx, task *dom
 }
 
 func (store *TaskStore) GetRankOfSuccessorTaskForTaskDragAndDrop(
+	ctx context.Context,
 	transaction *sqlx.Tx,
 	userId int64,
 	taskId int64,
@@ -284,7 +288,7 @@ func (store *TaskStore) GetRankOfSuccessorTaskForTaskDragAndDrop(
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("retrieving next task rank failed")
 
 	var rank string
-	err := transaction.Get(&rank, `
+	err := transaction.GetContext(ctx, &rank, `
 		SELECT rank
 		FROM tasks
 		WHERE user_id = $1
@@ -306,10 +310,10 @@ func (store *TaskStore) GetRankOfSuccessorTaskForTaskDragAndDrop(
 	return rank, nil
 }
 
-func (store *TaskStore) TrashTask(transaction *sqlx.Tx, userId int64, taskId int64, rank string) error {
+func (store *TaskStore) TrashTask(ctx context.Context, transaction *sqlx.Tx, userId int64, taskId int64, rank string) error {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("updating task trash state failed")
 
-	result, err := transaction.Exec(`
+	result, err := transaction.ExecContext(ctx, `
 		UPDATE tasks
 		SET trashed = TRUE,
 		    rank = $1
@@ -336,10 +340,10 @@ func (store *TaskStore) TrashTask(transaction *sqlx.Tx, userId int64, taskId int
 	return nil
 }
 
-func (store *TaskStore) RestoreTask(transaction *sqlx.Tx, userId int64, taskId int64, rank string) error {
+func (store *TaskStore) RestoreTask(ctx context.Context, transaction *sqlx.Tx, userId int64, taskId int64, rank string) error {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("updating task restored state failed")
 
-	result, err := transaction.Exec(`
+	result, err := transaction.ExecContext(ctx, `
 		UPDATE tasks
 		SET trashed = FALSE,
 		    rank = $1
@@ -367,6 +371,7 @@ func (store *TaskStore) RestoreTask(transaction *sqlx.Tx, userId int64, taskId i
 }
 
 func (store *TaskStore) TrashTasks(
+	ctx context.Context,
 	transaction *sqlx.Tx,
 	userId int64,
 	taskIds []int64,
@@ -374,7 +379,7 @@ func (store *TaskStore) TrashTasks(
 ) error {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("updating tasks trash state failed")
 
-	result, err := transaction.Exec(`
+	result, err := transaction.ExecContext(ctx, `
 		UPDATE tasks
 		SET trashed = TRUE,
 		    rank = updates.rank
@@ -405,11 +410,11 @@ func (store *TaskStore) TrashTasks(
 	return nil
 }
 
-func (store *TaskStore) GetLowestTrashedTaskRank(transaction *sqlx.Tx, userId int64) (*string, error) {
+func (store *TaskStore) GetLowestTrashedTaskRank(ctx context.Context, transaction *sqlx.Tx, userId int64) (*string, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("retrieving lowest trashed task rank failed")
 
 	var rank string
-	err := transaction.Get(&rank, `
+	err := transaction.GetContext(ctx, &rank, `
 		SELECT rank
 		FROM tasks
 		WHERE user_id = $1
@@ -427,10 +432,10 @@ func (store *TaskStore) GetLowestTrashedTaskRank(transaction *sqlx.Tx, userId in
 	return &rank, nil
 }
 
-func (store *TaskStore) UpdateTaskDoneState(transaction *sqlx.Tx, task *domain.Task) error {
+func (store *TaskStore) UpdateTaskDoneState(ctx context.Context, transaction *sqlx.Tx, task *domain.Task) error {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("updating task done state failed")
 
-	result, err := transaction.Exec(`
+	result, err := transaction.ExecContext(ctx, `
 		UPDATE tasks
 		SET date = $1,
 		    rank = $2,
@@ -457,10 +462,10 @@ func (store *TaskStore) UpdateTaskDoneState(transaction *sqlx.Tx, task *domain.T
 	return nil
 }
 
-func (store *TaskStore) UpdateTask(transaction *sqlx.Tx, task *domain.Task) error {
+func (store *TaskStore) UpdateTask(ctx context.Context, transaction *sqlx.Tx, task *domain.Task) error {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("updating task failed")
 
-	result, err := transaction.Exec(`
+	result, err := transaction.ExecContext(ctx, `
 		UPDATE tasks
 		SET category_id = $1,
 		    title = $2,
@@ -504,11 +509,11 @@ func (store *TaskStore) UpdateTask(transaction *sqlx.Tx, task *domain.Task) erro
 	return nil
 }
 
-func (store *TaskStore) GetHighestUndatedUntrashedOpenTaskRank(transaction *sqlx.Tx, userId int64) (*string, error) {
+func (store *TaskStore) GetHighestUndatedUntrashedOpenTaskRank(ctx context.Context, transaction *sqlx.Tx, userId int64) (*string, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("retrieving highest undated untrashed undone task rank failed")
 
 	var rank string
-	err := transaction.Get(&rank, `
+	err := transaction.GetContext(ctx, &rank, `
 		SELECT rank
 		FROM tasks
 		WHERE user_id = $1
@@ -528,11 +533,11 @@ func (store *TaskStore) GetHighestUndatedUntrashedOpenTaskRank(transaction *sqlx
 	return &rank, nil
 }
 
-func (store *TaskStore) GetHighestDatedUntrashedOpenTaskRank(transaction *sqlx.Tx, userId int64, date *shared.Date) (*string, error) {
+func (store *TaskStore) GetHighestDatedUntrashedOpenTaskRank(ctx context.Context, transaction *sqlx.Tx, userId int64, date *shared.Date) (*string, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("retrieving highest dated untrashed open task rank failed")
 
 	var rank string
-	err := transaction.Get(&rank, `
+	err := transaction.GetContext(ctx, &rank, `
 		SELECT rank
 		FROM tasks
 		WHERE user_id = $1
@@ -552,11 +557,11 @@ func (store *TaskStore) GetHighestDatedUntrashedOpenTaskRank(transaction *sqlx.T
 	return &rank, nil
 }
 
-func (store *TaskStore) GetHighestDatedUntrashedDoneTaskRank(transaction *sqlx.Tx, userId int64, date *shared.Date) (*string, error) {
+func (store *TaskStore) GetHighestDatedUntrashedDoneTaskRank(ctx context.Context, transaction *sqlx.Tx, userId int64, date *shared.Date) (*string, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("retrieving highest dated untrashed done task rank failed")
 
 	var rank string
-	err := transaction.Get(&rank, `
+	err := transaction.GetContext(ctx, &rank, `
 		SELECT rank
 		FROM tasks
 		WHERE user_id = $1
@@ -576,11 +581,11 @@ func (store *TaskStore) GetHighestDatedUntrashedDoneTaskRank(transaction *sqlx.T
 	return &rank, nil
 }
 
-func (store *TaskStore) CountTasksForUser(transaction *sqlx.Tx, userId int64) (int64, error) {
+func (store *TaskStore) CountTasksForUser(ctx context.Context, transaction *sqlx.Tx, userId int64) (int64, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("counting tasks for user failed")
 
 	var taskCount int64
-	if err := transaction.Get(&taskCount, "SELECT COUNT(*) FROM tasks WHERE user_id = $1", userId); err != nil {
+	if err := transaction.GetContext(ctx, &taskCount, "SELECT COUNT(*) FROM tasks WHERE user_id = $1", userId); err != nil {
 		return 0, wrapUnexpectedError(err)
 	}
 
@@ -588,6 +593,7 @@ func (store *TaskStore) CountTasksForUser(transaction *sqlx.Tx, userId int64) (i
 }
 
 func (store *TaskStore) InsertTask(
+	ctx context.Context,
 	transaction *sqlx.Tx,
 	userId int64,
 	request transport.CreateTaskRequest,
@@ -596,7 +602,7 @@ func (store *TaskStore) InsertTask(
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("inserting task failed")
 
 	var task transport.CreateTaskResponse
-	err := transaction.Get(&task, `
+	err := transaction.GetContext(ctx, &task, `
 		INSERT INTO tasks (user_id, category_id, title, description, date, rank)
 		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING id,
@@ -620,11 +626,11 @@ func (store *TaskStore) InsertTask(
 	return &task, nil
 }
 
-func (store *TaskStore) GetUndatedUntrashedUndoneTasks(userId int64, rank *string) (*transport.GetUndatedTasksResponse, error) {
+func (store *TaskStore) GetUndatedUntrashedUndoneTasks(ctx context.Context, userId int64, rank *string) (*transport.GetUndatedTasksResponse, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("retrieving undated untrashed undone tasks failed")
 
 	tasks := make([]transport.UndatedTaskResponse, 0, tasksBatchSize+1)
-	err := store.db.Select(&tasks, `
+	err := store.db.SelectContext(ctx, &tasks, `
 		SELECT id,
 		       category_id,
 		       title,
@@ -652,6 +658,7 @@ func (store *TaskStore) GetUndatedUntrashedUndoneTasks(userId int64, rank *strin
 }
 
 func (store *TaskStore) GetDatedUntrashedOpenTodayTasks(
+	ctx context.Context,
 	userId int64,
 	categoryIds []int64,
 	today shared.Date,
@@ -660,7 +667,7 @@ func (store *TaskStore) GetDatedUntrashedOpenTodayTasks(
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("retrieving dated untrashed open today tasks failed")
 
 	tasks := make([]transport.DatedUntrashedTaskResponse, 0, tasksBatchSize+1)
-	err := store.db.Select(&tasks, `
+	err := store.db.SelectContext(ctx, &tasks, `
 		SELECT id,
 		       category_id,
 		       title,
@@ -690,6 +697,7 @@ func (store *TaskStore) GetDatedUntrashedOpenTodayTasks(
 }
 
 func (store *TaskStore) GetDatedUntrashedDoneTodayTasks(
+	ctx context.Context,
 	userId int64,
 	categoryIds []int64,
 	today shared.Date,
@@ -698,7 +706,7 @@ func (store *TaskStore) GetDatedUntrashedDoneTodayTasks(
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("retrieving dated untrashed done today tasks failed")
 
 	tasks := make([]transport.DatedUntrashedTaskResponse, 0, tasksBatchSize+1)
-	err := store.db.Select(&tasks, `
+	err := store.db.SelectContext(ctx, &tasks, `
 		SELECT id,
 		       category_id,
 		       title,
@@ -728,6 +736,7 @@ func (store *TaskStore) GetDatedUntrashedDoneTodayTasks(
 }
 
 func (store *TaskStore) GetDatedUntrashedOpenNonTodayTasks(
+	ctx context.Context,
 	userId int64,
 	today shared.Date,
 	date *time.Time,
@@ -736,7 +745,7 @@ func (store *TaskStore) GetDatedUntrashedOpenNonTodayTasks(
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("retrieving dated untrashed open non-today tasks failed")
 
 	tasks := make([]transport.DatedUntrashedTaskResponse, 0, tasksBatchSize+1)
-	err := store.db.Select(&tasks, `
+	err := store.db.SelectContext(ctx, &tasks, `
 		SELECT id,
 		       category_id,
 		       title,
@@ -776,6 +785,7 @@ func (store *TaskStore) GetDatedUntrashedOpenNonTodayTasks(
 }
 
 func (store *TaskStore) GetDatedUntrashedDoneTasks(
+	ctx context.Context,
 	userId int64,
 	categoryIds []int64,
 	startDate *time.Time,
@@ -786,7 +796,7 @@ func (store *TaskStore) GetDatedUntrashedDoneTasks(
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("retrieving dated untrashed done tasks failed")
 
 	tasks := make([]transport.DatedUntrashedTaskResponse, 0, tasksBatchSize+1)
-	err := store.db.Select(&tasks, `
+	err := store.db.SelectContext(ctx, &tasks, `
 		SELECT id,
 		       category_id,
 		       title,
@@ -825,6 +835,7 @@ func (store *TaskStore) GetDatedUntrashedDoneTasks(
 }
 
 func (store *TaskStore) GetTrashedTasks(
+	ctx context.Context,
 	userId int64,
 	categoryIds []int64,
 	startDate *time.Time,
@@ -834,7 +845,7 @@ func (store *TaskStore) GetTrashedTasks(
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("retrieving trashed tasks failed")
 
 	tasks := make([]transport.TrashedTaskResponse, 0, tasksBatchSize+1)
-	err := store.db.Select(&tasks, `
+	err := store.db.SelectContext(ctx, &tasks, `
 		SELECT id,
 		       category_id,
 		       title,

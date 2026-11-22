@@ -31,7 +31,7 @@ func NewTaskDragAndDropHandler(taskService *services.TaskService) shared.Authent
 			return
 		}
 
-		response, err := taskService.DragAndDropTask(c.UserId, taskId, request)
+		response, err := taskService.DragAndDropTask(c.Request.Context(), c.UserId, taskId, request)
 		if err != nil {
 			switch {
 			case errors.Is(err, services.ErrPreviousTaskNotFound):

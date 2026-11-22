@@ -20,7 +20,7 @@ func NewRestoreTaskHandler(taskService *services.TaskService) shared.Authenticat
 			c.JSON(http.StatusBadRequest, invalidTaskIdErrorResponse)
 			return
 		}
-		response, err := taskService.RestoreTask(c.UserId, id)
+		response, err := taskService.RestoreTask(c.Request.Context(), c.UserId, id)
 		if err != nil {
 			switch {
 			case errors.Is(err, stores.ErrTaskNotFound):

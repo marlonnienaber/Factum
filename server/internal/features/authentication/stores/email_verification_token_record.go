@@ -1,6 +1,7 @@
 package stores
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 
@@ -22,13 +23,14 @@ func NewEmailVerificationTokenRecordStore(db *sqlx.DB) *EmailVerificationTokenRe
 }
 
 func (store *EmailVerificationTokenRecordStore) GetRecordForEmail(
+	ctx context.Context,
 	transaction *sqlx.Tx,
 	email string,
 ) (*domain.EmailVerificationTokenRecord, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("retrieving email verification token record failed")
 
 	var record domain.EmailVerificationTokenRecord
-	err := transaction.Get(&record, `
+	err := transaction.GetContext(ctx, &record, `
 		SELECT id,
 		       email,
 		       token_hash,
@@ -52,13 +54,14 @@ func (store *EmailVerificationTokenRecordStore) GetRecordForEmail(
 }
 
 func (store *EmailVerificationTokenRecordStore) GetRecordForTokenHash(
+	ctx context.Context,
 	transaction *sqlx.Tx,
 	tokenHash []byte,
 ) (*domain.EmailVerificationTokenRecord, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("retrieving email verification token record by token hash failed")
 
 	var record domain.EmailVerificationTokenRecord
-	err := transaction.Get(&record, `
+	err := transaction.GetContext(ctx, &record, `
 		SELECT id,
 		       email,
 		       token_hash,
@@ -82,12 +85,13 @@ func (store *EmailVerificationTokenRecordStore) GetRecordForTokenHash(
 }
 
 func (store *EmailVerificationTokenRecordStore) UpsertRecord(
+	ctx context.Context,
 	transaction *sqlx.Tx,
 	record *domain.EmailVerificationTokenRecord,
 ) error {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("upserting email verification token record failed")
 
-	err := transaction.Get(record, `
+	err := transaction.GetContext(ctx, record, `
 		INSERT INTO email_verification_token_records (
 			email,
 			token_hash,
@@ -126,12 +130,13 @@ func (store *EmailVerificationTokenRecordStore) UpsertRecord(
 }
 
 func (store *EmailVerificationTokenRecordStore) DeleteRecord(
+	ctx context.Context,
 	transaction *sqlx.Tx,
 	recordId int64,
 ) error {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("deleting email verification token record failed")
 
-	result, err := transaction.Exec("DELETE FROM email_verification_token_records WHERE id = $1", recordId)
+	result, err := transaction.ExecContext(ctx, "DELETE FROM email_verification_token_records WHERE id = $1", recordId)
 	if err != nil {
 		return wrapUnexpectedError(err)
 	}

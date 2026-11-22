@@ -12,7 +12,7 @@ import (
 func NewGetTodayProgressHandler(taskStore *stores.TaskStore) shared.AuthenticatedHandlerFunc {
 	return func(c *shared.AuthenticatedContext) {
 		today := shared.NewDate(time.Now())
-		response, err := taskStore.GetTodayProgress(c.UserId, today)
+		response, err := taskStore.GetTodayProgress(c.Request.Context(), c.UserId, today)
 		if err != nil {
 			slog.Error("handling get today's task progress failed", "error", err)
 			c.JSON(http.StatusInternalServerError, shared.UnexpectedErrorResponse)

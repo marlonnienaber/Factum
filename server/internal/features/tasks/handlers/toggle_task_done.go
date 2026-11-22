@@ -20,7 +20,7 @@ func NewToggleTaskDoneHandler(taskService *services.TaskService) shared.Authenti
 			c.JSON(http.StatusBadRequest, invalidTaskIdErrorResponse)
 			return
 		}
-		response, err := taskService.ToggleTaskDone(c.UserId, id)
+		response, err := taskService.ToggleTaskDone(c.Request.Context(), c.UserId, id)
 		if err != nil {
 			switch {
 			case errors.Is(err, stores.ErrTaskNotFound):

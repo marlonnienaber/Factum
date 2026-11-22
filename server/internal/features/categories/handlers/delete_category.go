@@ -20,7 +20,7 @@ func NewDeleteCategoryHandler(categoryStore *stores.CategoryStore) shared.Authen
 			return
 		}
 
-		err := categoryStore.DeleteCategory(id, c.UserId)
+		err := categoryStore.DeleteCategory(c.Request.Context(), id, c.UserId)
 		if err != nil {
 			switch {
 			case errors.Is(err, stores.ErrCategoryNotFound):

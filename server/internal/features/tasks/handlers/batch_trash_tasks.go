@@ -27,7 +27,7 @@ func NewBatchTrashTasksHandler(taskService *services.TaskService) shared.Authent
 			return
 		}
 
-		response, err := taskService.BatchTrashTasks(c.UserId, request.TaskIds)
+		response, err := taskService.BatchTrashTasks(c.Request.Context(), c.UserId, request.TaskIds)
 		if err != nil {
 			switch {
 			case errors.Is(err, stores.ErrTaskNotFound):

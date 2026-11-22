@@ -27,7 +27,7 @@ func NewCreateTaskHandler(taskService *services.TaskService) shared.Authenticate
 			return
 		}
 
-		taskResponse, err := taskService.CreateTask(c.UserId, request)
+		taskResponse, err := taskService.CreateTask(c.Request.Context(), c.UserId, request)
 		if err != nil {
 			switch {
 			case errors.Is(err, services.ErrMaximumTaskCountReached):

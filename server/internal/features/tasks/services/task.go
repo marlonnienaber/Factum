@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -44,11 +45,11 @@ func NewTaskService(
 	}
 }
 
-func (service *TaskService) CreateTask(userId int64, request transport.CreateTaskRequest) (*transport.CreateTaskResponse, error) {
+func (service *TaskService) CreateTask(ctx context.Context, userId int64, request transport.CreateTaskRequest) (*transport.CreateTaskResponse, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("creating task failed")
 
-	task, err := shared.ExecuteAsSerializableTransaction(service.db, func(transaction *sqlx.Tx) (*transport.CreateTaskResponse, error) {
-		taskCount, err := service.taskStore.CountTasksForUser(transaction, userId)
+	task, err := shared.ExecuteAsSerializableTransaction(ctx, service.db, func(transaction *sqlx.Tx) (*transport.CreateTaskResponse, error) {
+		taskCount, err := service.taskStore.CountTasksForUser(ctx, transaction, userId)
 		if err != nil {
 			return nil, err
 		}
@@ -56,7 +57,7 @@ func (service *TaskService) CreateTask(userId int64, request transport.CreateTas
 			return nil, ErrMaximumTaskCountReached
 		}
 
-		categoryExists, err := service.categoryStore.DoesCategoryExistForUser(transaction, request.CategoryId, userId)
+		categoryExists, err := service.categoryStore.DoesCategoryExistForUser(ctx, transaction, request.CategoryId, userId)
 		if err != nil {
 			return nil, err
 		}
@@ -66,9 +67,9 @@ func (service *TaskService) CreateTask(userId int64, request transport.CreateTas
 
 		var highestRank *string
 		if request.Date == nil {
-			highestRank, err = service.taskStore.GetHighestUndatedUntrashedOpenTaskRank(transaction, userId)
+			highestRank, err = service.taskStore.GetHighestUndatedUntrashedOpenTaskRank(ctx, transaction, userId)
 		} else {
-			highestRank, err = service.taskStore.GetHighestDatedUntrashedOpenTaskRank(transaction, userId, request.Date)
+			highestRank, err = service.taskStore.GetHighestDatedUntrashedOpenTaskRank(ctx, transaction, userId, request.Date)
 		}
 		if err != nil {
 			return nil, err
@@ -83,7 +84,7 @@ func (service *TaskService) CreateTask(userId int64, request transport.CreateTas
 			return nil, err
 		}
 
-		return service.taskStore.InsertTask(transaction, userId, request, rank)
+		return service.taskStore.InsertTask(ctx, transaction, userId, request, rank)
 	})
 	if err != nil {
 		if errors.Is(err, stores.ErrCategoryNotFound) || errors.Is(err, ErrMaximumTaskCountReached) {
@@ -95,16 +96,16 @@ func (service *TaskService) CreateTask(userId int64, request transport.CreateTas
 	return task, nil
 }
 
-func (service *TaskService) UpdateTask(userId int64, request transport.UpdateTaskRequest) (*transport.UpdateTaskResponse, error) {
+func (service *TaskService) UpdateTask(ctx context.Context, userId int64, request transport.UpdateTaskRequest) (*transport.UpdateTaskResponse, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("updating task failed")
 
-	taskResponse, err := shared.ExecuteAsSerializableTransaction(service.db, func(transaction *sqlx.Tx) (*transport.UpdateTaskResponse, error) {
-		task, err := service.taskStore.GetTaskByIdForUser(transaction, request.Id, userId)
+	taskResponse, err := shared.ExecuteAsSerializableTransaction(ctx, service.db, func(transaction *sqlx.Tx) (*transport.UpdateTaskResponse, error) {
+		task, err := service.taskStore.GetTaskByIdForUser(ctx, transaction, request.Id, userId)
 		if err != nil {
 			return nil, err
 		}
 
-		categoryExists, err := service.categoryStore.DoesCategoryExistForUser(transaction, request.CategoryId, userId)
+		categoryExists, err := service.categoryStore.DoesCategoryExistForUser(ctx, transaction, request.CategoryId, userId)
 		if err != nil {
 			return nil, err
 		}
@@ -123,11 +124,11 @@ func (service *TaskService) UpdateTask(userId int64, request transport.UpdateTas
 			var highestRank *string
 			switch {
 			case request.Date == nil:
-				highestRank, err = service.taskStore.GetHighestUndatedUntrashedOpenTaskRank(transaction, userId)
+				highestRank, err = service.taskStore.GetHighestUndatedUntrashedOpenTaskRank(ctx, transaction, userId)
 			case updatedDone:
-				highestRank, err = service.taskStore.GetHighestDatedUntrashedDoneTaskRank(transaction, userId, request.Date)
+				highestRank, err = service.taskStore.GetHighestDatedUntrashedDoneTaskRank(ctx, transaction, userId, request.Date)
 			default:
-				highestRank, err = service.taskStore.GetHighestDatedUntrashedOpenTaskRank(transaction, userId, request.Date)
+				highestRank, err = service.taskStore.GetHighestDatedUntrashedOpenTaskRank(ctx, transaction, userId, request.Date)
 			}
 			if err != nil {
 				return nil, err
@@ -150,7 +151,7 @@ func (service *TaskService) UpdateTask(userId int64, request transport.UpdateTas
 		task.Date = request.Date
 		task.Done = updatedDone
 
-		if err := service.taskStore.UpdateTask(transaction, task); err != nil {
+		if err := service.taskStore.UpdateTask(ctx, transaction, task); err != nil {
 			return nil, err
 		}
 
@@ -169,11 +170,11 @@ func (service *TaskService) UpdateTask(userId int64, request transport.UpdateTas
 	return taskResponse, nil
 }
 
-func (service *TaskService) DragAndDropTask(userId int64, taskId int64, request transport.TaskDragAndDropRequest) (*transport.TaskDragAndDropResponse, error) {
+func (service *TaskService) DragAndDropTask(ctx context.Context, userId int64, taskId int64, request transport.TaskDragAndDropRequest) (*transport.TaskDragAndDropResponse, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("dragging and dropping task failed")
 
-	response, err := shared.ExecuteAsSerializableTransaction(service.db, func(transaction *sqlx.Tx) (*transport.TaskDragAndDropResponse, error) {
-		task, err := service.taskStore.GetTaskByIdForUser(transaction, taskId, userId)
+	response, err := shared.ExecuteAsSerializableTransaction(ctx, service.db, func(transaction *sqlx.Tx) (*transport.TaskDragAndDropResponse, error) {
+		task, err := service.taskStore.GetTaskByIdForUser(ctx, transaction, taskId, userId)
 		if err != nil {
 			return nil, err
 		}
@@ -183,11 +184,12 @@ func (service *TaskService) DragAndDropTask(userId int64, taskId int64, request 
 			return nil, ErrRequestDataRepresentInvalidDragAndDropGesture
 		}
 
-		previousTaskRank, err := service.getPreviousTaskRankForTaskDragAndDrop(transaction, userId, taskId, request)
+		previousTaskRank, err := service.getPreviousTaskRankForTaskDragAndDrop(ctx, transaction, userId, taskId, request)
 		if err != nil {
 			return nil, err
 		}
 		successorTaskRank, err := service.taskStore.GetRankOfSuccessorTaskForTaskDragAndDrop(
+			ctx,
 			transaction,
 			userId,
 			taskId,
@@ -208,7 +210,7 @@ func (service *TaskService) DragAndDropTask(userId int64, taskId int64, request 
 		task.Done = request.Done
 		task.Trashed = request.Trashed
 		task.Rank = rank
-		if err := service.taskStore.UpdateTaskForDragAndDrop(transaction, task); err != nil {
+		if err := service.taskStore.UpdateTaskForDragAndDrop(ctx, transaction, task); err != nil {
 			return nil, err
 		}
 
@@ -227,11 +229,11 @@ func (service *TaskService) DragAndDropTask(userId int64, taskId int64, request 
 	return response, nil
 }
 
-func (service *TaskService) TrashTask(userId int64, taskId int64) (*transport.TrashTaskResponse, error) {
+func (service *TaskService) TrashTask(ctx context.Context, userId int64, taskId int64) (*transport.TrashTaskResponse, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("trashing task failed")
 
-	response, err := shared.ExecuteAsSerializableTransaction(service.db, func(transaction *sqlx.Tx) (*transport.TrashTaskResponse, error) {
-		task, err := service.taskStore.GetTaskByIdForUser(transaction, taskId, userId)
+	response, err := shared.ExecuteAsSerializableTransaction(ctx, service.db, func(transaction *sqlx.Tx) (*transport.TrashTaskResponse, error) {
+		task, err := service.taskStore.GetTaskByIdForUser(ctx, transaction, taskId, userId)
 		if err != nil {
 			return nil, err
 		}
@@ -239,7 +241,7 @@ func (service *TaskService) TrashTask(userId int64, taskId int64) (*transport.Tr
 			return nil, ErrTaskAlreadyTrashed
 		}
 
-		lowestTrashedTaskRank, err := service.taskStore.GetLowestTrashedTaskRank(transaction, userId)
+		lowestTrashedTaskRank, err := service.taskStore.GetLowestTrashedTaskRank(ctx, transaction, userId)
 		if err != nil {
 			return nil, err
 		}
@@ -252,7 +254,7 @@ func (service *TaskService) TrashTask(userId int64, taskId int64) (*transport.Tr
 			return nil, err
 		}
 
-		if err := service.taskStore.TrashTask(transaction, userId, taskId, rank); err != nil {
+		if err := service.taskStore.TrashTask(ctx, transaction, userId, taskId, rank); err != nil {
 			return nil, err
 		}
 		return &transport.TrashTaskResponse{Rank: rank}, nil
@@ -270,11 +272,11 @@ func (service *TaskService) TrashTask(userId int64, taskId int64) (*transport.Tr
 	return response, nil
 }
 
-func (service *TaskService) BatchTrashTasks(userId int64, taskIds []int64) ([]transport.BatchTrashTaskResponse, error) {
+func (service *TaskService) BatchTrashTasks(ctx context.Context, userId int64, taskIds []int64) ([]transport.BatchTrashTaskResponse, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("batch trashing tasks failed")
 
-	response, err := shared.ExecuteAsSerializableTransaction(service.db, func(transaction *sqlx.Tx) ([]transport.BatchTrashTaskResponse, error) {
-		tasks, err := service.taskStore.GetTasksByIdsForUser(transaction, taskIds, userId)
+	response, err := shared.ExecuteAsSerializableTransaction(ctx, service.db, func(transaction *sqlx.Tx) ([]transport.BatchTrashTaskResponse, error) {
+		tasks, err := service.taskStore.GetTasksByIdsForUser(ctx, transaction, taskIds, userId)
 		if err != nil {
 			return nil, err
 		}
@@ -285,7 +287,7 @@ func (service *TaskService) BatchTrashTasks(userId int64, taskIds []int64) ([]tr
 			}
 		}
 
-		lowestTrashedTaskRank, err := service.taskStore.GetLowestTrashedTaskRank(transaction, userId)
+		lowestTrashedTaskRank, err := service.taskStore.GetLowestTrashedTaskRank(ctx, transaction, userId)
 		if err != nil {
 			return nil, err
 		}
@@ -304,7 +306,7 @@ func (service *TaskService) BatchTrashTasks(userId int64, taskIds []int64) ([]tr
 			upperRankBoundary = rank
 		}
 
-		if err := service.taskStore.TrashTasks(transaction, userId, taskIds, ranks); err != nil {
+		if err := service.taskStore.TrashTasks(ctx, transaction, userId, taskIds, ranks); err != nil {
 			return nil, err
 		}
 
@@ -323,11 +325,11 @@ func (service *TaskService) BatchTrashTasks(userId int64, taskIds []int64) ([]tr
 	return response, nil
 }
 
-func (service *TaskService) RestoreTask(userId int64, taskId int64) (*transport.RestoreTaskResponse, error) {
+func (service *TaskService) RestoreTask(ctx context.Context, userId int64, taskId int64) (*transport.RestoreTaskResponse, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("restoring task failed")
 
-	response, err := shared.ExecuteAsSerializableTransaction(service.db, func(transaction *sqlx.Tx) (*transport.RestoreTaskResponse, error) {
-		task, err := service.taskStore.GetTaskByIdForUser(transaction, taskId, userId)
+	response, err := shared.ExecuteAsSerializableTransaction(ctx, service.db, func(transaction *sqlx.Tx) (*transport.RestoreTaskResponse, error) {
+		task, err := service.taskStore.GetTaskByIdForUser(ctx, transaction, taskId, userId)
 		if err != nil {
 			return nil, err
 		}
@@ -338,11 +340,11 @@ func (service *TaskService) RestoreTask(userId int64, taskId int64) (*transport.
 		var highestRank *string
 		switch {
 		case task.Date == nil:
-			highestRank, err = service.taskStore.GetHighestUndatedUntrashedOpenTaskRank(transaction, userId)
+			highestRank, err = service.taskStore.GetHighestUndatedUntrashedOpenTaskRank(ctx, transaction, userId)
 		case task.Done:
-			highestRank, err = service.taskStore.GetHighestDatedUntrashedDoneTaskRank(transaction, userId, task.Date)
+			highestRank, err = service.taskStore.GetHighestDatedUntrashedDoneTaskRank(ctx, transaction, userId, task.Date)
 		default:
-			highestRank, err = service.taskStore.GetHighestDatedUntrashedOpenTaskRank(transaction, userId, task.Date)
+			highestRank, err = service.taskStore.GetHighestDatedUntrashedOpenTaskRank(ctx, transaction, userId, task.Date)
 		}
 		if err != nil {
 			return nil, err
@@ -356,7 +358,7 @@ func (service *TaskService) RestoreTask(userId int64, taskId int64) (*transport.
 		if err != nil {
 			return nil, err
 		}
-		if err := service.taskStore.RestoreTask(transaction, userId, taskId, rank); err != nil {
+		if err := service.taskStore.RestoreTask(ctx, transaction, userId, taskId, rank); err != nil {
 			return nil, err
 		}
 
@@ -375,11 +377,11 @@ func (service *TaskService) RestoreTask(userId int64, taskId int64) (*transport.
 	return response, nil
 }
 
-func (service *TaskService) ToggleTaskDone(userId int64, taskId int64) (*transport.ToggleTaskDoneResponse, error) {
+func (service *TaskService) ToggleTaskDone(ctx context.Context, userId int64, taskId int64) (*transport.ToggleTaskDoneResponse, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("toggling task done failed")
 
-	response, err := shared.ExecuteAsSerializableTransaction(service.db, func(transaction *sqlx.Tx) (*transport.ToggleTaskDoneResponse, error) {
-		task, err := service.taskStore.GetTaskByIdForUser(transaction, taskId, userId)
+	response, err := shared.ExecuteAsSerializableTransaction(ctx, service.db, func(transaction *sqlx.Tx) (*transport.ToggleTaskDoneResponse, error) {
+		task, err := service.taskStore.GetTaskByIdForUser(ctx, transaction, taskId, userId)
 		if err != nil {
 			return nil, err
 		}
@@ -389,7 +391,7 @@ func (service *TaskService) ToggleTaskDone(userId int64, taskId int64) (*transpo
 			task.Date = &currentDate
 		}
 		if task.Trashed {
-			if err := service.taskStore.UpdateTaskDoneState(transaction, task); err != nil {
+			if err := service.taskStore.UpdateTaskDoneState(ctx, transaction, task); err != nil {
 				return nil, err
 			}
 			return &transport.ToggleTaskDoneResponse{Date: *task.Date}, nil
@@ -397,9 +399,9 @@ func (service *TaskService) ToggleTaskDone(userId int64, taskId int64) (*transpo
 
 		var highestRank *string
 		if task.Done {
-			highestRank, err = service.taskStore.GetHighestDatedUntrashedDoneTaskRank(transaction, userId, task.Date)
+			highestRank, err = service.taskStore.GetHighestDatedUntrashedDoneTaskRank(ctx, transaction, userId, task.Date)
 		} else {
-			highestRank, err = service.taskStore.GetHighestDatedUntrashedOpenTaskRank(transaction, userId, task.Date)
+			highestRank, err = service.taskStore.GetHighestDatedUntrashedOpenTaskRank(ctx, transaction, userId, task.Date)
 		}
 		if err != nil {
 			return nil, err
@@ -414,7 +416,7 @@ func (service *TaskService) ToggleTaskDone(userId int64, taskId int64) (*transpo
 		}
 		task.Rank = rank
 
-		if err := service.taskStore.UpdateTaskDoneState(transaction, task); err != nil {
+		if err := service.taskStore.UpdateTaskDoneState(ctx, transaction, task); err != nil {
 			return nil, err
 		}
 		return &transport.ToggleTaskDoneResponse{Date: *task.Date, Rank: &rank}, nil
@@ -431,12 +433,12 @@ func (service *TaskService) ToggleTaskDone(userId int64, taskId int64) (*transpo
 	return response, nil
 }
 
-func (service *TaskService) BatchCompleteTasks(userId int64, taskIds []int64) ([]transport.BatchCompleteTaskResponse, error) {
+func (service *TaskService) BatchCompleteTasks(ctx context.Context, userId int64, taskIds []int64) ([]transport.BatchCompleteTaskResponse, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("batch completing tasks failed")
 	currentDate := shared.NewDate(time.Now())
 
-	response, err := shared.ExecuteAsSerializableTransaction(service.db, func(transaction *sqlx.Tx) ([]transport.BatchCompleteTaskResponse, error) {
-		tasks, err := service.taskStore.GetTasksByIdsForUser(transaction, taskIds, userId)
+	response, err := shared.ExecuteAsSerializableTransaction(ctx, service.db, func(transaction *sqlx.Tx) ([]transport.BatchCompleteTaskResponse, error) {
+		tasks, err := service.taskStore.GetTasksByIdsForUser(ctx, transaction, taskIds, userId)
 		if err != nil {
 			return nil, err
 		}
@@ -449,10 +451,10 @@ func (service *TaskService) BatchCompleteTasks(userId int64, taskIds []int64) ([
 		}
 		service.setDoneFlagAndIfNeededDate(tasks, currentDate)
 
-		if err := service.assignRanksForBatchDoneUpdate(transaction, userId, true, tasks); err != nil {
+		if err := service.assignRanksForBatchDoneUpdate(ctx, transaction, userId, true, tasks); err != nil {
 			return nil, err
 		}
-		if err := service.taskStore.BatchUpdateDoneForUntrashedTasks(transaction, userId, tasks, true); err != nil {
+		if err := service.taskStore.BatchUpdateDoneForUntrashedTasks(ctx, transaction, userId, tasks, true); err != nil {
 			return nil, err
 		}
 
@@ -472,11 +474,11 @@ func (service *TaskService) BatchCompleteTasks(userId int64, taskIds []int64) ([
 	return response, nil
 }
 
-func (service *TaskService) BatchOpenTasks(userId int64, taskIds []int64) ([]transport.BatchOpenTaskResponse, error) {
+func (service *TaskService) BatchOpenTasks(ctx context.Context, userId int64, taskIds []int64) ([]transport.BatchOpenTaskResponse, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("batch opening tasks failed")
 
-	response, err := shared.ExecuteAsSerializableTransaction(service.db, func(transaction *sqlx.Tx) ([]transport.BatchOpenTaskResponse, error) {
-		tasks, err := service.taskStore.GetTasksByIdsForUser(transaction, taskIds, userId)
+	response, err := shared.ExecuteAsSerializableTransaction(ctx, service.db, func(transaction *sqlx.Tx) ([]transport.BatchOpenTaskResponse, error) {
+		tasks, err := service.taskStore.GetTasksByIdsForUser(ctx, transaction, taskIds, userId)
 		if err != nil {
 			return nil, err
 		}
@@ -489,10 +491,10 @@ func (service *TaskService) BatchOpenTasks(userId int64, taskIds []int64) ([]tra
 		}
 		service.unsetDoneFlag(tasks)
 
-		if err := service.assignRanksForBatchDoneUpdate(transaction, userId, false, tasks); err != nil {
+		if err := service.assignRanksForBatchDoneUpdate(ctx, transaction, userId, false, tasks); err != nil {
 			return nil, err
 		}
-		if err := service.taskStore.BatchUpdateDoneForUntrashedTasks(transaction, userId, tasks, false); err != nil {
+		if err := service.taskStore.BatchUpdateDoneForUntrashedTasks(ctx, transaction, userId, tasks, false); err != nil {
 			return nil, err
 		}
 
@@ -513,6 +515,7 @@ func (service *TaskService) BatchOpenTasks(userId int64, taskIds []int64) ([]tra
 }
 
 func (service *TaskService) getPreviousTaskRankForTaskDragAndDrop(
+	ctx context.Context,
 	transaction *sqlx.Tx,
 	userId int64,
 	taskId int64,
@@ -525,7 +528,7 @@ func (service *TaskService) getPreviousTaskRankForTaskDragAndDrop(
 		return "", ErrRequestDataRepresentInvalidDragAndDropGesture
 	}
 
-	previousTask, err := service.taskStore.GetTaskByIdForUser(transaction, *request.PreviousTaskId, userId)
+	previousTask, err := service.taskStore.GetTaskByIdForUser(ctx, transaction, *request.PreviousTaskId, userId)
 	if err != nil {
 		if errors.Is(err, stores.ErrTaskNotFound) {
 			return "", ErrPreviousTaskNotFound
@@ -699,6 +702,7 @@ func (service *TaskService) unsetDoneFlag(tasks []*domain.Task) {
 }
 
 func (service *TaskService) assignRanksForBatchDoneUpdate(
+	ctx context.Context,
 	transaction *sqlx.Tx,
 	userId int64,
 	targetDoneState bool,
@@ -715,6 +719,7 @@ func (service *TaskService) assignRanksForBatchDoneUpdate(
 	}
 
 	highestRanksByDate, err := service.taskStore.GetHighestUntrashedTaskRanksByDate(
+		ctx,
 		transaction,
 		userId,
 		taskDates,

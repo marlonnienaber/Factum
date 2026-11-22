@@ -13,7 +13,7 @@ func NewGetCurrentAuthenticationHandler(userStore *stores.UserStore) shared.Auth
 	return func(c *shared.AuthenticatedContext) {
 		unexpectedErrorLogMessage := "handling get current authentication failed"
 
-		doesUserExist, err := userStore.DoesUserExistForId(c.UserId)
+		doesUserExist, err := userStore.DoesUserExistForId(c.Request.Context(), c.UserId)
 		if err != nil {
 			slog.Error(unexpectedErrorLogMessage, "error", err)
 			c.JSON(http.StatusInternalServerError, shared.UnexpectedErrorResponse)

@@ -27,7 +27,7 @@ func NewSignUpHandler(authenticationService *services.AuthenticationService) gin
 			return
 		}
 
-		err := authenticationService.SignUp(request)
+		err := authenticationService.SignUp(c.Request.Context(), request)
 		if err != nil {
 			switch {
 			case errors.Is(err, services.ErrSignUpNotAvailable):

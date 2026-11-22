@@ -1,6 +1,7 @@
 package stores
 
 import (
+	"context"
 	"errors"
 
 	"github.com/jmoiron/sqlx"
@@ -26,11 +27,11 @@ func NewCategoryStore(db *sqlx.DB) *CategoryStore {
 	}
 }
 
-func (store *CategoryStore) GetCategories(userId int64) ([]transport.CategoryResponse, error) {
+func (store *CategoryStore) GetCategories(ctx context.Context, userId int64) ([]transport.CategoryResponse, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("retrieving categories failed")
 
 	categories := make([]transport.CategoryResponse, 0)
-	err := store.db.Select(&categories, `
+	err := store.db.SelectContext(ctx, &categories, `
 		SELECT id,
 		       title,
 		       color
@@ -46,6 +47,7 @@ func (store *CategoryStore) GetCategories(userId int64) ([]transport.CategoryRes
 }
 
 func (store *CategoryStore) DoesCategoryExistForUser(
+	ctx context.Context,
 	transaction *sqlx.Tx,
 	id int64,
 	userId int64,
@@ -53,7 +55,7 @@ func (store *CategoryStore) DoesCategoryExistForUser(
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("checking category existence for user failed")
 
 	var exists bool
-	err := transaction.Get(&exists, `
+	err := transaction.GetContext(ctx, &exists, `
 		SELECT EXISTS (
 			SELECT 1
 			FROM categories
@@ -68,11 +70,11 @@ func (store *CategoryStore) DoesCategoryExistForUser(
 	return exists, nil
 }
 
-func (store *CategoryStore) CountCategoriesForUser(transaction *sqlx.Tx, userId int64) (int64, error) {
+func (store *CategoryStore) CountCategoriesForUser(ctx context.Context, transaction *sqlx.Tx, userId int64) (int64, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("counting categories for user failed")
 
 	var categoryCount int64
-	err := transaction.Get(&categoryCount, "SELECT COUNT(*) FROM categories WHERE user_id = $1", userId)
+	err := transaction.GetContext(ctx, &categoryCount, "SELECT COUNT(*) FROM categories WHERE user_id = $1", userId)
 	if err != nil {
 		return 0, wrapUnexpectedError(err)
 	}
@@ -81,6 +83,7 @@ func (store *CategoryStore) CountCategoriesForUser(transaction *sqlx.Tx, userId 
 }
 
 func (store *CategoryStore) InsertCategory(
+	ctx context.Context,
 	transaction *sqlx.Tx,
 	userId int64,
 	title string,
@@ -89,7 +92,7 @@ func (store *CategoryStore) InsertCategory(
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("inserting category failed")
 
 	var category transport.CreateCategoryResponse
-	err := transaction.Get(&category, `
+	err := transaction.GetContext(ctx, &category, `
 		INSERT INTO categories (user_id, title, color)
 		VALUES ($1, $2, $3)
 		RETURNING id
@@ -110,10 +113,10 @@ func (store *CategoryStore) InsertCategory(
 	return &category, nil
 }
 
-func (store *CategoryStore) DeleteCategory(id int64, userId int64) error {
+func (store *CategoryStore) DeleteCategory(ctx context.Context, id int64, userId int64) error {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("deleting category failed")
 
-	result, err := store.db.Exec("DELETE FROM categories WHERE id = $1 AND user_id = $2", id, userId)
+	result, err := store.db.ExecContext(ctx, "DELETE FROM categories WHERE id = $1 AND user_id = $2", id, userId)
 	if err != nil {
 		var postgresError *pq.Error
 		if errors.As(err, &postgresError) && postgresError.Constraint == "tasks_category_id_foreign_key" {

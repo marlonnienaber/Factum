@@ -19,7 +19,7 @@ func NewGetUndatedTasksHandler(taskStore *stores.TaskStore) shared.Authenticated
 			return
 		}
 
-		taskResponses, err := taskStore.GetUndatedUntrashedUndoneTasks(c.UserId, rank)
+		taskResponses, err := taskStore.GetUndatedUntrashedUndoneTasks(c.Request.Context(), c.UserId, rank)
 		if err != nil {
 			slog.Error(unexpectedErrorLogMessage, "error", err)
 			c.JSON(http.StatusInternalServerError, shared.UnexpectedErrorResponse)

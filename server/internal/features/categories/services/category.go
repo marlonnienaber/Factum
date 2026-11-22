@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 
 	"github.com/jmoiron/sqlx"
@@ -26,13 +27,14 @@ func NewCategoryService(db *sqlx.DB, categoryStore *stores.CategoryStore) *Categ
 }
 
 func (service *CategoryService) CreateCategory(
+	ctx context.Context,
 	userId int64,
 	request transport.CreateCategoryRequest,
 ) (*transport.CreateCategoryResponse, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("creating category failed")
 
-	category, err := shared.ExecuteAsSerializableTransaction(service.db, func(transaction *sqlx.Tx) (*transport.CreateCategoryResponse, error) {
-		categoryCount, err := service.categoryStore.CountCategoriesForUser(transaction, userId)
+	category, err := shared.ExecuteAsSerializableTransaction(ctx, service.db, func(transaction *sqlx.Tx) (*transport.CreateCategoryResponse, error) {
+		categoryCount, err := service.categoryStore.CountCategoriesForUser(ctx, transaction, userId)
 		if err != nil {
 			return nil, err
 		}
@@ -40,7 +42,7 @@ func (service *CategoryService) CreateCategory(
 			return nil, ErrMaximumCategoryCountReached
 		}
 
-		return service.categoryStore.InsertCategory(transaction, userId, request.Title, request.Color)
+		return service.categoryStore.InsertCategory(ctx, transaction, userId, request.Title, request.Color)
 	})
 	if err != nil {
 		if errors.Is(err, ErrMaximumCategoryCountReached) ||

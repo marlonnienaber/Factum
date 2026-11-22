@@ -12,7 +12,7 @@ func NewGetCategoriesHandler(categoryStore *stores.CategoryStore) shared.Authent
 	return func(c *shared.AuthenticatedContext) {
 		unexpectedErrorLogMessage := "handling get categories failed"
 
-		categoryResponses, err := categoryStore.GetCategories(c.UserId)
+		categoryResponses, err := categoryStore.GetCategories(c.Request.Context(), c.UserId)
 		if err != nil {
 			slog.Error(unexpectedErrorLogMessage, "error", err)
 			c.JSON(http.StatusInternalServerError, shared.UnexpectedErrorResponse)

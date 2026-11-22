@@ -13,7 +13,7 @@ func NewDeleteTrashedTasksHandler(taskStore *stores.TaskStore) shared.Authentica
 	return func(c *shared.AuthenticatedContext) {
 		unexpectedErrorLogMessage := "handling delete trashed tasks failed"
 
-		if err := taskStore.DeleteTrashedTasks(c.UserId); err != nil {
+		if err := taskStore.DeleteTrashedTasks(c.Request.Context(), c.UserId); err != nil {
 			if errors.Is(err, stores.ErrNoTrashedTasks) {
 				c.JSON(http.StatusBadRequest, noTrashedTasksToDeleteErrorResponse)
 				return

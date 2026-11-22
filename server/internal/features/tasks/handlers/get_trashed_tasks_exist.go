@@ -11,7 +11,7 @@ import (
 
 func NewGetTrashedTasksExistHandler(taskStore *stores.TaskStore) shared.AuthenticatedHandlerFunc {
 	return func(c *shared.AuthenticatedContext) {
-		trashedTasksExist, err := taskStore.DoTrashedTasksExist(c.UserId)
+		trashedTasksExist, err := taskStore.DoTrashedTasksExist(c.Request.Context(), c.UserId)
 		if err != nil {
 			slog.Error("handling get whether trashed tasks exist failed", "error", err)
 			c.JSON(http.StatusInternalServerError, shared.UnexpectedErrorResponse)

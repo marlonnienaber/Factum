@@ -27,7 +27,7 @@ func NewUpdateTaskHandler(taskService *services.TaskService) shared.Authenticate
 			return
 		}
 
-		taskResponse, err := taskService.UpdateTask(c.UserId, request)
+		taskResponse, err := taskService.UpdateTask(c.Request.Context(), c.UserId, request)
 		if err != nil {
 			switch {
 			case errors.Is(err, stores.ErrTaskNotFound):

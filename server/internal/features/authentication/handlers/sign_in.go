@@ -28,7 +28,7 @@ func NewSignInHandler(authenticationService *services.AuthenticationService) gin
 			return
 		}
 
-		authenticationResponse, err := authenticationService.SignIn(request, sessions.Default(c))
+		authenticationResponse, err := authenticationService.SignIn(c.Request.Context(), request, sessions.Default(c))
 		if err != nil {
 			switch {
 			case errors.Is(err, services.ErrInvalidCredentials):

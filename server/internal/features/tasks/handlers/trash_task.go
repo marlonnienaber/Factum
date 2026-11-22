@@ -20,7 +20,7 @@ func NewTrashTaskHandler(taskService *services.TaskService) shared.Authenticated
 			c.JSON(http.StatusBadRequest, invalidTaskIdErrorResponse)
 			return
 		}
-		response, err := taskService.TrashTask(c.UserId, id)
+		response, err := taskService.TrashTask(c.Request.Context(), c.UserId, id)
 		if err != nil {
 			switch {
 			case errors.Is(err, stores.ErrTaskNotFound):

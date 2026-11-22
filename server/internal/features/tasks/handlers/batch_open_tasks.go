@@ -27,7 +27,7 @@ func NewBatchOpenTasksHandler(taskService *services.TaskService) shared.Authenti
 			return
 		}
 
-		response, err := taskService.BatchOpenTasks(c.UserId, request.TaskIds)
+		response, err := taskService.BatchOpenTasks(c.Request.Context(), c.UserId, request.TaskIds)
 		if err != nil {
 			switch {
 			case errors.Is(err, stores.ErrTaskNotFound):

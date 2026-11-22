@@ -29,7 +29,7 @@ func NewGetDatedUntrashedDoneTasksHandler(taskStore *stores.TaskStore) shared.Au
 			return
 		}
 
-		response, err := taskStore.GetDatedUntrashedDoneTasks(c.UserId, categoryIds, startDate, endDate, cursorDate, cursorRank)
+		response, err := taskStore.GetDatedUntrashedDoneTasks(c.Request.Context(), c.UserId, categoryIds, startDate, endDate, cursorDate, cursorRank)
 		if err != nil {
 			slog.Error("handling get dated untrashed done tasks failed", "error", err)
 			c.JSON(http.StatusInternalServerError, shared.UnexpectedErrorResponse)

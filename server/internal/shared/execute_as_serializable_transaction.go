@@ -13,14 +13,19 @@ import (
 const maxSerializableTransactionAttemptCount = 3
 
 func ExecuteAsSerializableTransaction[ReturnType any](
+	ctx context.Context,
 	db *sqlx.DB,
 	codeToExecute func(transaction *sqlx.Tx) (ReturnType, error),
 ) (ReturnType, error) {
 	var zeroReturnValue ReturnType
 
 	for attempt := 1; attempt <= maxSerializableTransactionAttemptCount; attempt++ {
+		if err := ctx.Err(); err != nil {
+			return zeroReturnValue, err
+		}
+
 		transaction, beginTransactionError := db.BeginTxx(
-			context.Background(),
+			ctx,
 			&sql.TxOptions{Isolation: sql.LevelSerializable},
 		)
 		if beginTransactionError != nil {
@@ -53,12 +58,17 @@ func ExecuteAsSerializableTransaction[ReturnType any](
 }
 
 func ExecuteAsSerializableTransactionWithoutResult(
+	ctx context.Context,
 	db *sqlx.DB,
 	codeToExecute func(transaction *sqlx.Tx) error,
 ) error {
 	for attempt := 1; attempt <= maxSerializableTransactionAttemptCount; attempt++ {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+
 		transaction, beginTransactionError := db.BeginTxx(
-			context.Background(),
+			ctx,
 			&sql.TxOptions{Isolation: sql.LevelSerializable},
 		)
 		if beginTransactionError != nil {

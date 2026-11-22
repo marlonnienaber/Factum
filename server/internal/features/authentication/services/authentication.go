@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
@@ -61,6 +62,7 @@ func NewAuthenticationService(
 }
 
 func (service *AuthenticationService) VerifyEmail(
+	ctx context.Context,
 	request transport.VerifyEmailRequest,
 ) error {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("verifying email failed")
@@ -70,8 +72,8 @@ func (service *AuthenticationService) VerifyEmail(
 		return nil
 	}
 
-	err := shared.ExecuteAsSerializableTransactionWithoutResult(service.db, func(transaction *sqlx.Tx) error {
-		userExists, err := service.userStore.DoesUserExistForEmail(transaction, email)
+	err := shared.ExecuteAsSerializableTransactionWithoutResult(ctx, service.db, func(transaction *sqlx.Tx) error {
+		userExists, err := service.userStore.DoesUserExistForEmail(ctx, transaction, email)
 		if err != nil {
 			return err
 		}
@@ -79,7 +81,7 @@ func (service *AuthenticationService) VerifyEmail(
 			return nil
 		}
 
-		record, err := service.emailVerificationTokenRecordStore.GetRecordForEmail(transaction, email)
+		record, err := service.emailVerificationTokenRecordStore.GetRecordForEmail(ctx, transaction, email)
 		if err != nil {
 			return err
 		}
@@ -96,7 +98,7 @@ func (service *AuthenticationService) VerifyEmail(
 		tokenHash := sha256.Sum256([]byte(plaintextToken))
 
 		record = prepareEmailVerificationTokenRecord(record, email, tokenHash[:], now)
-		err = service.emailVerificationTokenRecordStore.UpsertRecord(transaction, record)
+		err = service.emailVerificationTokenRecordStore.UpsertRecord(ctx, transaction, record)
 		if err != nil {
 			return err
 		}
@@ -111,12 +113,12 @@ func (service *AuthenticationService) VerifyEmail(
 	return nil
 }
 
-func (service *AuthenticationService) SignUp(request transport.SignUpRequest) error {
+func (service *AuthenticationService) SignUp(ctx context.Context, request transport.SignUpRequest) error {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("sign up failed")
 	tokenHash := sha256.Sum256([]byte(request.Token))
 
-	err := shared.ExecuteAsSerializableTransactionWithoutResult(service.db, func(transaction *sqlx.Tx) error {
-		record, err := service.emailVerificationTokenRecordStore.GetRecordForTokenHash(transaction, tokenHash[:])
+	err := shared.ExecuteAsSerializableTransactionWithoutResult(ctx, service.db, func(transaction *sqlx.Tx) error {
+		record, err := service.emailVerificationTokenRecordStore.GetRecordForTokenHash(ctx, transaction, tokenHash[:])
 		if err != nil {
 			if errors.Is(err, stores.ErrNoRecordForEmailVerificationToken) {
 				return ErrSignUpNotAvailable
@@ -136,7 +138,7 @@ func (service *AuthenticationService) SignUp(request transport.SignUpRequest) er
 			return err
 		}
 
-		err = service.emailVerificationTokenRecordStore.DeleteRecord(transaction, record.Id)
+		err = service.emailVerificationTokenRecordStore.DeleteRecord(ctx, transaction, record.Id)
 		if err != nil {
 			return err
 		}
@@ -145,7 +147,7 @@ func (service *AuthenticationService) SignUp(request transport.SignUpRequest) er
 			Email:        record.Email,
 			PasswordHash: passwordHash,
 		}
-		if err := service.userStore.InsertUser(transaction, &user); err != nil {
+		if err := service.userStore.InsertUser(ctx, transaction, &user); err != nil {
 			if errors.Is(err, stores.ErrEmailAlreadyInUse) {
 				return ErrSignUpNotAvailable
 			}
@@ -164,7 +166,7 @@ func (service *AuthenticationService) SignUp(request transport.SignUpRequest) er
 	return nil
 }
 
-func (service *AuthenticationService) SignIn(request transport.SignInRequest, session sessions.Session) (*transport.AuthenticationResponse, error) {
+func (service *AuthenticationService) SignIn(ctx context.Context, request transport.SignInRequest, session sessions.Session) (*transport.AuthenticationResponse, error) {
 	wrapUnexpectedError := shared.GetWrapUnexpectedErrorHelper("sign in failed")
 	email := normalizeEmail(request.Email)
 
@@ -172,7 +174,7 @@ func (service *AuthenticationService) SignIn(request transport.SignInRequest, se
 	var fakeHash = "$argon2id$v=19$m=65536,t=1,p=8$Sa6aciSgI6dRYahIkrqpSA$i5itaM8W0RhBvuPNrYhbXsLe3JQViMZ8FWf8gQKz52k"
 	var hashToTest = fakeHash
 
-	user, err := service.userStore.GetUserByEmail(email)
+	user, err := service.userStore.GetUserByEmail(ctx, email)
 	if err != nil {
 		if !errors.Is(err, stores.ErrNoUserForGivenEmail) {
 			return nil, wrapUnexpectedError(err)

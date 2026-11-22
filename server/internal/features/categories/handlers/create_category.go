@@ -27,7 +27,7 @@ func NewCreateCategoryHandler(categoryService *services.CategoryService) shared.
 			return
 		}
 
-		categoryResponse, err := categoryService.CreateCategory(c.UserId, request)
+		categoryResponse, err := categoryService.CreateCategory(c.Request.Context(), c.UserId, request)
 		if err != nil {
 			switch {
 			case errors.Is(err, services.ErrMaximumCategoryCountReached):

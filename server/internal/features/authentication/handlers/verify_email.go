@@ -29,7 +29,7 @@ func NewVerifyEmailHandler(
 			return
 		}
 
-		if err := authenticationService.VerifyEmail(request); err != nil {
+		if err := authenticationService.VerifyEmail(c.Request.Context(), request); err != nil {
 			slog.Error(unexpectedErrorLogMessage, "error", err)
 			c.JSON(http.StatusInternalServerError, shared.UnexpectedErrorResponse)
 			return

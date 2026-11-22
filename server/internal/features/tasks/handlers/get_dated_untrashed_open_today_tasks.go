@@ -20,7 +20,7 @@ func NewGetDatedUntrashedOpenTodayTasksHandler(taskStore *stores.TaskStore) shar
 		}
 
 		today := shared.NewDate(time.Now())
-		response, err := taskStore.GetDatedUntrashedOpenTodayTasks(c.UserId, categoryIds, today, rank)
+		response, err := taskStore.GetDatedUntrashedOpenTodayTasks(c.Request.Context(), c.UserId, categoryIds, today, rank)
 		if err != nil {
 			slog.Error("handling get dated untrashed open today tasks failed", "error", err)
 			c.JSON(http.StatusInternalServerError, shared.UnexpectedErrorResponse)
